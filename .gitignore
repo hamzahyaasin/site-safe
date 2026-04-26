@@ -1,0 +1,30 @@
+# Dataset images - too large for git
+ai-module/ppe_dataset/train/
+ai-module/ppe_dataset/valid/
+ai-module/ppe_dataset/test/
+ai-module/ppe_dataset/README*.txt
+
+# Model weights - too large for git
+*.pt
+runs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Environment
+.env
+
+# Node
+node_modules/
+dist/
+
+# Mac
+.DS_Store
+
+# VS Code
+.vscode/

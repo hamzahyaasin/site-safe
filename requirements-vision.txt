@@ -1,0 +1,3 @@
+# Training + webcam inference (install alongside or in a separate venv)
+ultralytics>=8.3.0
+opencv-python>=4.8.0
