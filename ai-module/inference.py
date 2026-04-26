@@ -18,7 +18,7 @@ import requests
 from ultralytics import YOLO
 
 # ============== CONFIG ==============
-MODEL_PATH = "/Users/hamza/code/site-safe/ai-module/runs/detect/runs/train/sitesafe_ppe_fast/weights/best.pt"
+MODEL_PATH = "/Users/hamza/code/site-safe/ai-module/runs/detect/runs/train/sitesafe_ppe_v4/weights/best.pt"
 API_BASE = "http://127.0.0.1:8000/api"
 ADMIN_EMAIL = "hamzahyaasin@gmail.com"
 ADMIN_PASSWORD = "admin@sitesafe"
@@ -251,7 +251,7 @@ def main() -> None:
                 cv2.imshow("Site-Safe PPE Inference", frame)
                 continue
 
-            results = model.predict(frame, verbose=False, conf=0.25)
+            results = model.predict(frame, verbose=False, conf=0.15)
             result = results[0]
             names = result.names
             violations: list[tuple[str, float]] = []
