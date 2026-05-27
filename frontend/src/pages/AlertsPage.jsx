@@ -2,15 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const FILTERS = [
-  { id: 'all', label: 'All' },
   { id: 'unresolved', label: 'Unresolved' },
   { id: 'critical', label: 'Critical' },
+  { id: 'all', label: 'All' },
 ]
 
 function formatTime(iso) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString()
+    return new Date(iso).toLocaleString(undefined, {
+      month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
   } catch {
     return iso
   }
@@ -18,43 +21,37 @@ function formatTime(iso) {
 
 function sourceLabel(source) {
   switch (source) {
-    case 'AI_CAMERA':
-      return 'AI Camera'
-    case 'IOT_VEST':
-      return 'IoT Vest'
-    case 'SIMULATED':
-      return 'Simulated'
-    default:
-      return source || '—'
+    case 'AI_CAMERA': return 'AI Camera'
+    case 'IOT_VEST': return 'IoT Vest'
+    case 'SIMULATED': return 'Simulated'
+    default: return source || '—'
   }
 }
 
 function severityClass(sev) {
   switch (sev) {
-    case 'CRITICAL':
-      return 'badge badge--critical'
-    case 'HIGH':
-      return 'badge badge--high'
-    case 'MEDIUM':
-      return 'badge badge--medium'
-    case 'LOW':
-      return 'badge badge--low'
-    default:
-      return 'badge'
+    case 'CRITICAL': return 'badge badge--critical'
+    case 'HIGH': return 'badge badge--high'
+    case 'MEDIUM': return 'badge badge--medium'
+    case 'LOW': return 'badge badge--low'
+    default: return 'badge'
   }
 }
 
 function sourceClass(src) {
   switch (src) {
-    case 'AI_CAMERA':
-      return 'badge badge--src-ai'
-    case 'IOT_VEST':
-      return 'badge badge--src-iot'
-    case 'SIMULATED':
-      return 'badge badge--src-sim'
-    default:
-      return 'badge'
+    case 'AI_CAMERA': return 'badge badge--src-ai'
+    case 'IOT_VEST': return 'badge badge--src-iot'
+    case 'SIMULATED': return 'badge badge--src-sim'
+    default: return 'badge'
   }
+}
+
+function rowClass(alert, isNew) {
+  const base = isNew ? 'data-table__row--new' : ''
+  if (alert.severity === 'CRITICAL') return `data-table__row--critical ${base}`.trim()
+  if (alert.severity === 'HIGH') return `data-table__row--high ${base}`.trim()
+  return base || undefined
 }
 
 export default function AlertsPage() {
@@ -62,6 +59,7 @@ export default function AlertsPage() {
   const [filter, setFilter] = useState('unresolved')
   const [alerts, setAlerts] = useState([])
   const [highlightIds, setHighlightIds] = useState(() => new Set())
+  const [resolvingId, setResolvingId] = useState(null)
   const prevIdsRef = useRef(new Set())
 
   const query = useMemo(() => {
@@ -77,14 +75,12 @@ export default function AlertsPage() {
     const prev = prevIdsRef.current
     const fresh = new Set()
     for (const id of nextIds) {
-      if (!prev.has(id)) {
-        fresh.add(id)
-      }
+      if (!prev.has(id)) fresh.add(id)
     }
     prevIdsRef.current = nextIds
     if (prev.size > 0 && fresh.size > 0) {
       setHighlightIds(fresh)
-      window.setTimeout(() => setHighlightIds(new Set()), 2500)
+      window.setTimeout(() => setHighlightIds(new Set()), 2600)
     }
     setAlerts(list)
   }, [api, query])
@@ -100,33 +96,44 @@ export default function AlertsPage() {
   }, [fetchAlerts])
 
   async function resolveAlert(id) {
-    await api.post(`alerts/${id}/resolve/`)
-    await fetchAlerts()
+    setResolvingId(id)
+    try {
+      await api.post(`alerts/${id}/resolve/`)
+      await fetchAlerts()
+    } finally {
+      setResolvingId(null)
+    }
   }
 
   return (
     <div className="page alerts-page">
-      <header className="page-header">
-        <div>
-          <h1 className="page__title">
-            Live Alerts
-            <span className="count-badge">{alerts.length}</span>
-          </h1>
-          <p className="page__lead">Auto-refresh every 5 seconds</p>
-        </div>
+      <div className="page__header">
+        <p className="page__eyebrow">Monitoring</p>
+        <h1 className="page__title">
+          Live Alerts
+          <span className="count-badge">{alerts.length}</span>
+        </h1>
+        <p className="page__lead">Safety incidents from AI camera, IoT vests, and simulated sources</p>
+      </div>
+
+      <div className="page__header-row" style={{ marginBottom: '1.25rem' }}>
         <div className="filter-bar">
           {FILTERS.map((f) => (
             <button
               key={f.id}
               type="button"
-              className={filter === f.id ? 'chip chip--active' : 'chip'}
+              className={filter === f.id ? 'filter-chip filter-chip--active' : 'filter-chip'}
               onClick={() => setFilter(f.id)}
             >
               {f.label}
             </button>
           ))}
         </div>
-      </header>
+        <span className="live-indicator">
+          <span className="live-dot" />
+          Auto-refresh every 5s
+        </span>
+      </div>
 
       <div className="table-wrap">
         <table className="data-table">
@@ -146,32 +153,33 @@ export default function AlertsPage() {
             {alerts.length === 0 ? (
               <tr>
                 <td colSpan={8} className="empty-cell">
-                  No alerts for this filter.
+                  <div style={{ fontSize: '1.8rem', marginBottom: '0.5rem', opacity: 0.4 }}>🔔</div>
+                  No alerts match this filter
                 </td>
               </tr>
             ) : (
               alerts.map((a) => (
-                <tr
-                  key={a.id}
-                  className={highlightIds.has(a.id) ? 'data-table__row data-table__row--new' : 'data-table__row'}
-                >
-                  <td>{formatTime(a.timestamp)}</td>
-                  <td>{a.worker_name}</td>
+                <tr key={a.id} className={rowClass(a, highlightIds.has(a.id))}>
+                  <td className="muted" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{formatTime(a.timestamp)}</td>
+                  <td style={{ fontWeight: 500 }}>{a.worker_name || <span className="muted">—</span>}</td>
+                  <td><code>{a.vest_id || '—'}</code></td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{a.alert_type?.replace(/_/g, ' ') || '—'}</td>
+                  <td><span className={severityClass(a.severity)}>{a.severity}</span></td>
+                  <td><span className={sourceClass(a.source)}>{sourceLabel(a.source)}</span></td>
                   <td>
-                    <code>{a.vest_id}</code>
+                    {a.is_resolved
+                      ? <span className="badge badge--low">✓ Resolved</span>
+                      : <span className="badge badge--medium">● Open</span>}
                   </td>
-                  <td>{a.alert_type?.replace(/_/g, ' ')}</td>
-                  <td>
-                    <span className={severityClass(a.severity)}>{a.severity}</span>
-                  </td>
-                  <td>
-                    <span className={sourceClass(a.source)}>{sourceLabel(a.source)}</span>
-                  </td>
-                  <td>{a.is_resolved ? <span className="badge badge--low">Resolved</span> : <span className="badge badge--high">Open</span>}</td>
                   <td>
                     {!a.is_resolved ? (
-                      <button type="button" className="btn btn--sm btn--ghost" onClick={() => resolveAlert(a.id)}>
-                        Resolve
+                      <button
+                        type="button"
+                        className="btn btn--sm btn--success"
+                        disabled={resolvingId === a.id}
+                        onClick={() => resolveAlert(a.id)}
+                      >
+                        {resolvingId === a.id ? '…' : 'Resolve'}
                       </button>
                     ) : (
                       <span className="muted">—</span>
