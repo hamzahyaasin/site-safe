@@ -11,7 +11,7 @@ export const storageKeys = {
 }
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: 'http://localhost:8000/api/v1/',
   headers: {
     'Content-Type': 'application/json',
   },

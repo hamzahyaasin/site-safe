@@ -85,13 +85,15 @@ python manage.py createsuperuser
 
 `createsuperuser` prompts for an **email** and password (not a username). Use these credentials to log in to the dashboard.
 
-Start the API server:
+Start the API server with **Daphne** (required for WebSocket support):
 
 ```bash
-python manage.py runserver
+daphne -p 8000 sitesafe.asgi:application
 ```
 
-The API runs at **http://127.0.0.1:8000/**.
+Do not use `runserver` for the full dashboard — WebSockets will not work.
+
+The API runs at **http://127.0.0.1:8000/** (REST under `/api/v1/`).
 
 ### Backend environment variables
 
@@ -122,7 +124,7 @@ npm run dev
 
 The dashboard runs at **http://localhost:5173/**.
 
-Log in with the superuser email and password you created. The frontend talks to the backend at `http://localhost:8000/api/`.
+Log in with the superuser email and password you created. The frontend talks to the backend at `http://localhost:8000/api/v1/`.
 
 ### Other frontend commands
 
@@ -197,7 +199,7 @@ python test_model.py
 
 1. Copy your trained weights to `ai-module/models/sitesafe_final.pt` (or update `MODEL_PATH` in `inference.py`).
 2. Edit the **CONFIG** block at the top of `ai-module/inference.py`:
-   - `API_BASE` — backend URL (default `http://127.0.0.1:8000/api`)
+   - `API_BASE` — backend URL (default `http://127.0.0.1:8000/api/v1`)
    - `ADMIN_EMAIL` / `ADMIN_PASSWORD` — credentials for a backend user with API access
    - `CAMERA_INDEX` — webcam device index (usually `0`)
    - `COOLDOWN_SECONDS` — minimum time between repeated alerts for the same violation
@@ -227,7 +229,7 @@ Open three terminals:
 
 | Terminal | Directory | Command |
 |----------|-----------|---------|
-| 1 | `backend/` | `source .venv/bin/activate && python manage.py runserver` |
+| 1 | `backend/` | `source .venv/bin/activate && daphne -p 8000 sitesafe.asgi:application` |
 | 2 | `frontend/` | `npm run dev` |
 | 3 | `ai-module/` | `source .venv/bin/activate && python inference.py` |
 
@@ -239,20 +241,21 @@ Then open **http://localhost:5173**, sign in, and use the Dashboard, Alerts, and
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/api/token/` | Public | Obtain JWT (`email`, `password`) |
-| `POST` | `/api/token/refresh/` | Public | Refresh access token |
-| `GET` | `/api/dashboard/stats/` | JWT | Dashboard summary stats |
-| `GET/POST` | `/api/alerts/` | JWT | List / create alerts |
-| `POST` | `/api/alerts/{id}/resolve/` | JWT | Mark alert resolved |
-| `POST` | `/api/alerts/simulate/` | JWT | Create a simulated alert |
-| `POST` | `/api/alerts/ingest/` | Public | Ingest alert from external source |
-| `GET/POST/…` | `/api/workers/` | JWT | Worker CRUD |
+| `POST` | `/api/v1/token/` | Public | Obtain JWT (`email`, `password`) |
+| `POST` | `/api/v1/token/refresh/` | Public | Refresh access token |
+| `GET` | `/api/v1/dashboard/stats/` | JWT | Dashboard summary stats |
+| `GET/POST` | `/api/v1/alerts/` | JWT | List / create alerts |
+| `POST` | `/api/v1/alerts/{id}/resolve/` | JWT | Mark alert resolved |
+| `POST` | `/api/v1/alerts/simulate/` | JWT | Create a simulated alert |
+| `POST` | `/api/v1/alerts/ingest/` | Public | Ingest alert from external source |
+| `GET/POST/…` | `/api/v1/workers/` | JWT | Worker CRUD |
+| WS | `/ws/dashboard/` | — | Live dashboard events |
 | — | `/admin/` | Staff | Django admin |
 
 Example — obtain a token:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/token/ \
+curl -X POST http://127.0.0.1:8000/api/v1/token/ \
   -H "Content-Type: application/json" \
   -d '{"email": "you@example.com", "password": "your-password"}'
 ```
@@ -275,6 +278,9 @@ Train a model or place weights at the path set in `MODEL_PATH` inside `ai-module
 
 **Camera not opening**  
 Try a different `CAMERA_INDEX` (e.g. `1` or `2`). Close other apps using the webcam.
+
+**Sidebar shows "Offline" / WebSocket won't connect**  
+Use Daphne, not `runserver`: `daphne -p 8000 sitesafe.asgi:application`. The frontend connects to `ws://localhost:8000/ws/dashboard/`.
 
 **No alerts from the AI module**  
 Check that the backend is running, credentials in `inference.py` are correct, and violations are detected (class names starting with `no-`). Alerts respect a cooldown period per violation type.

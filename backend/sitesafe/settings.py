@@ -25,6 +25,8 @@ ALLOWED_HOSTS = [
 ]
 
 INSTALLED_APPS = [
+    "daphne",
+    "channels",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -36,7 +38,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "accounts",
     "workers",
-    "alerts",
+    "alerts.apps.AlertsConfig",
     "sitemap",
 ]
 
@@ -69,6 +71,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "sitesafe.wsgi.application"
+ASGI_APPLICATION = "sitesafe.asgi.application"
 
 DATABASES = {
     "default": {
@@ -119,4 +122,10 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
 }

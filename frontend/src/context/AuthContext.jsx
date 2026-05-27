@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
   const isAuthenticated = Boolean(accessToken)
 
   const login = useCallback(async (email, password) => {
-    const tokenUrl = 'http://localhost:8000/api/token/'
+    const tokenUrl = 'http://localhost:8000/api/v1/token/'
     const { data } = await axios.post(tokenUrl, { email, password })
     localStorage.setItem(storageKeys.access, data.access)
     localStorage.setItem(storageKeys.refresh, data.refresh)
@@ -42,6 +42,7 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) {

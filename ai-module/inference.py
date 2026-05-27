@@ -19,7 +19,7 @@ from ultralytics import YOLO
 
 # ============== CONFIG ==============
 MODEL_PATH = "/Users/hamza/code/site-safe/ai-module/models/sitesafe_final.pt"
-API_BASE = "http://127.0.0.1:8000/api"
+API_BASE = "http://127.0.0.1:8000/api/v1"
 ADMIN_EMAIL = "hamzahyaasin@gmail.com"
 ADMIN_PASSWORD = "admin@sitesafe"
 COOLDOWN_SECONDS = 15
