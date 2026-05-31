@@ -24,12 +24,15 @@ class ActivityLogSerializer(serializers.ModelSerializer):
 
 
 class SmartVestSerializer(serializers.ModelSerializer):
+    worker_name = serializers.SerializerMethodField()
+
     class Meta:
         model = SmartVest
         fields = (
             "id",
             "vest_id",
             "worker",
+            "worker_name",
             "firmware_version",
             "battery_level",
             "latitude",
@@ -39,7 +42,10 @@ class SmartVestSerializer(serializers.ModelSerializer):
             "last_seen",
             "registered_at",
         )
-        read_only_fields = ("id", "registered_at")
+        read_only_fields = ("id", "worker_name", "registered_at")
+
+    def get_worker_name(self, obj):
+        return obj.worker.name if obj.worker_id else None
 
 
 class WorkerSerializer(serializers.ModelSerializer):

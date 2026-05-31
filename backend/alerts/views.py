@@ -11,8 +11,9 @@ from rest_framework.views import APIView
 from workers.models import Worker
 
 from .broadcast import broadcast_alert
-from .models import Alert, AlertType, Detection, Severity
+from .models import Alert, AlertConfig, AlertType, Detection, Severity
 from .serializers import (
+    AlertConfigSerializer,
     AlertIngestSerializer,
     AlertSerializer,
     AlertSimulateSerializer,
@@ -160,3 +161,9 @@ class DetectionViewSet(viewsets.ModelViewSet):
                 end = timezone.make_aware(datetime.combine(day, time.max))
                 qs = qs.filter(frame_timestamp__lte=end)
         return qs
+
+
+class AlertConfigViewSet(viewsets.ModelViewSet):
+    queryset = AlertConfig.objects.select_related("zone").all()
+    serializer_class = AlertConfigSerializer
+    permission_classes = [IsAuthenticated]

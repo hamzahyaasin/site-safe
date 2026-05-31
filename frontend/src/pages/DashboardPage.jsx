@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -9,12 +9,44 @@ import {
   YAxis,
 } from 'recharts'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useWebSocket } from '../hooks/useWebSocket.js'
 
 const SIM_ICONS = {
-  fall: '🔴',
-  gas: '🟡',
-  heat: '🟠',
+  ppe: '⛑️',
   sos: '🆘',
+  zone_breach: '🚧',
+  inactivity: '💤',
+}
+
+function formatTime(iso) {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString()
+  } catch {
+    return iso
+  }
+}
+
+function severityClass(sev) {
+  switch (sev) {
+    case 'CRITICAL':
+      return 'badge badge--critical'
+    case 'HIGH':
+      return 'badge badge--high'
+    case 'MEDIUM':
+      return 'badge badge--medium'
+    case 'LOW':
+      return 'badge badge--low'
+    default:
+      return 'badge'
+  }
+}
+
+function demoLocation() {
+  return {
+    lat: 33.6844 + (Math.random() - 0.5) * 0.01,
+    lng: 73.0479 + (Math.random() - 0.5) * 0.01,
+  }
 }
 
 /** Backend returns `alerts_by_type` as an object { TYPE: count } or legacy array. */
@@ -37,15 +69,56 @@ function alertsByTypeToChartData(alertsByType) {
 export default function DashboardPage() {
   const { api } = useAuth()
   const [stats, setStats] = useState(null)
+  const [liveAlerts, setLiveAlerts] = useState([])
+  const [highlightIds, setHighlightIds] = useState(() => new Set())
   const [workers, setWorkers] = useState([])
   const [workerId, setWorkerId] = useState('')
   const [toast, setToast] = useState('')
   const [loadingSim, setLoadingSim] = useState(null)
+  const loadStatsRef = useRef(null)
 
   const loadStats = useCallback(async () => {
     const { data } = await api.get('dashboard/stats/')
     setStats(data)
   }, [api])
+  loadStatsRef.current = loadStats
+
+  const loadLiveAlerts = useCallback(async () => {
+    const { data } = await api.get('alerts/', { params: { is_resolved: 'false' } })
+    const list = Array.isArray(data) ? data : data.results || []
+    setLiveAlerts(list.slice(0, 20))
+  }, [api])
+
+  const handleNewAlert = useCallback((payload) => {
+    setLiveAlerts((prev) => {
+      if (prev.some((a) => a.id === payload.id)) {
+        return prev
+      }
+      return [
+        {
+          id: payload.id,
+          alert_type: payload.alert_type,
+          severity: payload.severity,
+          description: payload.description,
+          worker_name: payload.worker_name,
+          timestamp: payload.timestamp,
+          is_resolved: false,
+        },
+        ...prev,
+      ].slice(0, 20)
+    })
+    setHighlightIds((prev) => new Set(prev).add(payload.id))
+    window.setTimeout(() => {
+      setHighlightIds((prev) => {
+        const next = new Set(prev)
+        next.delete(payload.id)
+        return next
+      })
+    }, 2500)
+    loadStatsRef.current?.()
+  }, [])
+
+  useWebSocket(handleNewAlert)
 
   const loadWorkers = useCallback(async () => {
     const { data } = await api.get('workers/')
@@ -55,7 +128,8 @@ export default function DashboardPage() {
   useEffect(() => {
     loadStats()
     loadWorkers()
-  }, [loadStats, loadWorkers])
+    loadLiveAlerts()
+  }, [loadStats, loadWorkers, loadLiveAlerts])
 
   useEffect(() => {
     if (workers.length && !workerId) {
@@ -74,16 +148,39 @@ export default function DashboardPage() {
       return
     }
     const payloads = {
-      fall: { alert_type: 'FALL', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(workerId) },
-      gas: { alert_type: 'GAS_LEAK', severity: 'HIGH', source: 'SIMULATED', worker_id: Number(workerId) },
-      heat: { alert_type: 'HEAT_STRESS', severity: 'MEDIUM', source: 'SIMULATED', worker_id: Number(workerId) },
-      sos: { alert_type: 'SOS', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(workerId) },
+      ppe: {
+        alert_type: 'PPE_VIOLATION',
+        severity: 'HIGH',
+        source: 'SIMULATED',
+        worker_id: Number(workerId),
+        location: demoLocation(),
+      },
+      sos: {
+        alert_type: 'SOS',
+        severity: 'CRITICAL',
+        source: 'SIMULATED',
+        worker_id: Number(workerId),
+        location: demoLocation(),
+      },
+      zone_breach: {
+        alert_type: 'ZONE_BREACH',
+        severity: 'HIGH',
+        source: 'SIMULATED',
+        worker_id: Number(workerId),
+        location: demoLocation(),
+      },
+      inactivity: {
+        alert_type: 'INACTIVITY',
+        severity: 'MEDIUM',
+        source: 'SIMULATED',
+        worker_id: Number(workerId),
+        location: demoLocation(),
+      },
     }
     setLoadingSim(kind)
     try {
       await api.post('alerts/simulate/', payloads[kind])
       showToast('Alert sent successfully')
-      await loadStats()
     } catch (e) {
       showToast(e.response?.data?.detail || 'Failed to send alert')
     } finally {
@@ -148,6 +245,55 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      <section className="panel">
+        <h2 className="panel__title">
+          Live Alert Feed
+          <span className="count-badge">{liveAlerts.length}</span>
+        </h2>
+        <p className="panel__muted">Updates in real time via WebSocket</p>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Worker</th>
+                <th>Type</th>
+                <th>Severity</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {liveAlerts.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="empty-cell">
+                    No active alerts.
+                  </td>
+                </tr>
+              ) : (
+                liveAlerts.map((a) => (
+                  <tr
+                    key={a.id}
+                    className={
+                      highlightIds.has(a.id)
+                        ? 'data-table__row data-table__row--new'
+                        : 'data-table__row'
+                    }
+                  >
+                    <td>{formatTime(a.timestamp)}</td>
+                    <td>{a.worker_name || '—'}</td>
+                    <td>{a.alert_type?.replace(/_/g, ' ')}</td>
+                    <td>
+                      <span className={severityClass(a.severity)}>{a.severity}</span>
+                    </td>
+                    <td>{a.description || '—'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section className="sim-panel">
         <h2 className="sim-panel__title">IoT Vest Simulator (Hardware Not Connected)</h2>
         <p className="sim-panel__subtitle">Use these buttons to simulate IoT Smart Vest events</p>
@@ -175,34 +321,12 @@ export default function DashboardPage() {
             type="button"
             className="sim-btn"
             disabled={!!loadingSim || workers.length === 0}
-            onClick={() => simulate('fall')}
+            onClick={() => simulate('ppe')}
           >
             <span className="sim-btn__icon" aria-hidden>
-              {SIM_ICONS.fall}
+              {SIM_ICONS.ppe}
             </span>
-            <span className="sim-btn__label">Fall Detected</span>
-          </button>
-          <button
-            type="button"
-            className="sim-btn"
-            disabled={!!loadingSim || workers.length === 0}
-            onClick={() => simulate('gas')}
-          >
-            <span className="sim-btn__icon" aria-hidden>
-              {SIM_ICONS.gas}
-            </span>
-            <span className="sim-btn__label">Gas Leak</span>
-          </button>
-          <button
-            type="button"
-            className="sim-btn"
-            disabled={!!loadingSim || workers.length === 0}
-            onClick={() => simulate('heat')}
-          >
-            <span className="sim-btn__icon" aria-hidden>
-              {SIM_ICONS.heat}
-            </span>
-            <span className="sim-btn__label">Heat Stress</span>
+            <span className="sim-btn__label">PPE Violation</span>
           </button>
           <button
             type="button"
@@ -213,7 +337,29 @@ export default function DashboardPage() {
             <span className="sim-btn__icon" aria-hidden>
               {SIM_ICONS.sos}
             </span>
-            <span className="sim-btn__label">SOS Pressed</span>
+            <span className="sim-btn__label">SOS Alert</span>
+          </button>
+          <button
+            type="button"
+            className="sim-btn"
+            disabled={!!loadingSim || workers.length === 0}
+            onClick={() => simulate('zone_breach')}
+          >
+            <span className="sim-btn__icon" aria-hidden>
+              {SIM_ICONS.zone_breach}
+            </span>
+            <span className="sim-btn__label">Zone Breach</span>
+          </button>
+          <button
+            type="button"
+            className="sim-btn"
+            disabled={!!loadingSim || workers.length === 0}
+            onClick={() => simulate('inactivity')}
+          >
+            <span className="sim-btn__icon" aria-hidden>
+              {SIM_ICONS.inactivity}
+            </span>
+            <span className="sim-btn__label">Inactivity</span>
           </button>
         </div>
       </section>

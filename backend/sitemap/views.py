@@ -12,11 +12,11 @@ from .serializers import ZoneDetailSerializer, ZoneSerializer
 
 
 class ZoneViewSet(viewsets.ModelViewSet):
-    queryset = Zone.objects.all()
+    queryset = Zone.objects.prefetch_related("workers").all()
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
-        if self.action == "retrieve":
+        if self.action in ("retrieve", "list"):
             return ZoneDetailSerializer
         return ZoneSerializer
 

@@ -43,3 +43,16 @@ class FCMToken(models.Model):
 
     def __str__(self):
         return f"{self.user.email} — {self.device_name or 'device'}"
+
+
+class UserPreferences(models.Model):
+    user = models.OneToOneField(
+        "User",
+        on_delete=models.CASCADE,
+        related_name="preferences",
+    )
+    notify_push = models.BooleanField(default=True)
+    notify_email = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Preferences for {self.user.email}"

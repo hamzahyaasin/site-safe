@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from workers.models import Worker
 
-from .models import Alert, AlertSource, AlertType, Detection, Severity
+from .models import Alert, AlertConfig, AlertSource, AlertType, Detection, Severity
 
 
 class AlertSerializer(serializers.ModelSerializer):
@@ -172,3 +172,27 @@ class DetectionSerializer(serializers.ModelSerializer):
             except Worker.DoesNotExist:
                 pass
         return super().create(validated_data)
+
+
+class AlertConfigSerializer(serializers.ModelSerializer):
+    zone_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AlertConfig
+        fields = (
+            "id",
+            "zone",
+            "zone_name",
+            "alert_type",
+            "is_enabled",
+            "threshold_seconds",
+            "notify_email",
+            "notify_push",
+            "updated_at",
+        )
+        read_only_fields = ("id", "zone_name", "updated_at")
+
+    def get_zone_name(self, obj):
+        if obj.zone_id:
+            return obj.zone.name
+        return "Global"

@@ -1,7 +1,10 @@
 from django.contrib import admin
+from django.conf import settings
+from django.conf.urls.static import static
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from alerts.alert_config_urls import alert_config_urlpatterns
 from alerts.urls import detection_urlpatterns
 from alerts.views import AlertIngestView, AlertViewSet, DashboardStatsView
 from workers.urls import activity_urlpatterns, vest_urlpatterns
@@ -21,7 +24,13 @@ urlpatterns = [
     path("api/v1/vests/", include((vest_urlpatterns, "workers"), namespace="vests")),
     path("api/v1/activity/", include((activity_urlpatterns, "workers"), namespace="activity")),
     path("api/v1/detections/", include((detection_urlpatterns, "alerts"), namespace="detections")),
+    path("api/v1/alert-config/", include((alert_config_urlpatterns, "alerts"), namespace="alert-config")),
     path("api/v1/zones/", include("sitemap.urls")),
     path("api/v1/fcm-tokens/", include("accounts.urls")),
+    path("api/v1/profile/", include("accounts.profile_urls")),
+    path("api/v1/reports/", include("reports.urls")),
     path("api/", include(router.urls)),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -20,6 +20,18 @@ export default function Navbar() {
         <NavLink to="/workers" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
           Workers
         </NavLink>
+        <NavLink to="/vests" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
+          Vests
+        </NavLink>
+        <NavLink to="/zones" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
+          Zones
+        </NavLink>
+        <NavLink to="/reports" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
+          Reports
+        </NavLink>
+        <NavLink to="/settings" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
+          Settings
+        </NavLink>
       </nav>
       <div className="navbar__user">
         <span className="navbar__email" title={userEmail || ''}>
