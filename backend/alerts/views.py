@@ -1,5 +1,7 @@
 from django.db.models import Count
 from django.utils import timezone
+from django.utils.dateparse import parse_date
+from datetime import datetime, time
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -8,11 +10,13 @@ from rest_framework.views import APIView
 
 from workers.models import Worker
 
-from .models import Alert, AlertType, Severity
+from .broadcast import broadcast_alert
+from .models import Alert, AlertType, Detection, Severity
 from .serializers import (
     AlertIngestSerializer,
     AlertSerializer,
     AlertSimulateSerializer,
+    DetectionSerializer,
 )
 
 
@@ -79,6 +83,7 @@ class AlertViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+        broadcast_alert(serializer.instance)
         out = AlertSerializer(serializer.instance)
         return Response(out.data, status=status.HTTP_201_CREATED)
 
@@ -103,6 +108,7 @@ class AlertViewSet(
         serializer = AlertSimulateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         alert = serializer.save()
+        broadcast_alert(alert)
         return Response(AlertSerializer(alert).data, status=status.HTTP_201_CREATED)
 
 
@@ -115,7 +121,42 @@ class AlertIngestView(APIView):
         serializer = AlertIngestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         alert = serializer.save()
+        broadcast_alert(alert)
         return Response(
             AlertSerializer(alert, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class DetectionViewSet(viewsets.ModelViewSet):
+    queryset = Detection.objects.select_related("worker").all()
+    serializer_class = DetectionSerializer
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        camera_id = self.request.query_params.get("camera_id")
+        if camera_id:
+            qs = qs.filter(camera_id=camera_id)
+        class_name = self.request.query_params.get("class_name")
+        if class_name:
+            qs = qs.filter(class_name=class_name)
+
+        start_date = self.request.query_params.get("start_date")
+        end_date = self.request.query_params.get("end_date")
+        if start_date:
+            day = parse_date(start_date)
+            if day:
+                start = timezone.make_aware(datetime.combine(day, time.min))
+                qs = qs.filter(frame_timestamp__gte=start)
+        if end_date:
+            day = parse_date(end_date)
+            if day:
+                end = timezone.make_aware(datetime.combine(day, time.max))
+                qs = qs.filter(frame_timestamp__lte=end)
+        return qs
