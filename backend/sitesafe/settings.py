@@ -138,3 +138,9 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
     }
 }
+
+REPORT_SERVICE_URL = os.environ.get(
+    "REPORT_SERVICE_URL",
+    "http://report-service:3001/generate",
+)
+REPORT_SERVICE_TIMEOUT = int(os.environ.get("REPORT_SERVICE_TIMEOUT", "120"))

@@ -1,12 +1,11 @@
-from django.core.files.base import ContentFile
 from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .docx_builder import build_report_document
 from .models import Report
+from .proxy import proxy_generate_report
 from .serializers import ReportGenerateSerializer, ReportSerializer
 
 
@@ -27,26 +26,14 @@ class GenerateReportView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        buffer = build_report_document(data["report_type"], data["date_from"], data["date_to"])
-        filename = (
-            f"{data['report_type'].lower()}_report_"
-            f"{data['date_from']}_{data['date_to']}.docx"
+        response, error_body, status_code = proxy_generate_report(
+            request,
+            data["report_type"],
+            data["date_from"],
+            data["date_to"],
         )
-        content = buffer.getvalue()
-
-        report = Report(
-            report_type=data["report_type"],
-            date_from=data["date_from"],
-            date_to=data["date_to"],
-            created_by=request.user,
-        )
-        report.file.save(filename, ContentFile(content), save=True)
-
-        response = HttpResponse(
-            content,
-            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        if error_body is not None:
+            return Response(error_body, status=status_code)
         return response
 
 
