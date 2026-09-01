@@ -7,6 +7,7 @@ class AlertType(models.TextChoices):
     ZONE_BREACH = "ZONE_BREACH", "Zone breach"
     INACTIVITY = "INACTIVITY", "Inactivity"
     VEHICLE_PROXIMITY = "VEHICLE_PROXIMITY", "Vehicle proximity"
+    FALL = "FALL", "Fall"
 
 
 class Severity(models.TextChoices):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Site-Safe vision pipeline: PPE, vehicle-proximity, and inactivity warnings,
-with optional Django alert API integration.
+Site-Safe vision pipeline: PPE, vehicle-proximity, inactivity, and fall
+warnings, with optional Django alert API integration.
 Run from ai-module/: python inference.py
 """
 
@@ -19,6 +19,7 @@ import numpy as np
 import requests
 from ultralytics import YOLO
 
+import fall_detection
 import inactivity
 import proximity
 
@@ -28,6 +29,10 @@ MODEL_PATH = "/Users/hamza/code/site-safe/ai-module/models/sitesafe_final.pt"
 # vehicle class, so proximity and inactivity warnings need a second detector.
 # The COCO-pretrained YOLOv11 nano weights supply person and vehicle boxes.
 PROXIMITY_MODEL_PATH = "yolo11n.pt"
+# Fall detection needs body keypoints, which a plain detection model does not
+# emit, so it uses a third, independent model: the COCO-pretrained YOLO11
+# nano *pose* weights.
+FALL_MODEL_PATH = "yolo11n-pose.pt"
 API_BASE = "http://127.0.0.1:8000/api"
 ADMIN_EMAIL = "hamzahyaasin@gmail.com"
 ADMIN_PASSWORD = "admin@sitesafe"
@@ -46,6 +51,12 @@ READ_RETRY_DELAY_SECONDS = 0.25
 # resolution for these alert types.
 PROXIMITY_FRAME_INTERVAL = 3
 PROXIMITY_CONF = 0.35
+# The pose model is a separate forward pass from the COCO detector above, so
+# it has its own sampling interval. Every third frame matches the original
+# design's stated cadence and comfortably out-samples the multi-second
+# persistence window fall detection requires.
+FALL_FRAME_INTERVAL = 3
+FALL_CONF = 0.35
 # ====================================
 
 
@@ -62,6 +73,13 @@ def resolve_model_path() -> Path:
 
 def resolve_proximity_model_path() -> Path:
     p = Path(PROXIMITY_MODEL_PATH)
+    if p.is_absolute():
+        return p
+    return module_root() / p
+
+
+def resolve_fall_model_path() -> Path:
+    p = Path(FALL_MODEL_PATH)
     if p.is_absolute():
         return p
     return module_root() / p
@@ -188,6 +206,28 @@ def post_inactivity_alert(
         return None, str(exc)
 
 
+def post_fall_alert(
+    session: requests.Session | None,
+    online: bool,
+    event: dict,
+    camera_id: str,
+) -> tuple[int | None, str]:
+    """POST a camera-level fall alert. Returns (status_code, message).
+
+    As with inactivity, the pose model provides no worker identity, so this
+    leaves ``worker`` unset; camera_id still lets the backend resolve a zone.
+    """
+    if not online or session is None:
+        return None, "offline"
+
+    payload = fall_detection.alert_payload(event, camera_id)
+    try:
+        r = session.post(api_url("alerts", ""), json=payload, timeout=10)
+        return r.status_code, r.text[:500]
+    except Exception as exc:
+        return None, str(exc)
+
+
 def draw_proximity(
     frame: np.ndarray,
     persons: list,
@@ -234,6 +274,28 @@ def draw_proximity(
     )
 
 
+def draw_poses(
+    frame: np.ndarray,
+    poses: list[tuple[list, list]],
+    fired_this_frame: list[dict],
+) -> None:
+    """Draw a dot per confidently detected keypoint, and mark the centroid
+    of any track that confirmed a fall on this exact sampled frame."""
+    for xy, conf in poses:
+        for (x, y), c in zip(xy, conf):
+            if c < fall_detection.DEFAULT_MIN_KEYPOINT_CONF:
+                continue
+            cv2.circle(frame, (int(x), int(y)), 3, (255, 0, 200), -1)
+
+    for event in fired_this_frame:
+        cx, cy = (int(v) for v in event["centroid"])
+        cv2.circle(frame, (cx, cy), 26, (0, 0, 255), 3)
+        cv2.putText(
+            frame, "FALL", (cx - 24, cy - 32),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA,
+        )
+
+
 def draw_fps(frame: np.ndarray, fps: float) -> None:
     h, w = frame.shape[:2]
     text = f"FPS: {fps:.1f}"
@@ -247,16 +309,22 @@ def draw_status_bar(
     frame: np.ndarray,
     violations: list[tuple[str, float]],
     proximity_event: dict | None = None,
+    fall_fired_this_frame: bool = False,
 ) -> None:
     """Top-left status strip: green ALL CLEAR, or red naming what is wrong.
 
-    A proximity breach outranks a PPE violation in the banner, since a worker
-    beside moving plant is the more immediate hazard.
+    A confirmed fall outranks everything else in the banner — a worker down
+    is the most urgent condition this pipeline can raise. A proximity breach
+    in turn outranks a plain PPE violation, since a worker beside moving
+    plant is more immediate than a missing hardhat.
     """
     h, w = frame.shape[:2]
     bar_h = 44
     overlay = frame.copy()
-    if proximity_event is not None:
+    if fall_fired_this_frame:
+        color = (0, 0, 220)  # BGR red-ish
+        label = "FALL DETECTED"
+    elif proximity_event is not None:
         color = (0, 0, 220)  # BGR red-ish
         label = f"VEHICLE PROXIMITY - {proximity_event['vehicle_label']}"
     elif violations:
@@ -387,11 +455,27 @@ def parse_args() -> argparse.Namespace:
         f"as stationary (default: {inactivity.DEFAULT_MOVEMENT_THRESHOLD:g}). "
         "Calibrate this per camera resolution and view.",
     )
+    parser.add_argument(
+        "--no-fall",
+        action="store_true",
+        help="Disable fall detection. Uses its own pose model independent of "
+        "--no-proximity/--no-inactivity's shared COCO detector.",
+    )
+    parser.add_argument(
+        "--fall-persistence",
+        type=float,
+        default=fall_detection.DEFAULT_PERSISTENCE_SECONDS,
+        help="Seconds a collapsed posture must be sustained before a FALL "
+        f"alert is raised (default: {fall_detection.DEFAULT_PERSISTENCE_SECONDS:g}). "
+        "Filters out a crouch or a bend to pick something up.",
+    )
     args = parser.parse_args()
     if args.inactivity_timeout <= 0:
         parser.error("--inactivity-timeout must be greater than zero")
     if args.inactivity_movement_threshold < 0:
         parser.error("--inactivity-movement-threshold must be zero or greater")
+    if args.fall_persistence <= 0:
+        parser.error("--fall-persistence must be greater than zero")
     return args
 
 
@@ -447,6 +531,29 @@ def main() -> None:
                 file=sys.stderr,
             )
 
+    pose_model = None
+    fall_tracker = None
+    if not args.no_fall:
+        fall_model_path = resolve_fall_model_path()
+        if fall_model_path.is_file():
+            pose_model = YOLO(str(fall_model_path))
+            fall_tracker = fall_detection.FallTracker(
+                persistence_seconds=args.fall_persistence,
+            )
+            print(
+                f"[{camera_id}] fall detection enabled "
+                f"(persistence {args.fall_persistence:g}s)"
+            )
+        else:
+            # Same degrade-gracefully behaviour as the COCO detector above:
+            # a missing pose model should not take down PPE/proximity/
+            # inactivity detection.
+            print(
+                f"[{camera_id}] pose model not found at {fall_model_path}; "
+                "continuing without fall detection",
+                file=sys.stderr,
+            )
+
     print(f"[{camera_id}] opening {'stream' if networked else 'device index'}: {source}")
     cap = cv2.VideoCapture(source)
     if networked:
@@ -465,12 +572,14 @@ def main() -> None:
     alerts_sent = 0
     proximity_alerts_sent = 0
     inactivity_alerts_sent = 0
+    fall_alerts_sent = 0
     consecutive_read_failures = 0
     # Latched so the overlay keeps showing the last proximity result on
     # frames where the sampled detector did not run.
     last_persons: list = []
     last_vehicles: list = []
     last_proximity_event: dict | None = None
+    last_poses: list = []
     t_start = time.perf_counter()
     fps_smooth = 0.0
     t_prev = time.perf_counter()
@@ -512,6 +621,10 @@ def main() -> None:
                     # Paused time is not observed time and must not count
                     # toward a stationary timeout.
                     inactivity_tracker.reset()
+                if fall_tracker is not None:
+                    # Same reasoning: paused time must not silently count
+                    # toward a collapsed-posture persistence window either.
+                    fall_tracker.reset()
                 print(f"[{'PAUSED' if paused else 'RESUME'}] detection")
             if key == ord("s"):
                 forced = {
@@ -585,10 +698,28 @@ def main() -> None:
                         last_persons, now=t_now
                     )
 
+            # The pose model is an independent forward pass with its own
+            # sampling interval — it does not share the COCO detector above.
+            confirmed_fall: list[dict] = []
+            if pose_model is not None and total_frames % FALL_FRAME_INTERVAL == 0:
+                f_result = pose_model.predict(frame, verbose=False, conf=FALL_CONF)[0]
+                last_poses = []
+                if f_result.keypoints is not None and len(f_result.keypoints) > 0:
+                    xy_all = f_result.keypoints.xy.cpu().numpy()
+                    conf_all = f_result.keypoints.conf.cpu().numpy()
+                    last_poses = [
+                        ([tuple(p) for p in xy_all[i].tolist()], conf_all[i].tolist())
+                        for i in range(len(xy_all))
+                    ]
+                if fall_tracker is not None:
+                    confirmed_fall = fall_tracker.update(last_poses, now=t_now)
+
             if proximity_tracker is not None:
                 draw_proximity(frame, last_persons, last_vehicles, last_proximity_event)
+            if pose_model is not None:
+                draw_poses(frame, last_poses, confirmed_fall)
 
-            draw_status_bar(frame, violations, last_proximity_event)
+            draw_status_bar(frame, violations, last_proximity_event, bool(confirmed_fall))
             draw_fps(frame, fps_smooth)
 
             if online and session and violations:
@@ -631,6 +762,18 @@ def main() -> None:
                 else:
                     print(f"[ALERT] {desc} → API response: {code} {body[:200]}")
 
+            # Same reasoning as inactivity above: FallTracker latches per
+            # track, so no additional cooldown is applied here.
+            for event in confirmed_fall:
+                desc = fall_detection.describe(event)
+                code, body = post_fall_alert(session, online, event, camera_id)
+                if code == 201:
+                    alerts_sent += 1
+                    fall_alerts_sent += 1
+                    print(f"[ALERT] {desc} → API response: {code}")
+                else:
+                    print(f"[ALERT] {desc} → API response: {code} {body[:200]}")
+
             cv2.imshow(window_title, frame)
     finally:
         cap.release()
@@ -643,6 +786,7 @@ def main() -> None:
         print(f"  Total alerts sent:      {alerts_sent}")
         print(f"    of which proximity:   {proximity_alerts_sent}")
         print(f"    of which inactivity:  {inactivity_alerts_sent}")
+        print(f"    of which fall:        {fall_alerts_sent}")
         print(f"  Session duration:       {duration:.1f}s")
 
 
