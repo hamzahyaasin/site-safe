@@ -1,19 +1,8 @@
 import StatCard from '../ui/StatCard.jsx'
-import { sparklineFromValue } from '../../lib/utils.js'
-
-function countByType(stats, type) {
-  const map = stats?.alerts_by_type
-  if (!map) return null
-  if (Array.isArray(map)) {
-    const row = map.find((r) => (r.name ?? r.type) === type)
-    return row ? Number(row.count ?? 0) : 0
-  }
-  return Number(map[type] ?? 0)
-}
+import { deriveComplianceRate, sparklineFromValue } from '../../lib/utils.js'
 
 export default function KpiStrip({ stats, loading }) {
-  const zoneBreaches = countByType(stats, 'ZONE_BREACH')
-  const inactivityAlerts = countByType(stats, 'INACTIVITY')
+  const compliance = deriveComplianceRate(stats)
 
   const cards = [
     {
@@ -33,20 +22,20 @@ export default function KpiStrip({ stats, loading }) {
       sparklineTrend: 'negative',
     },
     {
-      label: 'Zone Breaches',
-      value: zoneBreaches,
-      delta: stats && zoneBreaches !== null ? (zoneBreaches > 0 ? zoneBreaches : -1) : null,
-      borderColor: 'border-l-violet-500',
-      sparkline: sparklineFromValue(zoneBreaches),
+      label: 'Violations Today',
+      value: stats?.total_alerts_today,
+      delta: stats ? 8 : null,
+      borderColor: 'border-l-amber-500',
+      sparkline: sparklineFromValue(stats?.total_alerts_today),
       sparklineTrend: 'negative',
     },
     {
-      label: 'Inactivity',
-      value: inactivityAlerts,
-      delta: stats && inactivityAlerts !== null ? (inactivityAlerts > 0 ? inactivityAlerts : -1) : null,
+      label: 'Compliance Rate',
+      value: compliance !== null ? `${compliance}%` : null,
+      delta: stats ? 3 : null,
       borderColor: 'border-l-blue-500',
-      sparkline: sparklineFromValue(inactivityAlerts),
-      sparklineTrend: 'negative',
+      sparkline: sparklineFromValue(compliance),
+      sparklineTrend: 'positive',
     },
   ]
 

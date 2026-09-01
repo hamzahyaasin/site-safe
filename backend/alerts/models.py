@@ -43,6 +43,12 @@ class Alert(models.Model):
         default=AlertSource.AI_CAMERA,
     )
     description = models.TextField(blank=True, default="")
+    camera_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Identifier of the camera/edge source that raised this alert, if any",
+    )
     location = models.JSONField(
         null=True,
         blank=True,

@@ -1,18 +1,7 @@
-function formatLastSeen(iso) {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleString()
-  } catch {
-    return iso
-  }
-}
-
-function batteryBarClass(level) {
-  if (level == null) return 'vest-drawer__battery-fill--unknown'
-  if (level < 20) return 'vest-drawer__battery-fill--low'
-  if (level < 40) return 'vest-drawer__battery-fill--medium'
-  return 'vest-drawer__battery-fill--high'
-}
+import Badge from '../ui/Badge.jsx'
+import Button from '../ui/Button.jsx'
+import Input, { Select } from '../ui/Input.jsx'
+import { formatTimestamp } from '../../lib/utils.js'
 
 export default function VestDrawer({
   vest,
@@ -29,56 +18,52 @@ export default function VestDrawer({
 }) {
   if (mode === 'register') {
     return (
-      <aside className="vest-drawer">
-        <header className="vest-drawer__header">
-          <h2 className="vest-drawer__title">Register Vest</h2>
-          <p className="vest-drawer__subtitle">Add a new smart vest to the fleet</p>
-        </header>
+      <div className="flex h-full flex-col rounded-lg border border-zinc-800 bg-[#151821]">
+        <div className="border-b border-zinc-800 px-5 py-4">
+          <h2 className="text-base font-semibold text-zinc-100">Register Vest</h2>
+          <p className="mt-0.5 text-xs text-zinc-500">Add a new smart vest to the fleet</p>
+        </div>
         <form
-          className="vest-drawer__body"
+          className="flex flex-1 flex-col overflow-y-auto px-5 py-4 scrollbar-thin"
           onSubmit={(e) => {
             e.preventDefault()
             onRegister()
           }}
         >
-          <label className="field">
-            <span className="field__label">Vest ID</span>
-            <input
-              className="field__input"
+          <div className="space-y-4">
+            <Input
+              label="Vest ID"
               value={registerForm.vest_id}
               onChange={(e) => onRegisterChange({ ...registerForm, vest_id: e.target.value })}
               placeholder="VEST-001"
               required
             />
-          </label>
-          <label className="field">
-            <span className="field__label">Firmware version</span>
-            <input
-              className="field__input"
+            <Input
+              label="Firmware version"
               value={registerForm.firmware_version}
               onChange={(e) => onRegisterChange({ ...registerForm, firmware_version: e.target.value })}
               placeholder="1.0.0"
             />
-          </label>
-          <div className="vest-drawer__actions">
-            <button type="submit" className="btn btn--primary" disabled={registerSaving}>
+          </div>
+          <div className="mt-auto flex gap-2 border-t border-zinc-800 pt-4">
+            <Button type="submit" variant="primary" disabled={registerSaving}>
               {registerSaving ? 'Registering…' : 'Register vest'}
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={onClose}>
+            </Button>
+            <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
-      </aside>
+      </div>
     )
   }
 
   if (!vest) {
     return (
-      <aside className="vest-drawer vest-drawer--empty">
-        <p className="vest-drawer__empty-title">Select a vest</p>
-        <p className="muted">Choose a row from the table to view telemetry and assign a worker.</p>
-      </aside>
+      <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-zinc-800 bg-zinc-900/20 p-8 text-center">
+        <p className="text-sm font-medium text-zinc-400">Select a vest</p>
+        <p className="mt-1 text-xs text-zinc-600">Choose a row from the table to view telemetry and assign a worker.</p>
+      </div>
     )
   }
 
@@ -86,71 +71,68 @@ export default function VestDrawer({
   const hasGps = vest.is_online && vest.latitude != null && vest.longitude != null
 
   return (
-    <aside className="vest-drawer">
-      <header className="vest-drawer__header">
-        <div className="vest-drawer__header-row">
+    <div className="flex h-full flex-col rounded-lg border border-zinc-800 bg-[#151821]">
+      <div className="border-b border-zinc-800 px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="vest-drawer__title">{vest.vest_id}</h2>
-            <p className="vest-drawer__subtitle">Last seen {formatLastSeen(vest.last_seen)}</p>
+            <h2 className="text-base font-semibold text-zinc-100">{vest.vest_id}</h2>
+            <p className="mt-0.5 text-xs text-zinc-500">Last seen {formatTimestamp(vest.last_seen)}</p>
           </div>
-          <span className={`badge ${vest.is_online ? 'badge--low' : 'badge--medium'}`}>
-            {vest.is_online ? 'Online' : 'Offline'}
-          </span>
+          <Badge variant={vest.is_online ? 'active' : 'offline'}>{vest.is_online ? 'Online' : 'Offline'}</Badge>
         </div>
-      </header>
+      </div>
 
-      <div className="vest-drawer__body">
-        <section className="vest-drawer__section">
-          <h3 className="vest-drawer__section-title">Telemetry</h3>
-          <dl className="vest-drawer__stats">
-            <div>
-              <dt>GPS</dt>
-              <dd>
-                {hasGps ? (
-                  <>
-                    <span className="vest-gps vest-gps--fix">
+      <div className="flex-1 overflow-y-auto px-5 py-4 scrollbar-thin">
+        <div className="space-y-4">
+          <section>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-600">Telemetry</p>
+            <dl className="mt-2 space-y-3">
+              <div className="flex items-center justify-between">
+                <dt className="text-xs text-zinc-500">GPS</dt>
+                <dd className="text-right text-xs">
+                  {hasGps ? (
+                    <span className="font-mono text-zinc-300">
                       {vest.latitude.toFixed(5)}, {vest.longitude.toFixed(5)}
                     </span>
-                    <span className="field__hint">Live coordinates</span>
-                  </>
-                ) : (
-                  <span className="muted">{vest.is_online ? 'Awaiting fix…' : 'No fix (offline)'}</span>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt>Battery</dt>
-              <dd>
-                <div className="vest-drawer__battery-track">
-                  <div
-                    className={`vest-drawer__battery-fill ${batteryBarClass(vest.battery_level)}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className="vest-drawer__battery-label">{pct}%</span>
-              </dd>
-            </div>
-            <div>
-              <dt>SOS</dt>
-              <dd>
-                <span className={`vest-sos ${vest.sos_active ? 'vest-sos--active' : 'vest-sos--idle'}`}>
-                  {vest.sos_active ? 'ACTIVE — emergency signal' : 'Normal'}
-                </span>
-              </dd>
-            </div>
-            <div>
-              <dt>Firmware</dt>
-              <dd>{vest.firmware_version || '—'}</dd>
-            </div>
-          </dl>
-        </section>
+                  ) : (
+                    <span className="text-zinc-600">{vest.is_online ? 'Awaiting fix…' : 'No fix (offline)'}</span>
+                  )}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-xs text-zinc-500">Battery</dt>
+                <dd className="flex items-center gap-2">
+                  <div className="h-1.5 w-20 overflow-hidden rounded-full bg-zinc-800">
+                    <div
+                      className={`h-full rounded-full ${pct < 20 ? 'bg-red-500' : pct < 40 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-xs tabular-nums text-zinc-400">{pct}%</span>
+                </dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-xs text-zinc-500">SOS</dt>
+                <dd>
+                  {vest.sos_active ? (
+                    <Badge variant="critical">Active — emergency signal</Badge>
+                  ) : (
+                    <span className="text-xs text-zinc-400">Normal</span>
+                  )}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-xs text-zinc-500">Firmware</dt>
+                <dd className="text-xs text-zinc-400">{vest.firmware_version || '—'}</dd>
+              </div>
+            </dl>
+          </section>
 
-        <section className="vest-drawer__section">
-          <h3 className="vest-drawer__section-title">Assignment</h3>
-          <label className="field">
-            <span className="field__label">Assign worker</span>
-            <select
-              className="field__select"
+          <section className="border-t border-zinc-800 pt-4">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-600">Assignment</p>
+            <Select
+              label="Assign worker"
+              className="mt-2"
               value={vest.worker ?? ''}
               disabled={assigning || workersLoading}
               onChange={(e) => {
@@ -161,22 +143,22 @@ export default function VestDrawer({
               <option value="">Unassigned</option>
               {workers.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name} ({w.vest_id})
+                  {w.name}
                 </option>
               ))}
-            </select>
-          </label>
-          {vest.worker_name ? (
-            <p className="field__hint">Currently assigned to {vest.worker_name}</p>
-          ) : null}
-        </section>
-
-        <div className="vest-drawer__actions">
-          <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Close
-          </button>
+            </Select>
+            {vest.worker_name ? (
+              <p className="mt-1.5 text-xs text-zinc-500">Currently assigned to {vest.worker_name}</p>
+            ) : null}
+          </section>
         </div>
       </div>
-    </aside>
+
+      <div className="border-t border-zinc-800 px-5 py-4">
+        <Button type="button" variant="ghost" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+    </div>
   )
 }

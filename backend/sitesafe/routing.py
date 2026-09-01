@@ -1,7 +1,8 @@
-from django.urls import path
+from django.urls import re_path
 
-from alerts.consumers import DashboardConsumer
+from alerts import consumers
 
 websocket_urlpatterns = [
-    path("ws/dashboard/default/", DashboardConsumer.as_asgi()),
+    re_path(r"ws/dashboard/(?P<site_id>[^/]+)/$", consumers.DashboardConsumer.as_asgi()),
+    re_path(r"ws/dashboard/$", consumers.DashboardConsumer.as_asgi()),
 ]

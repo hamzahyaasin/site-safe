@@ -12,6 +12,7 @@ class ZoneSerializer(serializers.ModelSerializer):
             "description",
             "risk_level",
             "boundaries",
+            "camera_ids",
             "max_occupancy",
             "is_active",
             "created_at",

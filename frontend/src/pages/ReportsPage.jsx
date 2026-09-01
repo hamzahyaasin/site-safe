@@ -1,4 +1,9 @@
 import { useState } from 'react'
+import Button from '../components/ui/Button.jsx'
+import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card.jsx'
+import DataTable from '../components/ui/DataTable.jsx'
+import Input from '../components/ui/Input.jsx'
+import { cn } from '../lib/utils.js'
 import { useReports } from '../hooks/useReports.js'
 
 const REPORT_TYPES = [
@@ -54,141 +59,123 @@ export default function ReportsPage() {
     }
   }
 
+  const columns = [
+    { key: 'created_at', header: 'Generated', render: (row) => formatDate(row.created_at) },
+    { key: 'type', header: 'Type', render: (row) => row.report_type_label || row.report_type },
+    {
+      key: 'period',
+      header: 'Period',
+      render: (row) => `${row.date_from} → ${row.date_to}`,
+    },
+    {
+      key: 'filename',
+      header: 'File',
+      render: (row) => <code className="text-xs text-zinc-400">{row.filename}</code>,
+    },
+    {
+      key: 'actions',
+      header: 'Action',
+      render: (row) => (
+        <Button variant="ghost" size="sm" onClick={() => downloadReport(row)}>
+          Download
+        </Button>
+      ),
+    },
+  ]
+
   return (
-    <div className="page reports-page">
-      <header className="page-header">
-        <div>
-          <h1 className="page__title">Reports</h1>
-          <p className="page__lead">Generate and download incident and compliance reports</p>
-        </div>
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold text-zinc-100">Reports</h1>
+        <p className="mt-1 text-sm text-zinc-500">Generate and download incident and compliance reports</p>
       </header>
 
-      <section className="report-generator">
-        <h2 className="inline-form__title">Generate Report</h2>
+      <Card>
+        <CardHeader>
+          <CardTitle>Generate Report</CardTitle>
+          <CardDescription>Choose a report type and date range</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={handleGenerate}>
+            <fieldset>
+              <legend className="mb-2 text-xs font-medium text-zinc-400">Report type</legend>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {REPORT_TYPES.map((type) => (
+                  <label
+                    key={type.id}
+                    className={cn(
+                      'flex cursor-pointer flex-col gap-1 rounded-md border px-3 py-2.5 transition-colors',
+                      reportType === type.id
+                        ? 'border-amber-500/50 bg-amber-500/5'
+                        : 'border-zinc-700 hover:border-zinc-600',
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="report_type"
+                        value={type.id}
+                        checked={reportType === type.id}
+                        onChange={() => setReportType(type.id)}
+                      />
+                      <span className="text-sm font-medium text-zinc-200">{type.label}</span>
+                    </span>
+                    <span className="text-xs text-zinc-500">{type.description}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
 
-        <form className="report-generator__form" onSubmit={handleGenerate}>
-          <fieldset className="report-type-group">
-            <legend className="field__label">Report type</legend>
-            <div className="report-type-options">
-              {REPORT_TYPES.map((type) => (
-                <label
-                  key={type.id}
-                  className={`report-type-option ${reportType === type.id ? 'report-type-option--active' : ''}`}
-                >
-                  <input
-                    type="radio"
-                    name="report_type"
-                    value={type.id}
-                    checked={reportType === type.id}
-                    onChange={() => setReportType(type.id)}
-                  />
-                  <span className="report-type-option__title">{type.label}</span>
-                  <span className="report-type-option__desc">{type.description}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <div className="inline-form__grid">
-            <label className="field">
-              <span className="field__label">From</span>
-              <input
-                className="field__input"
+            <div className="grid grid-cols-2 gap-3 max-w-md">
+              <Input
+                label="From"
                 type="date"
                 value={date_from}
                 onChange={(e) => setDateRange((d) => ({ ...d, date_from: e.target.value }))}
                 required
               />
-            </label>
-            <label className="field">
-              <span className="field__label">To</span>
-              <input
-                className="field__input"
+              <Input
+                label="To"
                 type="date"
                 value={date_to}
                 onChange={(e) => setDateRange((d) => ({ ...d, date_to: e.target.value }))}
                 required
               />
-            </label>
-          </div>
+            </div>
 
-          {formError ? (
-            <p className="form-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          {successMsg ? (
-            <p className="form-success" role="status">
-              {successMsg}
-            </p>
-          ) : null}
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
+            {formError ? (
+              <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
+                {formError}
+              </p>
+            ) : null}
+            {successMsg ? (
+              <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300" role="status">
+                {successMsg}
+              </p>
+            ) : null}
+            {error ? (
+              <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
+                {error}
+              </p>
+            ) : null}
 
-          <div className="inline-form__actions">
-            <button type="submit" className="btn btn--primary" disabled={generating}>
+            <Button type="submit" variant="primary" disabled={generating}>
               {generating ? 'Generating…' : 'Generate Report'}
-            </button>
-          </div>
-        </form>
-      </section>
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <section className="report-history">
-        <h2 className="inline-form__title">Generated Reports</h2>
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Generated</th>
-                <th>Type</th>
-                <th>Period</th>
-                <th>File</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="empty-cell">
-                    Loading reports…
-                  </td>
-                </tr>
-              ) : reports.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="empty-cell">
-                    No reports generated yet.
-                  </td>
-                </tr>
-              ) : (
-                reports.map((report) => (
-                  <tr key={report.id}>
-                    <td>{formatDate(report.created_at)}</td>
-                    <td>{report.report_type_label || report.report_type}</td>
-                    <td>
-                      {report.date_from} → {report.date_to}
-                    </td>
-                    <td>
-                      <code>{report.filename}</code>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn btn--sm btn--ghost"
-                        onClick={() => downloadReport(report)}
-                      >
-                        Download
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-zinc-100">Generated Reports</h2>
+        <DataTable
+          columns={columns}
+          data={reports}
+          loading={loading}
+          emptyTitle="No reports generated yet"
+          rowKey={(row) => row.id}
+        />
+      </div>
     </div>
   )
 }

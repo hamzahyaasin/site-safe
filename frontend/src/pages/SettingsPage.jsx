@@ -1,4 +1,10 @@
 import { useState } from 'react'
+import Button from '../components/ui/Button.jsx'
+import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card.jsx'
+import DataTable from '../components/ui/DataTable.jsx'
+import Drawer from '../components/ui/Drawer.jsx'
+import Input from '../components/ui/Input.jsx'
+import { cn, formatAlertType } from '../lib/utils.js'
 import { useSettings } from '../hooks/useSettings.js'
 
 const TABS = [
@@ -7,8 +13,27 @@ const TABS = [
   { id: 'profile', label: 'Profile' },
 ]
 
-function formatAlertType(type) {
-  return type ? String(type).replace(/_/g, ' ') : '—'
+function Toggle({ checked, onChange, disabled }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50',
+        checked ? 'bg-amber-500' : 'bg-zinc-700',
+      )}
+    >
+      <span
+        className={cn(
+          'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform',
+          checked ? 'translate-x-4' : 'translate-x-0.5',
+        )}
+      />
+    </button>
+  )
 }
 
 export default function SettingsPage() {
@@ -121,23 +146,46 @@ export default function SettingsPage() {
     }
   }
 
+  const configColumns = [
+    { key: 'zone', header: 'Zone', render: (row) => row.zone_name || 'Global' },
+    { key: 'alert_type', header: 'Alert Type', render: (row) => formatAlertType(row.alert_type) },
+    {
+      key: 'enabled',
+      header: 'Enabled',
+      render: (row) => <Toggle checked={row.is_enabled} onChange={() => handleToggleEnabled(row)} />,
+    },
+    { key: 'threshold', header: 'Threshold (sec)', render: (row) => row.threshold_seconds },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        <Button variant="ghost" size="sm" onClick={() => openEditModal(row)}>
+          Edit
+        </Button>
+      ),
+    },
+  ]
+
   return (
-    <div className="page settings-page">
-      <header className="page-header">
-        <div>
-          <h1 className="page__title">Settings</h1>
-          <p className="page__lead">Configure alerts, notifications, and your account</p>
-        </div>
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold text-zinc-100">Settings</h1>
+        <p className="mt-1 text-sm text-zinc-500">Configure alerts, notifications, and your account</p>
       </header>
 
-      <div className="settings-tabs" role="tablist">
+      <div className="flex gap-1 border-b border-zinc-800" role="tablist">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             role="tab"
             aria-selected={activeTab === tab.id}
-            className={activeTab === tab.id ? 'settings-tab settings-tab--active' : 'settings-tab'}
+            className={cn(
+              'border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+              activeTab === tab.id
+                ? 'border-amber-500 text-amber-400'
+                : 'border-transparent text-zinc-500 hover:text-zinc-300',
+            )}
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
@@ -146,250 +194,168 @@ export default function SettingsPage() {
       </div>
 
       {error ? (
-        <p className="form-error" role="alert">
+        <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
           {error}
         </p>
       ) : null}
 
       {activeTab === 'alerts' ? (
-        <section className="settings-panel">
-          <h2 className="inline-form__title">Alert Configuration</h2>
-          <p className="panel__muted">Per-zone alert rules, thresholds, and enablement</p>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Zone</th>
-                  <th>Alert Type</th>
-                  <th>Enabled</th>
-                  <th>Threshold (sec)</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadingConfigs ? (
-                  <tr>
-                    <td colSpan={5} className="empty-cell">
-                      Loading configuration…
-                    </td>
-                  </tr>
-                ) : alertConfigs.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="empty-cell">
-                      No alert configuration entries yet.
-                    </td>
-                  </tr>
-                ) : (
-                  alertConfigs.map((config) => (
-                    <tr key={config.id}>
-                      <td>{config.zone_name || 'Global'}</td>
-                      <td>{formatAlertType(config.alert_type)}</td>
-                      <td>
-                        <label className="toggle-switch">
-                          <input
-                            type="checkbox"
-                            checked={config.is_enabled}
-                            onChange={() => handleToggleEnabled(config)}
-                          />
-                          <span className="toggle-switch__slider" />
-                        </label>
-                      </td>
-                      <td>{config.threshold_seconds}</td>
-                      <td className="actions-cell">
-                        <button
-                          type="button"
-                          className="btn btn--sm btn--ghost"
-                          onClick={() => openEditModal(config)}
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <Card>
+          <CardHeader>
+            <CardTitle>Alert Configuration</CardTitle>
+            <CardDescription>Per-zone alert rules, thresholds, and enablement</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <DataTable
+              columns={configColumns}
+              data={alertConfigs}
+              loading={loadingConfigs}
+              emptyTitle="No alert configuration entries yet"
+              rowKey={(row) => row.id}
+            />
+          </CardContent>
+        </Card>
       ) : null}
 
       {activeTab === 'notifications' ? (
-        <section className="settings-panel">
-          <h2 className="inline-form__title">Notifications</h2>
-          <p className="panel__muted">Control how you receive safety alerts</p>
-          {loadingProfile ? (
-            <p className="muted">Loading preferences…</p>
-          ) : (
-            <div className="notification-toggles">
-              <label className="notification-toggle-row">
-                <div>
-                  <strong>Push notifications (FCM)</strong>
-                  <p className="field__hint">Receive mobile push alerts for critical incidents</p>
-                </div>
-                <label className="toggle-switch">
-                  <input
-                    type="checkbox"
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>Control how you receive safety alerts</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingProfile ? (
+              <p className="text-sm text-zinc-500">Loading preferences…</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-200">Push notifications (FCM)</p>
+                    <p className="text-xs text-zinc-500">Receive mobile push alerts for critical incidents</p>
+                  </div>
+                  <Toggle
                     checked={!!profile?.notify_push}
                     disabled={notifSaving}
                     onChange={() => handleNotificationToggle('notify_push')}
                   />
-                  <span className="toggle-switch__slider" />
-                </label>
-              </label>
-              <label className="notification-toggle-row">
-                <div>
-                  <strong>Email notifications</strong>
-                  <p className="field__hint">Receive alert summaries and escalations by email</p>
                 </div>
-                <label className="toggle-switch">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-200">Email notifications</p>
+                    <p className="text-xs text-zinc-500">Receive alert summaries and escalations by email</p>
+                  </div>
+                  <Toggle
                     checked={!!profile?.notify_email}
                     disabled={notifSaving}
                     onChange={() => handleNotificationToggle('notify_email')}
                   />
-                  <span className="toggle-switch__slider" />
-                </label>
-              </label>
-              {notifMsg ? <p className="form-success">{notifMsg}</p> : null}
-            </div>
-          )}
-        </section>
+                </div>
+                {notifMsg ? <p className="text-xs text-emerald-400">{notifMsg}</p> : null}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       ) : null}
 
       {activeTab === 'profile' ? (
-        <section className="settings-panel">
-          <h2 className="inline-form__title">Profile</h2>
-          {loadingProfile ? (
-            <p className="muted">Loading profile…</p>
-          ) : (
-            <>
-              <div className="profile-readonly inline-form__grid">
-                <label className="field">
-                  <span className="field__label">Name</span>
-                  <input className="field__input" value={profile?.full_name || '—'} readOnly />
-                </label>
-                <label className="field">
-                  <span className="field__label">Email</span>
-                  <input className="field__input" value={profile?.email || '—'} readOnly />
-                </label>
-              </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingProfile ? (
+              <p className="text-sm text-zinc-500">Loading profile…</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3 max-w-md">
+                  <Input label="Name" value={profile?.full_name || '—'} readOnly />
+                  <Input label="Email" value={profile?.email || '—'} readOnly />
+                </div>
 
-              <h3 className="settings-subtitle">Change password</h3>
-              <form className="password-form" onSubmit={handlePasswordSubmit}>
-                <label className="field">
-                  <span className="field__label">Current password</span>
-                  <input
-                    className="field__input"
+                <h3 className="mb-3 mt-6 text-sm font-semibold text-zinc-100">Change password</h3>
+                <form className="max-w-sm space-y-3" onSubmit={handlePasswordSubmit}>
+                  <Input
+                    label="Current password"
                     type="password"
                     value={passwordForm.current_password}
-                    onChange={(e) =>
-                      setPasswordForm((f) => ({ ...f, current_password: e.target.value }))
-                    }
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, current_password: e.target.value }))}
                     required
                   />
-                </label>
-                <label className="field">
-                  <span className="field__label">New password</span>
-                  <input
-                    className="field__input"
+                  <Input
+                    label="New password"
                     type="password"
                     value={passwordForm.new_password}
                     onChange={(e) => setPasswordForm((f) => ({ ...f, new_password: e.target.value }))}
                     minLength={8}
                     required
                   />
-                </label>
-                <label className="field">
-                  <span className="field__label">Confirm new password</span>
-                  <input
-                    className="field__input"
+                  <Input
+                    label="Confirm new password"
                     type="password"
                     value={passwordForm.confirm_password}
-                    onChange={(e) =>
-                      setPasswordForm((f) => ({ ...f, confirm_password: e.target.value }))
-                    }
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, confirm_password: e.target.value }))}
                     minLength={8}
                     required
                   />
-                </label>
-                {passwordError ? (
-                  <p className="form-error" role="alert">
-                    {passwordError}
-                  </p>
-                ) : null}
-                {passwordSuccess ? (
-                  <p className="form-success" role="status">
-                    {passwordSuccess}
-                  </p>
-                ) : null}
-                <div className="inline-form__actions">
-                  <button type="submit" className="btn btn--primary" disabled={passwordSaving}>
+                  {passwordError ? (
+                    <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
+                      {passwordError}
+                    </p>
+                  ) : null}
+                  {passwordSuccess ? (
+                    <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300" role="status">
+                      {passwordSuccess}
+                    </p>
+                  ) : null}
+                  <Button type="submit" variant="primary" disabled={passwordSaving}>
                     {passwordSaving ? 'Updating…' : 'Update password'}
-                  </button>
-                </div>
-              </form>
-            </>
-          )}
-        </section>
+                  </Button>
+                </form>
+              </>
+            )}
+          </CardContent>
+        </Card>
       ) : null}
 
-      {editingConfig ? (
-        <div className="modal-backdrop" role="presentation" onClick={closeEditModal}>
-          <div
-            className="modal-panel"
-            role="dialog"
-            aria-modal="true"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <header className="modal-panel__header">
-              <h2 className="modal-panel__title">Edit Alert Rule</h2>
-              <button type="button" className="btn btn--ghost btn--sm" onClick={closeEditModal}>
-                ✕
-              </button>
-            </header>
-            <form className="modal-panel__form" onSubmit={saveConfigEdit}>
-              <p className="muted">
-                {editingConfig.zone_name || 'Global'} · {formatAlertType(editingConfig.alert_type)}
-              </p>
-              <label className="field field--checkbox">
-                <input
-                  type="checkbox"
-                  checked={editDraft.is_enabled}
-                  onChange={(e) => setEditDraft((d) => ({ ...d, is_enabled: e.target.checked }))}
-                />
-                <span>Enabled</span>
-              </label>
-              <label className="field">
-                <span className="field__label">Threshold (seconds)</span>
-                <input
-                  className="field__input"
-                  type="number"
-                  min={0}
-                  value={editDraft.threshold_seconds}
-                  onChange={(e) =>
-                    setEditDraft((d) => ({ ...d, threshold_seconds: e.target.value }))
-                  }
-                />
-                <span className="field__hint">Used for inactivity alerts before triggering</span>
-              </label>
-              {configError ? (
-                <p className="form-error" role="alert">
-                  {configError}
-                </p>
-              ) : null}
-              <div className="modal-panel__actions">
-                <button type="submit" className="btn btn--primary" disabled={savingConfig}>
-                  {savingConfig ? 'Saving…' : 'Save'}
-                </button>
-                <button type="button" className="btn btn--ghost" onClick={closeEditModal}>
-                  Cancel
-                </button>
-              </div>
-            </form>
+      <Drawer
+        open={!!editingConfig}
+        onClose={closeEditModal}
+        title="Edit Alert Rule"
+        description={editingConfig ? `${editingConfig.zone_name || 'Global'} · ${formatAlertType(editingConfig.alert_type)}` : ''}
+        footer={
+          <div className="flex gap-2">
+            <Button type="submit" form="alert-config-form" variant="primary" disabled={savingConfig}>
+              {savingConfig ? 'Saving…' : 'Save'}
+            </Button>
+            <Button type="button" variant="ghost" onClick={closeEditModal}>
+              Cancel
+            </Button>
           </div>
-        </div>
-      ) : null}
+        }
+      >
+        <form id="alert-config-form" className="space-y-4" onSubmit={saveConfigEdit}>
+          <div className="flex items-center gap-2">
+            <Toggle
+              checked={editDraft.is_enabled}
+              onChange={(val) => setEditDraft((d) => ({ ...d, is_enabled: val }))}
+            />
+            <span className="text-sm text-zinc-300">Enabled</span>
+          </div>
+          <Input
+            label="Threshold (seconds)"
+            type="number"
+            min={0}
+            value={editDraft.threshold_seconds}
+            onChange={(e) => setEditDraft((d) => ({ ...d, threshold_seconds: e.target.value }))}
+          />
+          <p className="-mt-2 text-xs text-zinc-600">Used for inactivity alerts before triggering</p>
+          {configError ? (
+            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
+              {configError}
+            </p>
+          ) : null}
+        </form>
+      </Drawer>
     </div>
   )
 }

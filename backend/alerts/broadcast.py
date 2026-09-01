@@ -1,23 +1,19 @@
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
+from .serializers import AlertSerializer
 
-def broadcast_alert(alert):
+
+def broadcast_alert(alert, site_id="default"):
+    """Push a new alert to all dashboard WebSocket clients for the site."""
     channel_layer = get_channel_layer()
     if channel_layer is None:
         return
 
     async_to_sync(channel_layer.group_send)(
-        "dashboard_default",
+        f"dashboard_{site_id}",
         {
             "type": "dashboard_alert",
-            "payload": {
-                "id": alert.id,
-                "alert_type": alert.alert_type,
-                "severity": alert.severity,
-                "description": alert.description,
-                "worker_name": alert.worker.name if alert.worker else None,
-                "timestamp": alert.timestamp.isoformat(),
-            },
+            "payload": AlertSerializer(alert).data,
         },
     )

@@ -1,9 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import AppLayout from './components/AppLayout.jsx'
+import LoginPage from './components/auth/LoginPage.jsx'
+import DashboardLayout from './components/layout/DashboardLayout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
-import AlertsPage from './pages/AlertsPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
-import LoginPage from './pages/LoginPage.jsx'
+import IncidentsPage from './pages/IncidentsPage.jsx'
 import ReportsPage from './pages/ReportsPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import VestManagementPage from './pages/VestManagementPage.jsx'
@@ -15,10 +15,11 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
-        <Route element={<AppLayout />}>
+        <Route element={<DashboardLayout />}>
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/workers" element={<WorkersPage />} />
+          <Route path="/incidents" element={<IncidentsPage />} />
+          <Route path="/alerts" element={<Navigate to="/incidents" replace />} />
           <Route path="/vests" element={<VestManagementPage />} />
           <Route path="/zones" element={<ZonesPage />} />
           <Route path="/reports" element={<ReportsPage />} />
