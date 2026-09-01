@@ -24,6 +24,47 @@ from docx.table import Table
 from pypdf import PdfReader
 
 
+# Canonical OOXML child-element sequences (ECMA-376 CT_TblPrBase / CT_TcPrBase),
+# used by insert_in_schema_order() below. A plain container.append() is only
+# safe when nothing already present must schema-legally follow the new
+# element — false whenever the container was cloned from a table/paragraph
+# that already carries later-sequence children (borders, shading, vAlign),
+# which every table this script rewrites was. Getting this wrong produces a
+# .docx that LibreOffice renders without complaint but that is schema-invalid
+# — the kind of defect that surfaces as Word's "unreadable content" repair
+# prompt rather than as a visible rendering problem, so it is easy to ship
+# unnoticed unless validated against a schema-clean source (see the
+# --original flag in scripts/office/validate.py and README §5).
+TBL_PR_ORDER = [
+    qn(t) for t in (
+        "w:tblStyle", "w:tblpPr", "w:tblOverlap", "w:bidiVisual",
+        "w:tblStyleRowBandSize", "w:tblStyleColBandSize", "w:tblW", "w:jc",
+        "w:tblCellSpacing", "w:tblInd", "w:tblBorders", "w:shd", "w:tblLayout",
+        "w:tblCellMar", "w:tblLook", "w:tblCaption", "w:tblDescription",
+    )
+]
+TC_PR_ORDER = [
+    qn(t) for t in (
+        "w:cnfStyle", "w:tcW", "w:gridSpan", "w:hMerge", "w:vMerge",
+        "w:tcBorders", "w:shd", "w:noWrap", "w:tcMar", "w:textDirection",
+        "w:tcFitText", "w:vAlign", "w:hideMark",
+    )
+]
+
+
+def insert_in_schema_order(parent, new_element, sequence: list[str]) -> None:
+    """Insert new_element into parent at the position `sequence` (a list of
+    fully-qualified child tags, in schema order) requires, rather than
+    blindly appending it after children that must legally follow it."""
+    new_pos = sequence.index(new_element.tag)
+    for existing in parent:
+        existing_pos_list = [i for i, tag in enumerate(sequence) if tag == existing.tag]
+        if existing_pos_list and existing_pos_list[0] > new_pos:
+            existing.addprevious(new_element)
+            return
+    parent.append(new_element)
+
+
 CHAPTER_TITLES = {
     1: "Introduction",
     2: "Review of Existing Systems",
@@ -106,7 +147,7 @@ TABLE_48 = [
 #
 # Reproduce: cd backend && ../.venv/bin/python manage.py test \
 #              --settings=sitesafe.test_settings
-# 35 tests, 0 failures, measured against the isolated SQLite test settings
+# 59 tests, 0 failures, measured against the isolated SQLite test settings
 # added alongside this work (production/development remain PostgreSQL).
 AUTOMATED_TEST_ROWS: list[tuple[str, str, str]] = [
     (
@@ -131,22 +172,37 @@ AUTOMATED_TEST_ROWS: list[tuple[str, str, str]] = [
         "the alert API integration",
         "Pass",
     ),
+    (
+        "Camera-level fall detection (24 cases)",
+        "Span-ratio and hip/knee geometry, the requirement that both signals "
+        "agree before a posture counts as collapsed, confidence-weighted "
+        "centroid tracking, persistence/latch/re-arm timing, tolerance for "
+        "brief missed detections, and the alert API integration",
+        "Pass",
+    ),
 ]
 AUTOMATED_TEST_SUMMARY = (
-    "Automated coverage totals 35 tests across three areas, all passing at the "
+    "Automated coverage totals 59 tests across four areas, all passing at the "
     "time of writing. Table 5.1 groups them by subject rather than listing "
     "every case individually. Role-based access control tests exercise the "
     "Django REST Framework test client against the live URL configuration, "
     "so a permission check that regresses in routing or view configuration "
-    "fails the same test that checks the underlying logic. The proximity "
-    "and inactivity tests exercise ai-module/proximity.py and "
-    "ai-module/inactivity.py directly; both modules are deliberately free of "
-    "OpenCV, torch and Ultralytics imports, which is what allows their "
-    "decision logic to run under the Django test command without a camera, a "
-    "GPU or a loaded model. The suite runs against an isolated SQLite "
-    "database created for this purpose so it does not require PostgreSQL "
-    "CREATEDB permission or touch development data; one test that resolves "
-    "a camera to a zone mocks that single lookup, noted in its own comment, "
+    "fails the same test that checks the underlying logic. The proximity, "
+    "inactivity and fall-detection tests exercise ai-module/proximity.py, "
+    "ai-module/inactivity.py and ai-module/fall_detection.py directly; all "
+    "three modules are deliberately free of OpenCV, torch and Ultralytics "
+    "imports, which is what allows their decision logic to run under the "
+    "Django test command without a camera, a GPU or a loaded model. The fall "
+    "geometry was additionally checked against real YOLO11-pose output on "
+    "two Ultralytics sample images outside the automated suite: it "
+    "correctly reports every standing pedestrian as not collapsed, and, on "
+    "an image where a person's hip and knee keypoints are barely visible, "
+    "correctly declines to judge the posture at all rather than guessing — "
+    "the module treats a signal it cannot measure as inconclusive, not as "
+    "evidence of a fall. The suite runs against an isolated SQLite database "
+    "created for this purpose so it does not require PostgreSQL CREATEDB "
+    "permission or touch development data; two tests that resolve a camera "
+    "to a zone mock that single lookup, noted in their own comments, "
     "because SQLite does not implement the JSON containment operator "
     "PostgreSQL provides for that query."
 )
@@ -176,11 +232,56 @@ INACTIVITY_IMPLEMENTATION_PARAGRAPHS = (
     "described in the original design are not implemented by this module.",
 )
 
+# Same guard pattern as INACTIVITY_IMPLEMENTATION_PARAGRAPHS above.
+FALL_IMPLEMENTATION_PARAGRAPHS: tuple[str, ...] | tuple[()] = (
+    "Fall detection is implemented in ai-module/fall_detection.py and "
+    "integrated into the main inference loop as a third, independent "
+    "sampled model: the PPE detector has no person class and the COCO "
+    "detector used for proximity and inactivity emits boxes only, not body "
+    "keypoints, so fall detection loads its own YOLO11-nano pose model and "
+    "runs it on a separate sampling cadence. A posture counts as collapsed "
+    "only when both signals from the original design agree: the confidently "
+    "detected keypoints form a bounding box wider than it is tall, and the "
+    "hip keypoints sit at or below the knee keypoints. Either signal being "
+    "unmeasurable, most often because a leg is out of frame or occluded, "
+    "returns not-collapsed rather than guessing — a design choice made "
+    "deliberately to keep missing data from producing a false alarm.",
+    "A collapsed reading on a single sampled frame is not a fall. People "
+    "are associated between sampled frames by a confidence-weighted "
+    "keypoint centroid, the same tracking approach used for inactivity, and "
+    "a fall is confirmed only once a track has read as collapsed for a "
+    "continuous three-second persistence window. A confirmed fall raises "
+    "exactly one FALL alert and latches until the tracked posture clears, "
+    "at which point the track re-arms; brief missed detections, such as "
+    "motion blur during the fall itself, are tolerated rather than "
+    "resetting the track outright. As with inactivity, these are "
+    "camera-local tracks rather than worker identities, and the alert "
+    "carries a camera_id with no worker for the same reason.",
+    "The module was verified with 24 automated tests covering the geometry "
+    "signals individually, the requirement that both agree before a fall is "
+    "confirmed, and the tracker's persistence, latch, re-arm, and "
+    "missed-detection tolerance — summarised in Table 5.1. It was "
+    "additionally run against real YOLO11-pose output on unrelated "
+    "photographs, outside the automated suite: every clearly visible "
+    "standing pedestrian was correctly read as not collapsed, and on an "
+    "image where a person's lower body was barely visible, the module "
+    "correctly declined to judge the posture rather than misreading the "
+    "wide arm position alone as a fall.",
+    "This has not been validated against real fall footage, staged or "
+    "otherwise, only synthetic keypoints and real images of standing "
+    "people; that is the immediate next verification step, recorded in "
+    "Section 6.2. The geometry is also pixel-based and uncalibrated per "
+    "camera, the same limitation stated for proximity detection in Section "
+    "4.3.7, and self-occlusion during the fall motion itself is exactly "
+    "the situation most likely to reduce keypoint confidence at the moment "
+    "detection matters most.",
+)
+
 
 ABSTRACT_PARAGRAPHS = (
     "Construction sites need evidence that safety controls were followed, yet manual inspections and passive CCTV provide only intermittent oversight. Site-Safe is a camera-first safety compliance project that records PPE violations, routes alerts, and presents incident and workforce information through a web command centre. The report distinguishes the implemented software from proposed extensions so that evaluation is tied to repository evidence rather than design intent.",
-    "The implemented system combines a ten-class YOLO11 PPE model, a separate pretrained person-and-vehicle detector for image-plane proximity warnings, configurable camera identifiers, camera-to-zone association, a Django REST and WebSocket backend, role-based access control, a React dashboard, and DOCX report generation. The backend also contains Smart Vest data models, HTTP telemetry endpoints and a dashboard simulator. QR identification, assembled Smart Vest/LoRa hardware, fall detection, fire/smoke detection and a React Native mobile application remain proposed designs and are not presented as delivered features.",
-    "Held-out test evaluation measured mAP@0.5 of 0.544 and mAP@0.5:0.95 of 0.333. Present-equipment classes such as boots, vest and helmet exceeded 0.94 mAP@0.5, while no-gloves, no-boots and no-helmet measured 0.095, 0.175 and 0.308 respectively. This gap limits the product's core violation-detection purpose and makes balanced retraining the highest-value model improvement. Automated API and decision-logic tests and recorded end-to-end exercises are reported separately from manual or hardware verification that has not yet been completed.",
+    "The implemented system combines a ten-class YOLO11 PPE model, a separate pretrained person-and-vehicle detector for image-plane proximity warnings, a pose-based fall detector, configurable camera identifiers, camera-to-zone association, a Django REST and WebSocket backend, role-based access control, a React dashboard, and DOCX report generation. The backend also contains Smart Vest data models, HTTP telemetry endpoints and a dashboard simulator. QR identification, assembled Smart Vest/LoRa hardware, fire/smoke detection and a React Native mobile application remain proposed designs and are not presented as delivered features.",
+    "Held-out test evaluation measured mAP@0.5 of 0.544 and mAP@0.5:0.95 of 0.333. Present-equipment classes such as boots, vest and helmet exceeded 0.94 mAP@0.5, while no-gloves, no-boots and no-helmet measured 0.095, 0.175 and 0.308 respectively. This gap limits the product's core violation-detection purpose and makes balanced retraining the highest-value model improvement. Automated API and decision-logic tests and recorded end-to-end exercises are reported separately from manual or hardware verification, including validation against real fall footage, that has not yet been completed.",
 )
 
 
@@ -287,18 +388,18 @@ def set_table_geometry(table: Table, widths_inches: list[float]) -> None:
     tbl_w = tbl_pr.find(qn("w:tblW"))
     if tbl_w is None:
         tbl_w = OxmlElement("w:tblW")
-        tbl_pr.append(tbl_w)
+        insert_in_schema_order(tbl_pr, tbl_w, TBL_PR_ORDER)
     tbl_w.set(qn("w:w"), str(total))
     tbl_w.set(qn("w:type"), "dxa")
     tbl_layout = tbl_pr.find(qn("w:tblLayout"))
     if tbl_layout is None:
         tbl_layout = OxmlElement("w:tblLayout")
-        tbl_pr.append(tbl_layout)
+        insert_in_schema_order(tbl_pr, tbl_layout, TBL_PR_ORDER)
     tbl_layout.set(qn("w:type"), "fixed")
     tbl_ind = tbl_pr.find(qn("w:tblInd"))
     if tbl_ind is None:
         tbl_ind = OxmlElement("w:tblInd")
-        tbl_pr.append(tbl_ind)
+        insert_in_schema_order(tbl_pr, tbl_ind, TBL_PR_ORDER)
     tbl_ind.set(qn("w:w"), "120")
     tbl_ind.set(qn("w:type"), "dxa")
 
@@ -319,7 +420,7 @@ def set_table_geometry(table: Table, widths_inches: list[float]) -> None:
             tc_w = tc_pr.find(qn("w:tcW"))
             if tc_w is None:
                 tc_w = OxmlElement("w:tcW")
-                tc_pr.append(tc_w)
+                insert_in_schema_order(tc_pr, tc_w, TC_PR_ORDER)
             tc_w.set(qn("w:w"), str(widths[min(idx, len(widths) - 1)]))
             tc_w.set(qn("w:type"), "dxa")
             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
@@ -386,15 +487,18 @@ def make_index_paragraph(text: str, page: int, level: int) -> OxmlElement:
     tab.set(qn("w:pos"), "8500")
     tabs.append(tab)
     p_pr.append(tabs)
-    if level > 1:
-        ind = OxmlElement("w:ind")
-        ind.set(qn("w:left"), str((level - 1) * 300))
-        p_pr.append(ind)
+    # CT_PPrBase requires spacing before ind; appending in the other order
+    # (as written originally) produces a schema-invalid paragraph the moment
+    # a level > 1 entry is emitted.
     spacing = OxmlElement("w:spacing")
     spacing.set(qn("w:after"), "20")
     spacing.set(qn("w:line"), "240")
     spacing.set(qn("w:lineRule"), "auto")
     p_pr.append(spacing)
+    if level > 1:
+        ind = OxmlElement("w:ind")
+        ind.set(qn("w:left"), str((level - 1) * 300))
+        p_pr.append(ind)
     p.append(p_pr)
 
     def add_run(value: str, *, bold: bool = False) -> None:
@@ -519,6 +623,12 @@ def replace_chapter4_content(doc: Document) -> None:
         "Table 4.2: Smart Vest Component Specifications": "Table 4.2: Proposed Smart Vest Component Specifications",
         "Table 4.3: ESP32 Pin Allocation": "Table 4.3: Proposed ESP32 Pin Allocation",
         "Our computer vision pipeline uses a YOLOv11-M model": "The deployed PPE pipeline uses the nano YOLO11 weights stored at ai-module/models/sitesafe_final.pt. It was trained on a ten-class Roboflow-format PPE dataset. Vehicle and person classes are absent from that PPE model, so a separate pretrained YOLO11 nano detector supplies person and vehicle boxes for proximity and activity logic.",
+        # 4.3.4's heading and three body paragraphs are rewritten a second
+        # time by replace_fall_detection_content() below, once real
+        # implementation evidence exists. Left as the "not implemented"
+        # framing here first, matching every other still-unbuilt design in
+        # this dict, since that call runs after this one and finds its own
+        # anchors by their post-replacement text.
         "4.3.4 Fall Detection via Pose Estimation": "4.3.4 Proposed Fall Detection via Pose Estimation (Not Implemented)",
         "Fall detection is implemented using YOLOv11n-Pose": "The proposed fall-detection extension would use a lightweight YOLO11 pose model to obtain body keypoints. No pose weights are loaded by the current inference pipeline, FALL is not an AlertType value, and no fall-detection module or migration exists in the repository.",
         "The fall detection algorithm computes two geometric features": "The design would compare horizontal and vertical body spans and hip-to-knee geometry, then require a sustained posture before raising an event. These thresholds are design parameters only and have not been evaluated on this project dataset.",
@@ -591,6 +701,50 @@ def replace_chapter4_content(doc: Document) -> None:
         find_paragraph(doc, "3.3 Architecture"),
         "3.2 Architecture",
     )
+
+
+def replace_fall_detection_content(doc: Document) -> None:
+    """Overwrite §4.3.4's "not implemented" framing with the real
+    implementation, once FALL_IMPLEMENTATION_PARAGRAPHS is populated.
+
+    Runs after replace_chapter4_content(), which is what first rewrites this
+    section's heading and three body paragraphs from the original report's
+    fabricated implementation claim to an honest "proposed, not built"
+    framing — this function finds *that* intermediate text, not the
+    original's, and replaces it with the now-real description.
+    """
+    if len(FALL_IMPLEMENTATION_PARAGRAPHS) < 1:
+        raise RuntimeError("Set FALL_IMPLEMENTATION_PARAGRAPHS before building")
+
+    set_paragraph_text(
+        find_paragraph(doc, "4.3.4 Proposed Fall Detection via Pose Estimation (Not Implemented)"),
+        "4.3.4 Fall Detection",
+    )
+
+    anchors = [
+        find_paragraph(
+            doc,
+            "The proposed fall-detection extension would use a lightweight YOLO11 pose model",
+            exact=False,
+        ),
+        find_paragraph(
+            doc,
+            "The design would compare horizontal and vertical body spans",
+            exact=False,
+        ),
+        find_paragraph(
+            doc,
+            "A production implementation would need a testable pose module",
+            exact=False,
+        ),
+    ]
+    template = anchors[0]
+    for anchor, text in zip(anchors, FALL_IMPLEMENTATION_PARAGRAPHS):
+        set_paragraph_text(anchor, text)
+    extra = FALL_IMPLEMENTATION_PARAGRAPHS[len(anchors):]
+    if extra:
+        reference = anchors[-1]._p.getnext()
+        insert_before(reference, [clone_paragraph(template, text) for text in extra])
 
 
 def restructure_chapters(doc: Document) -> None:
@@ -755,6 +909,7 @@ def build_report(input_path: Path, output_path: Path) -> None:
     doc = Document(input_path)
     replace_abstract(doc)
     replace_chapter4_content(doc)
+    replace_fall_detection_content(doc)
     restructure_chapters(doc)
     update_tables_and_references(doc)
     normalize_typography(doc)
