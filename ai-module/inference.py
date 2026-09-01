@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Site-Safe vision pipeline: PPE detection plus vehicle-proximity warning,
+Site-Safe vision pipeline: PPE, vehicle-proximity, and inactivity warnings,
 with optional Django alert API integration.
 Run from ai-module/: python inference.py
 """
@@ -19,13 +19,14 @@ import numpy as np
 import requests
 from ultralytics import YOLO
 
+import inactivity
 import proximity
 
 # ============== CONFIG ==============
 MODEL_PATH = "/Users/hamza/code/site-safe/ai-module/models/sitesafe_final.pt"
 # The PPE model is trained only on equipment classes and has no person or
-# vehicle class, so proximity warnings need a second detector. The COCO-
-# pretrained YOLOv11 nano weights supply person and vehicle boxes.
+# vehicle class, so proximity and inactivity warnings need a second detector.
+# The COCO-pretrained YOLOv11 nano weights supply person and vehicle boxes.
 PROXIMITY_MODEL_PATH = "yolo11n.pt"
 API_BASE = "http://127.0.0.1:8000/api"
 ADMIN_EMAIL = "hamzahyaasin@gmail.com"
@@ -40,8 +41,9 @@ DEFAULT_CAMERA_ID = os.environ.get("SITESAFE_CAMERA_ID", "CAM-01")
 MAX_CONSECUTIVE_READ_FAILURES = 30
 READ_RETRY_DELAY_SECONDS = 0.25
 # Running a second model on every frame roughly halves throughput, so the
-# proximity detector is sampled instead. Vehicles and people move slowly
-# relative to frame rate, so every third frame loses nothing that matters.
+# COCO person/vehicle detector is sampled instead. Vehicles and people move
+# slowly relative to frame rate, so every third frame loses little temporal
+# resolution for these alert types.
 PROXIMITY_FRAME_INTERVAL = 3
 PROXIMITY_CONF = 0.35
 # ====================================
@@ -157,6 +159,28 @@ def post_proximity_alert(
         "description": proximity.describe(event),
         "camera_id": camera_id,
     }
+    try:
+        r = session.post(api_url("alerts", ""), json=payload, timeout=10)
+        return r.status_code, r.text[:500]
+    except Exception as exc:
+        return None, str(exc)
+
+
+def post_inactivity_alert(
+    session: requests.Session | None,
+    online: bool,
+    event: dict,
+    camera_id: str,
+) -> tuple[int | None, str]:
+    """POST a camera-level inactivity alert. Returns (status_code, message).
+
+    The COCO detector provides no worker identity, so this intentionally leaves
+    ``worker`` unset.  The camera id still lets the backend resolve the zone.
+    """
+    if not online or session is None:
+        return None, "offline"
+
+    payload = inactivity.alert_payload(event, camera_id)
     try:
         r = session.post(api_url("alerts", ""), json=payload, timeout=10)
         return r.status_code, r.text[:500]
@@ -321,9 +345,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-proximity",
         action="store_true",
-        help="Disable vehicle proximity detection and run PPE detection only. "
-        "Useful on slower hardware, or for a camera covering an area with no "
-        "vehicle traffic.",
+        help="Disable vehicle proximity detection. PPE and inactivity remain "
+        "enabled; combine with --no-inactivity to skip the COCO detector. "
+        "Useful for a camera covering an area with no vehicle traffic.",
     )
     parser.add_argument(
         "--proximity-threshold",
@@ -342,7 +366,33 @@ def parse_args() -> argparse.Namespace:
         f"is raised (default: {proximity.DEFAULT_PERSISTENCE}). Filters out "
         "single-frame detection noise.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--no-inactivity",
+        action="store_true",
+        help="Disable person inactivity detection. The feature is enabled by "
+        "default and shares the sampled COCO detector used for proximity.",
+    )
+    parser.add_argument(
+        "--inactivity-timeout",
+        type=float,
+        default=inactivity.DEFAULT_TIMEOUT_SECONDS,
+        help="Seconds a person centroid must remain stationary before an "
+        f"INACTIVITY alert is raised (default: {inactivity.DEFAULT_TIMEOUT_SECONDS:g}).",
+    )
+    parser.add_argument(
+        "--inactivity-movement-threshold",
+        type=float,
+        default=inactivity.DEFAULT_MOVEMENT_THRESHOLD,
+        help="Maximum centroid displacement, in image pixels, still treated "
+        f"as stationary (default: {inactivity.DEFAULT_MOVEMENT_THRESHOLD:g}). "
+        "Calibrate this per camera resolution and view.",
+    )
+    args = parser.parse_args()
+    if args.inactivity_timeout <= 0:
+        parser.error("--inactivity-timeout must be greater than zero")
+    if args.inactivity_movement_threshold < 0:
+        parser.error("--inactivity-movement-threshold must be zero or greater")
+    return args
 
 
 def main() -> None:
@@ -361,26 +411,38 @@ def main() -> None:
 
     model = YOLO(str(model_path))
 
-    proximity_model = None
+    coco_model = None
     proximity_tracker = None
-    if not args.no_proximity:
+    inactivity_tracker = None
+    if not (args.no_proximity and args.no_inactivity):
         proximity_model_path = resolve_proximity_model_path()
         if proximity_model_path.is_file():
-            proximity_model = YOLO(str(proximity_model_path))
-            proximity_tracker = proximity.ProximityTracker(
-                threshold=args.proximity_threshold,
-                persistence=args.proximity_persistence,
-            )
-            print(
-                f"[{camera_id}] vehicle proximity enabled "
-                f"(threshold {args.proximity_threshold} person-heights, "
-                f"confirm after {args.proximity_persistence} frames)"
-            )
+            coco_model = YOLO(str(proximity_model_path))
+            if not args.no_proximity:
+                proximity_tracker = proximity.ProximityTracker(
+                    threshold=args.proximity_threshold,
+                    persistence=args.proximity_persistence,
+                )
+                print(
+                    f"[{camera_id}] vehicle proximity enabled "
+                    f"(threshold {args.proximity_threshold} person-heights, "
+                    f"confirm after {args.proximity_persistence} frames)"
+                )
+            if not args.no_inactivity:
+                inactivity_tracker = inactivity.InactivityTracker(
+                    timeout_seconds=args.inactivity_timeout,
+                    movement_threshold=args.inactivity_movement_threshold,
+                )
+                print(
+                    f"[{camera_id}] inactivity detection enabled "
+                    f"(timeout {args.inactivity_timeout:g}s, movement threshold "
+                    f"{args.inactivity_movement_threshold:g}px)"
+                )
         else:
             # Missing COCO weights should degrade to PPE-only rather than
             # taking down the whole pipeline.
             print(
-                f"[{camera_id}] proximity model not found at {proximity_model_path}; "
+                f"[{camera_id}] person/vehicle model not found at {proximity_model_path}; "
                 "continuing with PPE detection only",
                 file=sys.stderr,
             )
@@ -402,6 +464,7 @@ def main() -> None:
     total_frames = 0
     alerts_sent = 0
     proximity_alerts_sent = 0
+    inactivity_alerts_sent = 0
     consecutive_read_failures = 0
     # Latched so the overlay keeps showing the last proximity result on
     # frames where the sampled detector did not run.
@@ -445,6 +508,10 @@ def main() -> None:
                 break
             if key == ord("p"):
                 paused = not paused
+                if inactivity_tracker is not None:
+                    # Paused time is not observed time and must not count
+                    # toward a stationary timeout.
+                    inactivity_tracker.reset()
                 print(f"[{'PAUSED' if paused else 'RESUME'}] detection")
             if key == ord("s"):
                 forced = {
@@ -492,11 +559,13 @@ def main() -> None:
                 clss = result.boxes.cls.cpu().numpy().astype(int)
                 violations = plot_detections(frame, names, xyxy, confs, clss)
 
-            # Proximity runs on a sampled subset of frames; between samples the
-            # previous result is reused for the overlay.
+            # The shared COCO detector runs on a sampled subset of frames;
+            # between samples the previous proximity result is reused for its
+            # overlay, while inactivity timing uses the actual sample times.
             confirmed_proximity = None
-            if proximity_model is not None and total_frames % PROXIMITY_FRAME_INTERVAL == 0:
-                p_result = proximity_model.predict(
+            confirmed_inactivity: list[dict] = []
+            if coco_model is not None and total_frames % PROXIMITY_FRAME_INTERVAL == 0:
+                p_result = coco_model.predict(
                     frame, verbose=False, conf=PROXIMITY_CONF
                 )[0]
                 if p_result.boxes is not None and len(p_result.boxes) > 0:
@@ -506,12 +575,17 @@ def main() -> None:
                 else:
                     last_persons, last_vehicles = [], []
 
-                confirmed_proximity = proximity_tracker.update(last_persons, last_vehicles)
-                last_proximity_event = proximity.closest_proximity(
-                    last_persons, last_vehicles, args.proximity_threshold
-                )
+                if proximity_tracker is not None:
+                    confirmed_proximity = proximity_tracker.update(last_persons, last_vehicles)
+                    last_proximity_event = proximity.closest_proximity(
+                        last_persons, last_vehicles, args.proximity_threshold
+                    )
+                if inactivity_tracker is not None:
+                    confirmed_inactivity = inactivity_tracker.update(
+                        last_persons, now=t_now
+                    )
 
-            if proximity_model is not None:
+            if proximity_tracker is not None:
                 draw_proximity(frame, last_persons, last_vehicles, last_proximity_event)
 
             draw_status_bar(frame, violations, last_proximity_event)
@@ -544,6 +618,19 @@ def main() -> None:
                     else:
                         print(f"[ALERT] {desc} → API response: {code} {body[:200]}")
 
+            # The tracker itself latches each temporary person track until
+            # movement re-arms it, so a second global cooldown would suppress
+            # legitimate simultaneous events from different people.
+            for event in confirmed_inactivity:
+                desc = inactivity.describe(event)
+                code, body = post_inactivity_alert(session, online, event, camera_id)
+                if code == 201:
+                    alerts_sent += 1
+                    inactivity_alerts_sent += 1
+                    print(f"[ALERT] {desc} → API response: {code}")
+                else:
+                    print(f"[ALERT] {desc} → API response: {code} {body[:200]}")
+
             cv2.imshow(window_title, frame)
     finally:
         cap.release()
@@ -555,6 +642,7 @@ def main() -> None:
         print(f"  Total frames processed: {total_frames}")
         print(f"  Total alerts sent:      {alerts_sent}")
         print(f"    of which proximity:   {proximity_alerts_sent}")
+        print(f"    of which inactivity:  {inactivity_alerts_sent}")
         print(f"  Session duration:       {duration:.1f}s")
 
 
