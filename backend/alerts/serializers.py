@@ -1,16 +1,18 @@
 from django.utils import timezone
 from rest_framework import serializers
 
+from sitemap.models import Zone
 from workers.models import Worker
 
 from .models import Alert, AlertConfig, AlertSource, AlertType, Detection, Severity
 
 
 class AlertSerializer(serializers.ModelSerializer):
-    """Full alert API shape; worker_name and vest_id are read-only computed fields."""
+    """Full alert API shape; worker_name, vest_id, and zone_name are read-only computed fields."""
 
     worker_name = serializers.SerializerMethodField()
     vest_id = serializers.SerializerMethodField()
+    zone_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Alert
@@ -23,19 +25,27 @@ class AlertSerializer(serializers.ModelSerializer):
             "severity",
             "source",
             "description",
+            "camera_id",
+            "zone_name",
             "location",
             "snapshot",
             "is_resolved",
             "timestamp",
             "resolved_at",
         )
-        read_only_fields = ("id", "worker_name", "vest_id", "timestamp", "resolved_at")
+        read_only_fields = ("id", "worker_name", "vest_id", "zone_name", "timestamp", "resolved_at")
 
     def get_worker_name(self, obj):
         return obj.worker.name if obj.worker_id else None
 
     def get_vest_id(self, obj):
         return obj.worker.vest_id if obj.worker_id else None
+
+    def get_zone_name(self, obj):
+        if not obj.camera_id:
+            return None
+        zone = Zone.objects.for_camera(obj.camera_id).first()
+        return zone.name if zone else None
 
     def create(self, validated_data):
         validated_data.setdefault("source", AlertSource.AI_CAMERA)
@@ -57,6 +67,7 @@ class AlertIngestSerializer(serializers.Serializer):
     alert_type = serializers.ChoiceField(choices=AlertType.choices)
     severity = serializers.ChoiceField(choices=Severity.choices)
     description = serializers.CharField(required=False, allow_blank=True, default="")
+    camera_id = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
     location = serializers.JSONField(required=False, allow_null=True)
     is_resolved = serializers.BooleanField(required=False, default=False)
 
@@ -105,6 +116,7 @@ class AlertSimulateSerializer(serializers.Serializer):
         required=False,
     )
     description = serializers.CharField(required=False, allow_blank=True, default="")
+    camera_id = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
     location = serializers.JSONField(required=False, allow_null=True)
 
     def validate_location(self, value):
@@ -130,6 +142,7 @@ class AlertSimulateSerializer(serializers.Serializer):
             severity=validated_data["severity"],
             source=validated_data.get("source", AlertSource.SIMULATED),
             description=description,
+            camera_id=validated_data.get("camera_id", ""),
             location=location,
             is_resolved=False,
         )

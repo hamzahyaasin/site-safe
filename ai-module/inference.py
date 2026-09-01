@@ -6,6 +6,7 @@ Run from ai-module/: python inference.py
 
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 import time
@@ -23,7 +24,14 @@ API_BASE = "http://127.0.0.1:8000/api"
 ADMIN_EMAIL = "hamzahyaasin@gmail.com"
 ADMIN_PASSWORD = "admin@sitesafe"
 COOLDOWN_SECONDS = 15
-CAMERA_INDEX = 0
+# Source can be a local webcam index (0, 1, ...) or a network stream URL
+# (RTSP/HTTP, e.g. a phone running "IP Webcam", or an existing NVR/IP camera).
+DEFAULT_CAMERA_SOURCE = os.environ.get("SITESAFE_CAMERA_SOURCE", "0")
+DEFAULT_CAMERA_ID = os.environ.get("SITESAFE_CAMERA_ID", "CAM-01")
+# A dropped frame is expected on a flaky WiFi network stream; only give up
+# after this many *consecutive* failed reads.
+MAX_CONSECUTIVE_READ_FAILURES = 30
+READ_RETRY_DELAY_SECONDS = 0.25
 # ====================================
 
 
@@ -36,6 +44,21 @@ def resolve_model_path() -> Path:
     if p.is_absolute():
         return p
     return module_root() / p
+
+
+def resolve_camera_source(raw: str) -> int | str:
+    """A plain integer string means a local device index; anything else
+    (an rtsp://, http://, or file path) is passed straight to OpenCV as a
+    stream URL — this is what lets a phone or an existing NVR feed stand
+    in for a dedicated camera."""
+    try:
+        return int(raw)
+    except ValueError:
+        return raw
+
+
+def is_network_source(source: int | str) -> bool:
+    return isinstance(source, str)
 
 
 def api_url(*parts: str) -> str:
@@ -78,6 +101,7 @@ def post_ppe_alert(
     online: bool,
     violation_label: str,
     confidence: float,
+    camera_id: str,
 ) -> tuple[int | None, str]:
     """POST PPE violation alert. Returns (status_code, message)."""
     if not online or session is None:
@@ -88,6 +112,7 @@ def post_ppe_alert(
         "severity": "HIGH",
         "source": "AI_CAMERA",
         "description": f"Missing PPE: {violation_label} (conf: {confidence:.2f})",
+        "camera_id": camera_id,
     }
     try:
         r = session.post(api_url("alerts", ""), json=payload, timeout=10)
@@ -174,8 +199,35 @@ def plot_detections(
     return list(violations_map.items())
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--source",
+        default=DEFAULT_CAMERA_SOURCE,
+        help=(
+            "Camera source: a local device index (e.g. 0) or a stream URL "
+            "(e.g. rtsp://... or http://<phone-ip>:8080/video for a phone "
+            "running IP Webcam). Defaults to $SITESAFE_CAMERA_SOURCE or 0."
+        ),
+    )
+    parser.add_argument(
+        "--camera-id",
+        default=DEFAULT_CAMERA_ID,
+        help="Identifier for this camera, attached to every alert it raises "
+        "and used to resolve which zone it's assigned to. Defaults to "
+        "$SITESAFE_CAMERA_ID or CAM-01. Give each concurrent instance a "
+        "distinct id (CAM-ENTRANCE, CAM-BAY-2, ...).",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
     os.chdir(module_root())
+    args = parse_args()
+    camera_id = args.camera_id
+    source = resolve_camera_source(args.source)
+    networked = is_network_source(source)
+
     model_path = resolve_model_path()
     if not model_path.is_file():
         print(f"Model not found: {model_path}", file=sys.stderr)
@@ -184,15 +236,23 @@ def main() -> None:
     session, online = connect_api()
 
     model = YOLO(str(model_path))
-    cap = cv2.VideoCapture(CAMERA_INDEX)
+    print(f"[{camera_id}] opening {'stream' if networked else 'device index'}: {source}")
+    cap = cv2.VideoCapture(source)
+    if networked:
+        # Keep only the newest frame so a slow/laggy WiFi link doesn't pile
+        # up a backlog and make detection run behind real time. Not every
+        # backend honours this, so it's a best-effort setting.
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     if not cap.isOpened():
-        print(f"Could not open camera index {CAMERA_INDEX}", file=sys.stderr)
+        print(f"[{camera_id}] could not open source: {source}", file=sys.stderr)
         sys.exit(1)
 
+    window_title = f"Site-Safe PPE Inference [{camera_id}]"
     last_alert_time: dict[str, float] = {}
     paused = False
     total_frames = 0
     alerts_sent = 0
+    consecutive_read_failures = 0
     t_start = time.perf_counter()
     fps_smooth = 0.0
     t_prev = time.perf_counter()
@@ -203,7 +263,22 @@ def main() -> None:
         while True:
             ok, frame = cap.read()
             if not ok:
-                break
+                consecutive_read_failures += 1
+                # A single dropped frame is routine on a phone/RTSP stream
+                # over WiFi; only give up after a sustained run of failures
+                # (a genuinely disconnected source, or a real local webcam
+                # that's gone away).
+                if consecutive_read_failures >= MAX_CONSECUTIVE_READ_FAILURES:
+                    print(
+                        f"[{camera_id}] lost source after "
+                        f"{consecutive_read_failures} consecutive failed reads",
+                        file=sys.stderr,
+                    )
+                    break
+                if networked:
+                    time.sleep(READ_RETRY_DELAY_SECONDS)
+                continue
+            consecutive_read_failures = 0
             total_frames += 1
             t_now = time.perf_counter()
             dt = max(t_now - t_prev, 1e-6)
@@ -222,6 +297,7 @@ def main() -> None:
                     "severity": "HIGH",
                     "source": "AI_CAMERA",
                     "description": "Manual test alert (forced via keyboard)",
+                    "camera_id": camera_id,
                 }
                 if online and session:
                     try:
@@ -248,7 +324,7 @@ def main() -> None:
                     cv2.LINE_AA,
                 )
                 draw_fps(frame, fps_smooth)
-                cv2.imshow("Site-Safe PPE Inference", frame)
+                cv2.imshow(window_title, frame)
                 continue
 
             results = model.predict(frame, verbose=False, conf=0.15)
@@ -268,7 +344,7 @@ def main() -> None:
                 for vname, vconf in violations:
                     last_t = last_alert_time.get(vname, 0.0)
                     if time.time() - last_t >= COOLDOWN_SECONDS:
-                        code, body = post_ppe_alert(session, online, vname, vconf)
+                        code, body = post_ppe_alert(session, online, vname, vconf, camera_id)
                         last_alert_time[vname] = time.time()
                         if code == 201:
                             alerts_sent += 1
@@ -276,13 +352,14 @@ def main() -> None:
                         else:
                             print(f"[ALERT] {vname} detected ({vconf:.2f}) → API response: {code} {body[:200]}")
 
-            cv2.imshow("Site-Safe PPE Inference", frame)
+            cv2.imshow(window_title, frame)
     finally:
         cap.release()
         cv2.destroyAllWindows()
         duration = time.perf_counter() - t_start
         print()
         print("=== Session summary ===")
+        print(f"  Camera:                 {camera_id} ({source})")
         print(f"  Total frames processed: {total_frames}")
         print(f"  Total alerts sent:      {alerts_sent}")
         print(f"  Session duration:       {duration:.1f}s")

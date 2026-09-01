@@ -6,8 +6,7 @@ import { Select } from '../ui/Input.jsx'
 import Input from '../ui/Input.jsx'
 import IncidentDetail from './IncidentDetail.jsx'
 import {
-  cameraIdFromSource,
-  cn,
+  displayCameraId,
   exportCsv,
   formatAlertType,
   formatTimestamp,
@@ -17,42 +16,6 @@ import {
 const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
 const TYPES = ['PPE_VIOLATION', 'SOS', 'ZONE_BREACH', 'INACTIVITY']
 const PAGE_SIZES = [10, 25, 50]
-
-const ALERT_TYPE_BADGE = {
-  PPE_VIOLATION: {
-    label: 'PPE Violation',
-    className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  },
-  SOS: {
-    label: 'SOS',
-    className: 'bg-red-500/15 text-red-400 border-red-500/30',
-  },
-  ZONE_BREACH: {
-    label: 'Zone Breach',
-    className: 'bg-violet-500/15 text-violet-400 border-violet-500/30',
-  },
-  INACTIVITY: {
-    label: 'Inactivity',
-    className: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-  },
-}
-
-function AlertTypeBadge({ type }) {
-  const cfg = ALERT_TYPE_BADGE[type] || {
-    label: formatAlertType(type),
-    className: 'bg-zinc-800 text-zinc-300 border-zinc-700',
-  }
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide',
-        cfg.className,
-      )}
-    >
-      {cfg.label}
-    </span>
-  )
-}
 
 export default function IncidentLogTable({ alerts, loading, onResolve }) {
   const [search, setSearch] = useState('')
@@ -124,7 +87,7 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
         a.vest_id,
         a.alert_type,
         a.severity,
-        cameraIdFromSource(a.source),
+        displayCameraId(a),
         a.is_resolved ? 'Resolved' : 'Open',
         a.source,
       ]),
@@ -158,7 +121,7 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
     {
       key: 'alert_type',
       header: 'Type',
-      render: (row) => <AlertTypeBadge type={row.alert_type} />,
+      render: (row) => formatAlertType(row.alert_type),
     },
     {
       key: 'severity',
@@ -169,7 +132,7 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
       key: 'camera',
       header: 'Camera',
       render: (row) => (
-        <span className="font-mono text-xs text-zinc-500">{cameraIdFromSource(row.source)}</span>
+        <span className="font-mono text-xs text-zinc-500">{displayCameraId(row)}</span>
       ),
     },
     {
@@ -215,23 +178,6 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
             }}
             className="min-w-[180px]"
           />
-          <Select
-            label="Alert type"
-            value={typeFilter.length === 1 ? typeFilter[0] : ''}
-            onChange={(e) => {
-              const val = e.target.value
-              setTypeFilter(val ? [val] : [])
-              setPage(1)
-            }}
-            className="min-w-[160px]"
-          >
-            <option value="">All types</option>
-            {TYPES.map((type) => (
-              <option key={type} value={type}>
-                {ALERT_TYPE_BADGE[type]?.label ?? formatAlertType(type)}
-              </option>
-            ))}
-          </Select>
           <Input
             label="From"
             type="date"
@@ -285,11 +231,11 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
             onClick={() => toggleType(type)}
             className={`rounded border px-2 py-1 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${
               typeFilter.includes(type)
-                ? ALERT_TYPE_BADGE[type].className
+                ? 'border-amber-500/50 bg-amber-500/10 text-amber-400'
                 : 'border-zinc-700 text-zinc-500 hover:border-zinc-600'
             }`}
           >
-            {ALERT_TYPE_BADGE[type].label}
+            {formatAlertType(type)}
           </button>
         ))}
       </div>
