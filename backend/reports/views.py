@@ -1,8 +1,9 @@
 from django.http import HttpResponse
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from accounts.permissions import IsSafetyOfficer
 
 from .models import Report
 from .proxy import proxy_generate_report
@@ -10,7 +11,7 @@ from .serializers import ReportGenerateSerializer, ReportSerializer
 
 
 class ReportListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSafetyOfficer]
 
     def get(self, request):
         reports = Report.objects.all()
@@ -19,7 +20,7 @@ class ReportListView(APIView):
 
 
 class GenerateReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSafetyOfficer]
 
     def post(self, request):
         serializer = ReportGenerateSerializer(data=request.data)
@@ -38,7 +39,7 @@ class GenerateReportView(APIView):
 
 
 class ReportDownloadView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSafetyOfficer]
 
     def get(self, request, pk):
         try:

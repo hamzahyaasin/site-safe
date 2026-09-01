@@ -1,6 +1,8 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+
+from accounts.permissions import ReadOnlyOrAdmin
 from rest_framework.response import Response
 
 from workers.models import Worker
@@ -13,7 +15,7 @@ from .serializers import ZoneDetailSerializer, ZoneSerializer
 
 class ZoneViewSet(viewsets.ModelViewSet):
     queryset = Zone.objects.prefetch_related("workers").all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ReadOnlyOrAdmin]
 
     def get_serializer_class(self):
         if self.action in ("retrieve", "list"):

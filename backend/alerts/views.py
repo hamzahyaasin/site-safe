@@ -5,6 +5,8 @@ from datetime import datetime, time
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
+
+from accounts.permissions import ReadOnlyOrAdmin, ReadOnlyOrSafetyOfficer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -64,7 +66,7 @@ class AlertViewSet(
 ):
     queryset = Alert.objects.select_related("worker").all()
     serializer_class = AlertSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ReadOnlyOrSafetyOfficer]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -166,4 +168,4 @@ class DetectionViewSet(viewsets.ModelViewSet):
 class AlertConfigViewSet(viewsets.ModelViewSet):
     queryset = AlertConfig.objects.select_related("zone").all()
     serializer_class = AlertConfigSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ReadOnlyOrAdmin]

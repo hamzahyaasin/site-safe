@@ -5,6 +5,7 @@ import DataTable from '../components/ui/DataTable.jsx'
 import Drawer from '../components/ui/Drawer.jsx'
 import Input, { Select } from '../components/ui/Input.jsx'
 import { useZones } from '../hooks/useZones.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'RESTRICTED']
 
@@ -67,6 +68,8 @@ const textareaClass =
 
 export default function ZonesPage() {
   const { zones, loading, error, createZone, updateZone, deleteZone } = useZones()
+  // Zone edits are Admin-only server-side; hide the controls for everyone else.
+  const { isAdmin } = useAuth()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingZone, setEditingZone] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -181,7 +184,10 @@ export default function ZonesPage() {
       header: 'Status',
       render: (row) => <Badge variant={row.is_active ? 'active' : 'offline'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>,
     },
-    {
+  ]
+
+  if (isAdmin) {
+    columns.push({
       key: 'actions',
       header: 'Actions',
       render: (row) => (
@@ -194,19 +200,25 @@ export default function ZonesPage() {
           </Button>
         </div>
       ),
-    },
-  ]
+    })
+  }
 
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-100">Zones</h1>
-          <p className="mt-1 text-sm text-zinc-500">Manage site zones, risk levels, and geofence boundaries</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            {isAdmin
+              ? 'Manage site zones, risk levels, and geofence boundaries'
+              : 'Site zones, risk levels, and geofence boundaries (read-only)'}
+          </p>
         </div>
-        <Button variant="primary" size="sm" onClick={openCreate}>
-          Add Zone
-        </Button>
+        {isAdmin ? (
+          <Button variant="primary" size="sm" onClick={openCreate}>
+            Add Zone
+          </Button>
+        ) : null}
       </header>
 
       {error ? (

@@ -5,6 +5,8 @@ from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
+
+from accounts.permissions import ReadOnlyOrSafetyOfficer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -77,19 +79,19 @@ def compute_activity_summary(worker_id, day):
 class WorkerViewSet(viewsets.ModelViewSet):
     queryset = Worker.objects.select_related("zone").all()
     serializer_class = WorkerSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ReadOnlyOrSafetyOfficer]
 
 
 class SmartVestViewSet(viewsets.ModelViewSet):
     queryset = SmartVest.objects.select_related("worker").all()
     serializer_class = SmartVestSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ReadOnlyOrSafetyOfficer]
 
 
 class ActivityLogViewSet(viewsets.ModelViewSet):
     queryset = ActivityLog.objects.select_related("worker", "zone").all()
     serializer_class = ActivityLogSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ReadOnlyOrSafetyOfficer]
     http_method_names = ["get", "post", "head", "options"]
 
     def get_queryset(self):
