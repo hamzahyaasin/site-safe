@@ -14,7 +14,7 @@ import {
 } from '../../lib/utils.js'
 
 const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
-const TYPES = ['PPE_VIOLATION', 'SOS', 'ZONE_BREACH', 'INACTIVITY']
+const TYPES = ['PPE_VIOLATION', 'SOS', 'ZONE_BREACH', 'INACTIVITY', 'VEHICLE_PROXIMITY']
 const PAGE_SIZES = [10, 25, 50]
 
 export default function IncidentLogTable({ alerts, loading, onResolve }) {

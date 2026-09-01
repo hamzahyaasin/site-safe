@@ -101,14 +101,9 @@ class AlertIngestSerializer(serializers.Serializer):
 
 class AlertSimulateSerializer(serializers.Serializer):
     worker_id = serializers.IntegerField()
-    alert_type = serializers.ChoiceField(
-        choices=[
-            (AlertType.PPE_VIOLATION, AlertType.PPE_VIOLATION.label),
-            (AlertType.SOS, AlertType.SOS.label),
-            (AlertType.ZONE_BREACH, AlertType.ZONE_BREACH.label),
-            (AlertType.INACTIVITY, AlertType.INACTIVITY.label),
-        ]
-    )
+    # Mirrors the AlertType enum directly rather than restating it, so newly
+    # added alert types are simulatable without having to update this list.
+    alert_type = serializers.ChoiceField(choices=AlertType.choices)
     severity = serializers.ChoiceField(choices=Severity.choices)
     source = serializers.ChoiceField(
         choices=AlertSource.choices,

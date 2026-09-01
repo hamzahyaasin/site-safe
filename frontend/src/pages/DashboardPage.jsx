@@ -42,6 +42,7 @@ export default function DashboardPage() {
       zone_breach: { alert_type: 'ZONE_BREACH', severity: 'HIGH', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
       inactivity: { alert_type: 'INACTIVITY', severity: 'MEDIUM', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
       sos: { alert_type: 'SOS', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
+      vehicle_proximity: { alert_type: 'VEHICLE_PROXIMITY', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
     }
     setLoadingSim(kind)
     try {
@@ -112,6 +113,7 @@ export default function DashboardPage() {
             { id: 'zone_breach', label: 'Zone Breach', sev: 'HIGH' },
             { id: 'inactivity', label: 'Inactivity', sev: 'MEDIUM' },
             { id: 'sos', label: 'SOS Pressed', sev: 'CRITICAL' },
+            { id: 'vehicle_proximity', label: 'Vehicle Proximity', sev: 'CRITICAL' },
           ].map((sim) => (
             <Button
               key={sim.id}

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Site-Safe PPE: webcam YOLO inference with optional Django alert API integration.
+Site-Safe vision pipeline: PPE detection plus vehicle-proximity warning,
+with optional Django alert API integration.
 Run from ai-module/: python inference.py
 """
 
@@ -18,8 +19,14 @@ import numpy as np
 import requests
 from ultralytics import YOLO
 
+import proximity
+
 # ============== CONFIG ==============
 MODEL_PATH = "/Users/hamza/code/site-safe/ai-module/models/sitesafe_final.pt"
+# The PPE model is trained only on equipment classes and has no person or
+# vehicle class, so proximity warnings need a second detector. The COCO-
+# pretrained YOLOv11 nano weights supply person and vehicle boxes.
+PROXIMITY_MODEL_PATH = "yolo11n.pt"
 API_BASE = "http://127.0.0.1:8000/api"
 ADMIN_EMAIL = "hamzahyaasin@gmail.com"
 ADMIN_PASSWORD = "admin@sitesafe"
@@ -32,6 +39,11 @@ DEFAULT_CAMERA_ID = os.environ.get("SITESAFE_CAMERA_ID", "CAM-01")
 # after this many *consecutive* failed reads.
 MAX_CONSECUTIVE_READ_FAILURES = 30
 READ_RETRY_DELAY_SECONDS = 0.25
+# Running a second model on every frame roughly halves throughput, so the
+# proximity detector is sampled instead. Vehicles and people move slowly
+# relative to frame rate, so every third frame loses nothing that matters.
+PROXIMITY_FRAME_INTERVAL = 3
+PROXIMITY_CONF = 0.35
 # ====================================
 
 
@@ -41,6 +53,13 @@ def module_root() -> Path:
 
 def resolve_model_path() -> Path:
     p = Path(MODEL_PATH)
+    if p.is_absolute():
+        return p
+    return module_root() / p
+
+
+def resolve_proximity_model_path() -> Path:
+    p = Path(PROXIMITY_MODEL_PATH)
     if p.is_absolute():
         return p
     return module_root() / p
@@ -121,6 +140,76 @@ def post_ppe_alert(
         return None, str(exc)
 
 
+def post_proximity_alert(
+    session: requests.Session | None,
+    online: bool,
+    event: dict,
+    camera_id: str,
+) -> tuple[int | None, str]:
+    """POST a vehicle proximity alert. Returns (status_code, message)."""
+    if not online or session is None:
+        return None, "offline"
+
+    payload = {
+        "alert_type": "VEHICLE_PROXIMITY",
+        "severity": proximity.severity_for(event),
+        "source": "AI_CAMERA",
+        "description": proximity.describe(event),
+        "camera_id": camera_id,
+    }
+    try:
+        r = session.post(api_url("alerts", ""), json=payload, timeout=10)
+        return r.status_code, r.text[:500]
+    except Exception as exc:
+        return None, str(exc)
+
+
+def draw_proximity(
+    frame: np.ndarray,
+    persons: list,
+    vehicles: list,
+    event: dict | None,
+) -> None:
+    """Outline detected people and vehicles, and draw a line between the
+    closest breaching pair so the operator can see what triggered a warning."""
+    for box in persons:
+        x1, y1, x2, y2 = (int(v) for v in box)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 200, 0), 2)
+        cv2.putText(
+            frame, "person", (x1, max(y1 - 6, 16)),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 200, 0), 1, cv2.LINE_AA,
+        )
+
+    for box, label in vehicles:
+        x1, y1, x2, y2 = (int(v) for v in box)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
+        cv2.putText(
+            frame, label, (x1, max(y1 - 6, 16)),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 165, 255), 1, cv2.LINE_AA,
+        )
+
+    if event is None:
+        return
+
+    def centre(b):
+        return (int((b[0] + b[2]) / 2), int((b[1] + b[3]) / 2))
+
+    p_c = centre(event["person_box"])
+    v_c = centre(event["vehicle_box"])
+    cv2.line(frame, p_c, v_c, (0, 0, 255), 2, cv2.LINE_AA)
+    mid = ((p_c[0] + v_c[0]) // 2, (p_c[1] + v_c[1]) // 2)
+    cv2.putText(
+        frame,
+        f"{event['normalised_gap']:.2f}",
+        mid,
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (0, 0, 255),
+        2,
+        cv2.LINE_AA,
+    )
+
+
 def draw_fps(frame: np.ndarray, fps: float) -> None:
     h, w = frame.shape[:2]
     text = f"FPS: {fps:.1f}"
@@ -130,13 +219,24 @@ def draw_fps(frame: np.ndarray, fps: float) -> None:
     cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
 
 
-def draw_status_bar(frame: np.ndarray, violations: list[tuple[str, float]]) -> None:
-    """Top-left status strip: green ALL CLEAR or red with violation names."""
+def draw_status_bar(
+    frame: np.ndarray,
+    violations: list[tuple[str, float]],
+    proximity_event: dict | None = None,
+) -> None:
+    """Top-left status strip: green ALL CLEAR, or red naming what is wrong.
+
+    A proximity breach outranks a PPE violation in the banner, since a worker
+    beside moving plant is the more immediate hazard.
+    """
     h, w = frame.shape[:2]
     bar_h = 44
     overlay = frame.copy()
-    if violations:
+    if proximity_event is not None:
         color = (0, 0, 220)  # BGR red-ish
+        label = f"VEHICLE PROXIMITY - {proximity_event['vehicle_label']}"
+    elif violations:
+        color = (0, 0, 220)
         names = ", ".join(sorted({v[0] for v in violations}))
         label = f"VIOLATION DETECTED - {names}"
     else:
@@ -218,6 +318,30 @@ def parse_args() -> argparse.Namespace:
         "$SITESAFE_CAMERA_ID or CAM-01. Give each concurrent instance a "
         "distinct id (CAM-ENTRANCE, CAM-BAY-2, ...).",
     )
+    parser.add_argument(
+        "--no-proximity",
+        action="store_true",
+        help="Disable vehicle proximity detection and run PPE detection only. "
+        "Useful on slower hardware, or for a camera covering an area with no "
+        "vehicle traffic.",
+    )
+    parser.add_argument(
+        "--proximity-threshold",
+        type=float,
+        default=proximity.DEFAULT_THRESHOLD,
+        help="How close a worker must be to a vehicle to count as a breach, "
+        "measured in person-heights (default: "
+        f"{proximity.DEFAULT_THRESHOLD}). Roughly one person-height is about "
+        "1.7 m when worker and vehicle are at similar distance from the camera.",
+    )
+    parser.add_argument(
+        "--proximity-persistence",
+        type=int,
+        default=proximity.DEFAULT_PERSISTENCE,
+        help="Consecutive evaluated frames a breach must hold before an alert "
+        f"is raised (default: {proximity.DEFAULT_PERSISTENCE}). Filters out "
+        "single-frame detection noise.",
+    )
     return parser.parse_args()
 
 
@@ -236,6 +360,31 @@ def main() -> None:
     session, online = connect_api()
 
     model = YOLO(str(model_path))
+
+    proximity_model = None
+    proximity_tracker = None
+    if not args.no_proximity:
+        proximity_model_path = resolve_proximity_model_path()
+        if proximity_model_path.is_file():
+            proximity_model = YOLO(str(proximity_model_path))
+            proximity_tracker = proximity.ProximityTracker(
+                threshold=args.proximity_threshold,
+                persistence=args.proximity_persistence,
+            )
+            print(
+                f"[{camera_id}] vehicle proximity enabled "
+                f"(threshold {args.proximity_threshold} person-heights, "
+                f"confirm after {args.proximity_persistence} frames)"
+            )
+        else:
+            # Missing COCO weights should degrade to PPE-only rather than
+            # taking down the whole pipeline.
+            print(
+                f"[{camera_id}] proximity model not found at {proximity_model_path}; "
+                "continuing with PPE detection only",
+                file=sys.stderr,
+            )
+
     print(f"[{camera_id}] opening {'stream' if networked else 'device index'}: {source}")
     cap = cv2.VideoCapture(source)
     if networked:
@@ -247,12 +396,18 @@ def main() -> None:
         print(f"[{camera_id}] could not open source: {source}", file=sys.stderr)
         sys.exit(1)
 
-    window_title = f"Site-Safe PPE Inference [{camera_id}]"
+    window_title = f"Site-Safe Inference [{camera_id}]"
     last_alert_time: dict[str, float] = {}
     paused = False
     total_frames = 0
     alerts_sent = 0
+    proximity_alerts_sent = 0
     consecutive_read_failures = 0
+    # Latched so the overlay keeps showing the last proximity result on
+    # frames where the sampled detector did not run.
+    last_persons: list = []
+    last_vehicles: list = []
+    last_proximity_event: dict | None = None
     t_start = time.perf_counter()
     fps_smooth = 0.0
     t_prev = time.perf_counter()
@@ -337,7 +492,29 @@ def main() -> None:
                 clss = result.boxes.cls.cpu().numpy().astype(int)
                 violations = plot_detections(frame, names, xyxy, confs, clss)
 
-            draw_status_bar(frame, violations)
+            # Proximity runs on a sampled subset of frames; between samples the
+            # previous result is reused for the overlay.
+            confirmed_proximity = None
+            if proximity_model is not None and total_frames % PROXIMITY_FRAME_INTERVAL == 0:
+                p_result = proximity_model.predict(
+                    frame, verbose=False, conf=PROXIMITY_CONF
+                )[0]
+                if p_result.boxes is not None and len(p_result.boxes) > 0:
+                    p_xyxy = p_result.boxes.xyxy.cpu().numpy()
+                    p_clss = p_result.boxes.cls.cpu().numpy().astype(int)
+                    last_persons, last_vehicles = proximity.split_detections(p_xyxy, p_clss)
+                else:
+                    last_persons, last_vehicles = [], []
+
+                confirmed_proximity = proximity_tracker.update(last_persons, last_vehicles)
+                last_proximity_event = proximity.closest_proximity(
+                    last_persons, last_vehicles, args.proximity_threshold
+                )
+
+            if proximity_model is not None:
+                draw_proximity(frame, last_persons, last_vehicles, last_proximity_event)
+
+            draw_status_bar(frame, violations, last_proximity_event)
             draw_fps(frame, fps_smooth)
 
             if online and session and violations:
@@ -352,6 +529,21 @@ def main() -> None:
                         else:
                             print(f"[ALERT] {vname} detected ({vconf:.2f}) → API response: {code} {body[:200]}")
 
+            if confirmed_proximity is not None:
+                last_t = last_alert_time.get("VEHICLE_PROXIMITY", 0.0)
+                if time.time() - last_t >= COOLDOWN_SECONDS:
+                    last_alert_time["VEHICLE_PROXIMITY"] = time.time()
+                    desc = proximity.describe(confirmed_proximity)
+                    code, body = post_proximity_alert(
+                        session, online, confirmed_proximity, camera_id
+                    )
+                    if code == 201:
+                        alerts_sent += 1
+                        proximity_alerts_sent += 1
+                        print(f"[ALERT] {desc} → API response: {code}")
+                    else:
+                        print(f"[ALERT] {desc} → API response: {code} {body[:200]}")
+
             cv2.imshow(window_title, frame)
     finally:
         cap.release()
@@ -362,6 +554,7 @@ def main() -> None:
         print(f"  Camera:                 {camera_id} ({source})")
         print(f"  Total frames processed: {total_frames}")
         print(f"  Total alerts sent:      {alerts_sent}")
+        print(f"    of which proximity:   {proximity_alerts_sent}")
         print(f"  Session duration:       {duration:.1f}s")
 
 
