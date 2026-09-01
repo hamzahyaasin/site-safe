@@ -2,7 +2,8 @@
 
 > Paste this whole file into ChatGPT (or any other assistant) as context before asking it
 > to do any task below. It is written so someone with **no prior knowledge of this repo**
-> can act on it. This is revision 2 — see §0a for what changed since revision 1.
+> can act on it. This is revision 3 — see §0a for what changed since revision 1, §0b for
+> what changed since revision 2.
 
 ---
 
@@ -35,12 +36,23 @@ in old Tasks 1–2 is **done**. Old Task 3 is **prepared but not run** (needs a 
 GPU). Old Task 4's highest-priority item (inactivity detection) is **done**; fall detection is
 not started. This revision replaces the old task list with what's actually left.
 
+## 0b. What changed since revision 2 of this document
+
+TASK B (fall detection) is now **done** — `ai-module/fall_detection.py`, wired into
+`inference.py`, `AlertType.FALL` + migration, 24 new tests (59 total), and the report's
+§4.3.4 rewritten from "Not Implemented" to the honest-implementation treatment via
+`docs/update_fyp_report.py`. See §3 for what actually shipped and §5 for a schema-validation
+gotcha found and fixed while rebuilding the report this round (real, pre-existing corruption
+risk in the already-shipped `.docx` — read that before you next touch the report script).
+TASK A (retraining) is still **not run** — it needs a human at a Colab GPU; nothing here can
+do that step. TASK C (push/cleanup) is still outstanding.
+
 ---
 
 ## 1. Current state of the repository
 
 **Path:** `/Users/hamza/code/site-safe`  **Branch:** `main`
-**Git:** 14 commits ahead of `origin/main` — **not yet pushed**.
+**Git:** 5 commits ahead of `origin/main` — **not yet pushed**.
 
 ### Stack (actual, verified versions — also in report Table 4.1)
 
@@ -61,7 +73,7 @@ not started. This revision replaces the old task list with what's actually left.
 ```
 backend/        Django REST API (accounts, alerts, workers, sitemap, reports)
 frontend/       React + Vite + Tailwind dashboard (7 pages)
-ai-module/      YOLO vision pipeline (inference.py, proximity.py, inactivity.py)
+ai-module/      YOLO vision pipeline (inference.py, proximity.py, inactivity.py, fall_detection.py)
 report-service/ Node.js .docx report generator
 docs/           FYP report V7, department SOP, update_fyp_report.py (report build script)
 ```
@@ -78,11 +90,11 @@ npm --prefix frontend run dev          # http://localhost:5173
 # vision pipeline (from ai-module/)
 ../.venv/bin/python inference.py --source 0 --camera-id CAM-01
 
-# full test suite — 35 tests, isolated SQLite, no PostgreSQL permission needed
+# full test suite — 59 tests, isolated SQLite, no PostgreSQL permission needed
 cd backend && ../.venv/bin/python manage.py test --settings=sitesafe.test_settings
 ```
 
-### What is genuinely built and working (all covered by the 35 automated tests)
+### What is genuinely built and working (all covered by the 59 automated tests)
 
 - PPE detection pipeline (YOLO), posts alerts to the backend
 - Multi-camera support: `--source` takes a webcam index **or** an RTSP/HTTP stream URL
@@ -91,12 +103,15 @@ cd backend && ../.venv/bin/python manage.py test --settings=sitesafe.test_settin
 - **Camera-level inactivity detection** (`ai-module/inactivity.py`) — centroid tracker,
   timeout/movement/latch logic, wired into `inference.py`; tracks are camera-local, not
   worker identities (no QR yet, so there's no identity to attach)
+- **Camera-level fall detection** (`ai-module/fall_detection.py`) — YOLO11 pose model,
+  span-ratio + hip/knee geometry, persistence/latch/re-arm tracking (same shape as
+  inactivity), wired into `inference.py`; also camera-local, not worker-identity-linked
 - Role-based access control: Admin / Safety Officer / Viewer, enforced server-side
 - Django REST backend, React dashboard, WebSocket live alerts, .docx report generation
 
 ### What is designed in the report but NOT built
 
-QR worker identification · Fall detection (pose) · Fire/smoke detection ·
+QR worker identification · Fire/smoke detection ·
 Mobile app (React Native) · Smart Vest hardware + LoRa · Celery/Redis ·
 Map/GPS visualisation · Zone entry/exit correlation · Break detection · Hourly activity
 aggregation
@@ -144,37 +159,48 @@ point of the retrain:
 
 ---
 
-## 3. TASK B — Fall detection  *(the only other Phase-3 item worth attempting)*
+## 3. TASK B — Fall detection — **DONE**
 
-Mirror the exact pattern already used twice (`ai-module/proximity.py`, `ai-module/inactivity.py`):
-a dependency-free decision module, unit-tested under `backend/alerts/test_fall.py` via the
-`sys.path` trick those two files use, then wired into `inference.py`'s main loop.
+Built to the exact pattern already used twice (`ai-module/proximity.py`, `ai-module/inactivity.py`):
+a dependency-free decision module (`ai-module/fall_detection.py`), unit-tested under
+`backend/alerts/test_fall.py` via the same `sys.path` trick, wired into `inference.py`'s main
+loop. What shipped, for anyone picking this up cold:
 
-1. `ultralytics` can load `yolo11n-pose.pt` (auto-downloads) — a second sampled-frame model,
-   same pattern as the proximity/inactivity COCO detector.
-2. Geometric fall algorithm (from the original report design, reasonable starting point):
-   horizontal/vertical keypoint-span ratio, hip-below-knee check, both conditions required.
-3. **Add persistence** — a fall must hold across N sampled frames before it's confirmed, same
-   idea as `ProximityTracker`/`InactivityTracker`. Do not skip this; it's what prevents a
-   crouch or a bend from firing an alert.
-4. Backend: add `FALL` to `AlertType` in `backend/alerts/models.py`, migrate.
-5. Test the module's geometry against synthetic keypoints (standing vs. fallen) the same way
-   `test_proximity.py` tests synthetic boxes — you do not need a real camera or GPU to verify
-   the decision logic.
-6. Update the report the same way TASK A does: through `docs/update_fyp_report.py`, not by
-   hand. Section 4.3.4 currently reads "Proposed Fall Detection via Pose Estimation (Not
-   Implemented)" — once built and tested, it needs the same honest-implementation-paragraph
-   treatment §4.7 got for inactivity (see `INACTIVITY_IMPLEMENTATION_PARAGRAPHS` in the script
-   for the pattern: what it does, what it explicitly does not do).
+1. `yolo11n-pose.pt` (auto-downloaded by `ultralytics`) runs as a second sampled-frame model
+   (every 3rd frame, `FALL_FRAME_INTERVAL`), same pattern as the proximity/inactivity COCO
+   detector, with graceful degradation if the weights file is missing.
+2. Geometric signal: horizontal/vertical keypoint-span ratio **and** hips-at-or-below-knees —
+   `is_collapsed_posture()` requires **both**, so a wide arm-flung-out standing pose (span
+   ratio alone would trip) doesn't false-positive.
+3. Persistence + per-track latch/re-arm, same shape as `InactivityTracker` — a collapsed
+   posture must hold for `DEFAULT_PERSISTENCE_SECONDS` (3.0s) before a FALL event fires, and
+   won't fire again for the same track until the person is seen upright again first.
+4. `AlertType.FALL` added to `backend/alerts/models.py`, migration
+   `0007_alter_alert_alert_type_alter_alertconfig_alert_type.py` applied. Severity `CRITICAL`,
+   source `AI_CAMERA`, no `worker` link (camera-local track, not a worker identity — no QR yet).
+5. 24 new tests in `backend/alerts/test_fall.py` (geometry, tracker persistence/recovery/
+   multi-person/stale-track eviction, alert API contract) — 59 total across the suite.
+   Additionally hand-verified against real `yolo11n-pose.pt` inference on the Ultralytics
+   bundled sample images (`zidane.jpg`, `bus.jpg`) before the tensor-handling code was written.
+6. Report §4.3.4 rewritten from "Proposed Fall Detection via Pose Estimation (Not Implemented)"
+   to a plain description of what's above, via `docs/update_fyp_report.py`
+   (`replace_fall_detection_content` + `FALL_IMPLEMENTATION_PARAGRAPHS`) — not hand-edited.
 
-Do **not** attempt fire/smoke detection or the mobile app for FYP-II — both are large, and
-correctly deferred to Future Work already (§6.2 of the report says so).
+**Known limitation, stated in the report itself:** no real fall footage has been tested
+against — only synthetic keypoints and standing/sitting real-image inference. The geometry is
+pixel-based and uncalibrated (no camera-distance normalisation), and a fall toward/away from
+the camera risks self-occlusion the span-ratio signal won't catch. If real fall footage
+becomes available, that's the next thing to validate against — see §4.3.4's limitations
+paragraph for the exact wording already in the report.
+
+Fire/smoke detection and the mobile app remain correctly deferred to Future Work (§6.2 of the
+report) — do not attempt either for FYP-II.
 
 ---
 
 ## 4. TASK C — Push and clean up git state
 
-- 14 commits sit unpushed on `main`. Push when ready: `git push origin main`
+- 5 commits sit unpushed on `main`. Push when ready: `git push origin main`
 - Two merged branches can be deleted: `merge/ui-redesign`, `claude/site-safe-ui-ux-bgnNi`
 - SOP requires **similarity index < 18%** — run the plagiarism check early; the report has
   grown substantially across multiple revisions.
@@ -225,3 +251,29 @@ To add a new placeholder-guarded section (matching how `AUTOMATED_TEST_ROWS` and
 inside the function that consumes it if it's still empty, and only fill it in once you have
 the real, reproducible evidence it describes. That guard is what stopped this report from
 being rebuilt with placeholder numbers the first time around — keep using it.
+
+**The script is not idempotent against its own output — always build from the true original.**
+The `replacements` dict searches for pre-build placeholder text (e.g. old §4.3.4 wording). Once
+the script has run once, the committed `.docx` no longer contains that text — it contains the
+script's own prior output. Running `build` against the currently-committed file will fail with
+`AssertionError: found 0` (or worse, silently match the wrong thing if old and new text overlap).
+Get the true pre-restructure source with
+`git show <last-hand-edited-or-known-good-commit>:docs/SiteSafe_FYP_Report_V7.docx > /tmp/original_source.docx`
+and build from that, every time you extend the script with new replacements.
+
+**Schema-order matters even though LibreOffice doesn't enforce it.** ECMA-376 requires strict
+child-element ordering inside container elements like `w:tblPr` (`CT_TblPrBase`), `w:tcPr`
+(`CT_TcPrBase`), and `w:pPr` (`CT_PPrBase`) — e.g. `w:tblInd` must come before `w:tblBorders`,
+`w:tcW` before `w:tcBorders`, `w:spacing` before `w:ind`. Blindly `.append()`-ing a new element
+onto a container that was `deepcopy`'d from an existing table/paragraph (which may already carry
+later-in-sequence children) silently produces an invalid document — LibreOffice renders it fine,
+but Word may respond with "unreadable content, do you want us to repair it?" on open. This bit
+`set_table_geometry()` and `make_index_paragraph()` in a way that shipped undetected for at
+least one prior revision, because nobody had run `scripts/office/validate.py` against the *true*
+original — only against an already-corrupted intermediate baseline, which made the errors look
+pre-existing-and-therefore-fine rather than a real defect. **Always run
+`scripts/office/validate.py --original /tmp/original_source.docx` against the true original**,
+not a previous build's output. If you need to append a new child element to a cloned `w:tblPr`
+or `w:tcPr`, use the `insert_in_schema_order(parent, new_element, sequence)` helper (with the
+`TBL_PR_ORDER` / `TC_PR_ORDER` constants) already in the script instead of `.append()` — it
+walks existing children and inserts before the first one that belongs later in the schema.
