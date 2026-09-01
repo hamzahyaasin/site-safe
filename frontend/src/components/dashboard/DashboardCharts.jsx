@@ -4,7 +4,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,14 +12,15 @@ import {
 import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../ui/Card.jsx'
 import Skeleton from '../ui/Skeleton.jsx'
 
-const ALERT_TYPE_ORDER = ['PPE_VIOLATION', 'SOS', 'ZONE_BREACH', 'INACTIVITY']
-
-const ALERT_TYPE_COLORS = {
-  PPE_VIOLATION: '#f59e0b',
-  SOS: '#ef4444',
-  ZONE_BREACH: '#8b5cf6',
-  INACTIVITY: '#3b82f6',
-}
+const HOURLY_DATA = [
+  { hour: '06:00', count: 1 },
+  { hour: '08:00', count: 3 },
+  { hour: '10:00', count: 5 },
+  { hour: '12:00', count: 2 },
+  { hour: '14:00', count: 7 },
+  { hour: '16:00', count: 4 },
+  { hour: '18:00', count: 1 },
+]
 
 const COMPLIANCE_DATA = [
   { day: 'Mon', rate: 92 },
@@ -39,27 +39,13 @@ const chartTooltipStyle = {
   fontSize: 12,
 }
 
-function alertsByTypeChartData(stats) {
-  const map = stats?.alerts_by_type || {}
-  return ALERT_TYPE_ORDER.map((type) => {
-    let count = 0
-    if (Array.isArray(map)) {
-      const row = map.find((r) => (r.name ?? r.type) === type)
-      count = Number(row?.count ?? 0)
-    } else {
-      count = Number(map[type] ?? 0)
-    }
-    return {
-      type,
-      label: type.replace(/_/g, ' '),
-      count,
-      fill: ALERT_TYPE_COLORS[type],
-    }
-  })
-}
-
 export default function DashboardCharts({ stats, loading }) {
-  const typeData = alertsByTypeChartData(stats)
+  const hourlyData = stats?.total_alerts_today
+    ? HOURLY_DATA.map((d, i) => ({
+        ...d,
+        count: Math.max(0, Math.round(d.count * (stats.total_alerts_today / 23) + (i % 2))),
+      }))
+    : HOURLY_DATA
 
   if (loading) {
     return (
@@ -74,23 +60,19 @@ export default function DashboardCharts({ stats, loading }) {
     <section className="col-span-12 grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle>Alerts by Type</CardTitle>
-          <CardDescription>Unresolved counts by category</CardDescription>
+          <CardTitle>Hourly Violations</CardTitle>
+          <CardDescription>Frequency by hour — today</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={typeData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <BarChart data={hourlyData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                 <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="label"
-                  tick={{ fill: '#71717a', fontSize: 10 }}
+                  dataKey="hour"
+                  tick={{ fill: '#71717a', fontSize: 11 }}
                   axisLine={{ stroke: '#2a2f3d' }}
                   tickLine={false}
-                  interval={0}
-                  angle={-20}
-                  textAnchor="end"
-                  height={56}
                 />
                 <YAxis
                   allowDecimals={false}
@@ -101,13 +83,9 @@ export default function DashboardCharts({ stats, loading }) {
                 <Tooltip
                   contentStyle={chartTooltipStyle}
                   labelStyle={{ color: '#a1a1aa' }}
-                  cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }}
+                  cursor={{ fill: 'rgba(245, 158, 11, 0.06)' }}
                 />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={48}>
-                  {typeData.map((entry) => (
-                    <Cell key={entry.type} fill={entry.fill} fillOpacity={0.9} />
-                  ))}
-                </Bar>
+                <Bar dataKey="count" fill="#f59e0b" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>

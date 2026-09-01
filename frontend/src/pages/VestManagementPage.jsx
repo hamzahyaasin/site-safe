@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import VestDrawer from '../components/vests/VestDrawer.jsx'
 import VestTable from '../components/vests/VestTable.jsx'
+import Button from '../components/ui/Button.jsx'
 import { useVests } from '../hooks/useVests.js'
 import { useWorkers } from '../hooks/useWorkers.js'
 
@@ -65,33 +66,33 @@ export default function VestManagementPage() {
   }
 
   return (
-    <div className="page vest-management-page">
-      <header className="page-header page-header--split">
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="page__title">Vest Management</h1>
-          <p className="page__lead">Monitor IoT smart vests, telemetry, and worker assignments</p>
+          <h1 className="text-2xl font-semibold text-zinc-100">Vest Management</h1>
+          <p className="mt-1 text-sm text-zinc-500">Monitor IoT smart vests, telemetry, and worker assignments</p>
         </div>
-        <div className="page-header__actions">
-          <button type="button" className="btn btn--ghost" onClick={() => fetchVests()}>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => fetchVests()}>
             Refresh
-          </button>
-          <button type="button" className="btn btn--primary" onClick={startRegister}>
+          </Button>
+          <Button variant="primary" size="sm" onClick={startRegister}>
             Register vest
-          </button>
+          </Button>
         </div>
       </header>
 
       {error ? (
-        <p className="form-error" role="alert">
+        <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
           {error}
         </p>
       ) : null}
 
-      <div className="vest-layout">
-        <div className="vest-layout__table">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <div className="xl:col-span-7">
           <VestTable vests={vests} loading={loading} selectedId={selected?.id} onSelect={selectVest} />
         </div>
-        <div className="vest-layout__drawer">
+        <div className="xl:col-span-5">
           <VestDrawer
             vest={selected}
             workers={workers}
@@ -113,7 +114,10 @@ export default function VestManagementPage() {
       </div>
 
       {toast ? (
-        <div className="toast toast--success" role="status">
+        <div
+          className="fixed bottom-6 right-6 z-50 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300 shadow-lg"
+          role="status"
+        >
           {toast}
         </div>
       ) : null}
