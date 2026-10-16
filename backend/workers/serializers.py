@@ -70,3 +70,29 @@ class WorkerSerializer(serializers.ModelSerializer):
 
     def get_zone_name(self, obj):
         return obj.zone.name if obj.zone_id else None
+
+
+class VestTelemetrySerializer(serializers.Serializer):
+    """Validated vest telemetry, shared by the HTTP gateway endpoint and MQTT."""
+
+    vest_id = serializers.CharField(max_length=50, required=False)
+    latitude = serializers.FloatField(required=False, allow_null=True)
+    longitude = serializers.FloatField(required=False, allow_null=True)
+    battery_level = serializers.IntegerField(required=False, min_value=0, max_value=100)
+    sos_active = serializers.BooleanField(required=False)
+
+    def validate(self, attrs):
+        from sitesafe.validation import validate_lat_lng
+
+        has_lat = attrs.get("latitude") is not None
+        has_lng = attrs.get("longitude") is not None
+        if has_lat != has_lng:
+            raise serializers.ValidationError("latitude and longitude must be sent together.")
+        if has_lat:
+            attrs["latitude"], attrs["longitude"] = validate_lat_lng(
+                attrs["latitude"], attrs["longitude"]
+            )
+        else:
+            attrs.pop("latitude", None)
+            attrs.pop("longitude", None)
+        return attrs

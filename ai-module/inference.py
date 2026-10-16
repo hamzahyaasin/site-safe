@@ -14,17 +14,20 @@ import time
 from pathlib import Path
 from typing import Any
 
+import threading
+
 import cv2
 import numpy as np
 import requests
 from ultralytics import YOLO
 
 import fall_detection
+from event_outbox import EventOutbox
 import inactivity
 import proximity
 
 # ============== CONFIG ==============
-MODEL_PATH = "/Users/hamza/code/site-safe/ai-module/models/sitesafe_final.pt"
+MODEL_PATH = "models/sitesafe_v5.pt"
 # The PPE model is trained only on equipment classes and has no person or
 # vehicle class, so proximity and inactivity warnings need a second detector.
 # The COCO-pretrained YOLOv11 nano weights supply person and vehicle boxes.
@@ -33,10 +36,19 @@ PROXIMITY_MODEL_PATH = "yolo11n.pt"
 # emit, so it uses a third, independent model: the COCO-pretrained YOLO11
 # nano *pose* weights.
 FALL_MODEL_PATH = "yolo11n-pose.pt"
-API_BASE = "http://127.0.0.1:8000/api"
-ADMIN_EMAIL = "hamzahyaasin@gmail.com"
-ADMIN_PASSWORD = "admin@sitesafe"
+API_BASE = os.environ.get("SITESAFE_API_BASE", "http://127.0.0.1:8000/api")
+# Camera device token issued with
+#   python manage.py create_service_token CAM-01 --kind CAMERA --camera-id CAM-01
+# It can only post camera events and read this camera's rules; it is never a
+# human login. Without it the pipeline still runs and queues events locally.
+DEVICE_KEY_ENV = "SITESAFE_DEVICE_KEY"
+OUTBOX_DIR = os.environ.get("SITESAFE_OUTBOX_DIR", "outbox")
+RULES_REFRESH_SECONDS = 60
 COOLDOWN_SECONDS = 15
+# Temporary global PPE candidate threshold.  It is exposed through the CLI so
+# Phase 4 can calibrate it without editing source; the clean validation work
+# will replace this with per-class thresholds.
+PPE_CONF = 0.15
 # Source can be a local webcam index (0, 1, ...) or a network stream URL
 # (RTSP/HTTP, e.g. a phone running "IP Webcam", or an existing NVR/IP camera).
 DEFAULT_CAMERA_SOURCE = os.environ.get("SITESAFE_CAMERA_SOURCE", "0")
@@ -110,122 +122,113 @@ def is_violation_class(name: str) -> bool:
     return n.startswith("no-") or n.startswith("no_")
 
 
-def connect_api() -> tuple[requests.Session | None, bool]:
-    """Return (session with Bearer set, online_ok)."""
+def frame_views(frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return an untouched model input and an independent display canvas."""
+    return frame, frame.copy()
+
+
+def build_api_session(device_key: str | None) -> requests.Session:
     session = requests.Session()
     session.headers.update({"Content-Type": "application/json"})
-    try:
-        r = session.post(
-            api_url("token", ""),
-            json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
-            timeout=10,
-        )
-        r.raise_for_status()
-        data = r.json()
-        token = data.get("access")
-        if not token:
-            print("API connection failed: no access token in response", file=sys.stderr)
-            return session, False
-        session.headers["Authorization"] = f"Bearer {token}"
-        print("Connected to Site-Safe API")
-        return session, True
-    except Exception as exc:
-        print(f"API connection failed ({exc}), running in offline mode", file=sys.stderr)
-        session.headers.pop("Authorization", None)
-        return session, False
+    if device_key:
+        session.headers["Authorization"] = f"Device {device_key}"
+    return session
 
 
-def post_ppe_alert(
-    session: requests.Session | None,
-    online: bool,
-    violation_label: str,
-    confidence: float,
-    camera_id: str,
-) -> tuple[int | None, str]:
-    """POST PPE violation alert. Returns (status_code, message)."""
-    if not online or session is None:
-        return None, "offline"
+def make_sender(session: requests.Session):
+    """Outbox sender: POST one camera event, return the HTTP status code."""
 
-    payload = {
+    url = api_url("v1", "camera-events", "")
+
+    def send(payload: dict) -> int:
+        return session.post(url, json=payload, timeout=5).status_code
+
+    return send
+
+
+def open_outbox(camera_id: str, session: requests.Session) -> EventOutbox:
+    directory = Path(OUTBOX_DIR)
+    if not directory.is_absolute():
+        directory = module_root() / directory
+    directory.mkdir(parents=True, exist_ok=True)
+    safe_id = "".join(c if c.isalnum() or c in "-_" else "_" for c in camera_id)
+    return EventOutbox(directory / f"{safe_id}.sqlite3", make_sender(session))
+
+
+class CameraRules:
+    """Alert rules saved in the dashboard, polled from the API for this camera.
+
+    Until the first successful fetch (or if the API is down) every alert type
+    stays enabled, so an outage never silently switches detection off. The
+    API applies the same rules again when it receives an event.
+    """
+
+    def __init__(self, session: requests.Session, camera_id: str):
+        self.session = session
+        self.camera_id = camera_id
+        self.rules: dict[str, dict] = {}
+        self.zone: str | None = None
+        self._stop = threading.Event()
+
+    def refresh(self) -> bool:
+        try:
+            r = self.session.get(
+                api_url("v1", "camera-config", ""),
+                params={"camera_id": self.camera_id},
+                timeout=5,
+            )
+            if r.status_code != 200:
+                return False
+            data = r.json()
+        except (requests.RequestException, ValueError):
+            return False
+        self.rules = data.get("rules") or {}
+        self.zone = data.get("zone")
+        return True
+
+    def enabled(self, alert_type: str) -> bool:
+        return self.rules.get(alert_type, {}).get("is_enabled", True)
+
+    def threshold(self, alert_type: str) -> float | None:
+        value = self.rules.get(alert_type, {}).get("threshold_seconds")
+        return float(value) if value else None
+
+    def start(self) -> None:
+        def run():
+            while not self._stop.wait(RULES_REFRESH_SECONDS):
+                self.refresh()
+
+        threading.Thread(target=run, name="sitesafe-rules", daemon=True).start()
+
+    def stop(self) -> None:
+        self._stop.set()
+
+
+def ppe_payload(violation_label: str, confidence: float, camera_id: str) -> dict:
+    return {
         "alert_type": "PPE_VIOLATION",
         "severity": "HIGH",
-        "source": "AI_CAMERA",
         "description": f"Missing PPE: {violation_label} (conf: {confidence:.2f})",
         "camera_id": camera_id,
+        "confidence": round(float(confidence), 4),
     }
-    try:
-        r = session.post(api_url("alerts", ""), json=payload, timeout=10)
-        return r.status_code, r.text[:500]
-    except Exception as exc:
-        return None, str(exc)
 
 
-def post_proximity_alert(
-    session: requests.Session | None,
-    online: bool,
-    event: dict,
-    camera_id: str,
-) -> tuple[int | None, str]:
-    """POST a vehicle proximity alert. Returns (status_code, message)."""
-    if not online or session is None:
-        return None, "offline"
-
-    payload = {
+def proximity_payload(event: dict, camera_id: str) -> dict:
+    return {
         "alert_type": "VEHICLE_PROXIMITY",
         "severity": proximity.severity_for(event),
-        "source": "AI_CAMERA",
         "description": proximity.describe(event),
         "camera_id": camera_id,
     }
-    try:
-        r = session.post(api_url("alerts", ""), json=payload, timeout=10)
-        return r.status_code, r.text[:500]
-    except Exception as exc:
-        return None, str(exc)
 
 
-def post_inactivity_alert(
-    session: requests.Session | None,
-    online: bool,
-    event: dict,
-    camera_id: str,
-) -> tuple[int | None, str]:
-    """POST a camera-level inactivity alert. Returns (status_code, message).
-
-    The COCO detector provides no worker identity, so this intentionally leaves
-    ``worker`` unset.  The camera id still lets the backend resolve the zone.
-    """
-    if not online or session is None:
-        return None, "offline"
-
-    payload = inactivity.alert_payload(event, camera_id)
-    try:
-        r = session.post(api_url("alerts", ""), json=payload, timeout=10)
-        return r.status_code, r.text[:500]
-    except Exception as exc:
-        return None, str(exc)
-
-
-def post_fall_alert(
-    session: requests.Session | None,
-    online: bool,
-    event: dict,
-    camera_id: str,
-) -> tuple[int | None, str]:
-    """POST a camera-level fall alert. Returns (status_code, message).
-
-    As with inactivity, the pose model provides no worker identity, so this
-    leaves ``worker`` unset; camera_id still lets the backend resolve a zone.
-    """
-    if not online or session is None:
-        return None, "offline"
-
-    payload = fall_detection.alert_payload(event, camera_id)
-    try:
-        r = session.post(api_url("alerts", ""), json=payload, timeout=10)
-        return r.status_code, r.text[:500]
-    except Exception as exc:
-        return None, str(exc)
+def queue_event(outbox: EventOutbox, rules: CameraRules, payload: dict) -> bool:
+    """Persist a confirmed event for delivery. Returns False if a rule disables it."""
+    if not rules.enabled(payload["alert_type"]):
+        return False
+    outbox.enqueue(payload)
+    return True
 
 
 def draw_proximity(
@@ -411,6 +414,14 @@ def parse_args() -> argparse.Namespace:
         "distinct id (CAM-ENTRANCE, CAM-BAY-2, ...).",
     )
     parser.add_argument(
+        "--ppe-conf",
+        type=float,
+        default=PPE_CONF,
+        help="Global PPE candidate confidence threshold (default: "
+        f"{PPE_CONF}). This is not temporal confirmation; calibrate it on a "
+        "clean validation set before deployment.",
+    )
+    parser.add_argument(
         "--no-proximity",
         action="store_true",
         help="Disable vehicle proximity detection. PPE and inactivity remain "
@@ -470,6 +481,8 @@ def parse_args() -> argparse.Namespace:
         "Filters out a crouch or a bend to pick something up.",
     )
     args = parser.parse_args()
+    if not 0.0 <= args.ppe_conf <= 1.0:
+        parser.error("--ppe-conf must be between zero and one")
     if args.inactivity_timeout <= 0:
         parser.error("--inactivity-timeout must be greater than zero")
     if args.inactivity_movement_threshold < 0:
@@ -491,7 +504,25 @@ def main() -> None:
         print(f"Model not found: {model_path}", file=sys.stderr)
         sys.exit(1)
 
-    session, online = connect_api()
+    device_key = os.environ.get(DEVICE_KEY_ENV, "").strip()
+    session = build_api_session(device_key)
+    if not device_key:
+        print(
+            f"[{camera_id}] {DEVICE_KEY_ENV} is not set: events are queued locally "
+            "and delivered once a camera device token is configured",
+            file=sys.stderr,
+        )
+    rules = CameraRules(session, camera_id)
+    if rules.refresh():
+        print(f"[{camera_id}] loaded alert rules (zone: {rules.zone or 'unassigned'})")
+    else:
+        print(f"[{camera_id}] could not load alert rules; all alert types enabled", file=sys.stderr)
+    rules.start()
+    outbox = open_outbox(camera_id, session)
+    outbox.start()
+    pending = outbox.stats()["pending"]
+    if pending:
+        print(f"[{camera_id}] resuming delivery of {pending} queued event(s)")
 
     model = YOLO(str(model_path))
 
@@ -513,6 +544,11 @@ def main() -> None:
                     f"confirm after {args.proximity_persistence} frames)"
                 )
             if not args.no_inactivity:
+                # A timeout saved in the dashboard's INACTIVITY rule overrides
+                # the command-line default for this camera.
+                saved_timeout = rules.threshold("INACTIVITY")
+                if saved_timeout:
+                    args.inactivity_timeout = saved_timeout
                 inactivity_tracker = inactivity.InactivityTracker(
                     timeout_seconds=args.inactivity_timeout,
                     movement_threshold=args.inactivity_movement_threshold,
@@ -630,21 +666,14 @@ def main() -> None:
                 forced = {
                     "alert_type": "PPE_VIOLATION",
                     "severity": "HIGH",
-                    "source": "AI_CAMERA",
                     "description": "Manual test alert (forced via keyboard)",
                     "camera_id": camera_id,
                 }
-                if online and session:
-                    try:
-                        r = session.post(api_url("alerts", ""), json=forced, timeout=10)
-                        code, body = r.status_code, r.text[:300]
-                        if code == 201:
-                            alerts_sent += 1
-                        print(f"[ALERT] forced test → API response: {code}")
-                    except Exception as exc:
-                        print(f"[ALERT] forced test → API error: {exc}")
+                if queue_event(outbox, rules, forced):
+                    alerts_sent += 1
+                    print("[ALERT] forced test queued")
                 else:
-                    print("[ALERT] forced test skipped (offline mode)")
+                    print("[ALERT] forced test skipped: PPE alerts disabled by rule")
 
             if paused:
                 draw_status_bar(frame, [])
@@ -662,7 +691,14 @@ def main() -> None:
                 cv2.imshow(window_title, frame)
                 continue
 
-            results = model.predict(frame, verbose=False, conf=0.15)
+            # Keep detector inputs free of visual overlays.  ``plot_detections``
+            # and the draw helpers mutate their image argument, so drawing on
+            # ``frame`` before the COCO/pose passes would feed artificial boxes
+            # and text into those models.  All inference uses ``raw_frame``;
+            # only ``display_frame`` is annotated for the operator.
+            raw_frame, display_frame = frame_views(frame)
+
+            results = model.predict(raw_frame, verbose=False, conf=args.ppe_conf)
             result = results[0]
             names = result.names
             violations: list[tuple[str, float]] = []
@@ -670,7 +706,7 @@ def main() -> None:
                 xyxy = result.boxes.xyxy.cpu().numpy()
                 confs = result.boxes.conf.cpu().numpy()
                 clss = result.boxes.cls.cpu().numpy().astype(int)
-                violations = plot_detections(frame, names, xyxy, confs, clss)
+                violations = plot_detections(display_frame, names, xyxy, confs, clss)
 
             # The shared COCO detector runs on a sampled subset of frames;
             # between samples the previous proximity result is reused for its
@@ -679,7 +715,7 @@ def main() -> None:
             confirmed_inactivity: list[dict] = []
             if coco_model is not None and total_frames % PROXIMITY_FRAME_INTERVAL == 0:
                 p_result = coco_model.predict(
-                    frame, verbose=False, conf=PROXIMITY_CONF
+                    raw_frame, verbose=False, conf=PROXIMITY_CONF
                 )[0]
                 if p_result.boxes is not None and len(p_result.boxes) > 0:
                     p_xyxy = p_result.boxes.xyxy.cpu().numpy()
@@ -702,7 +738,7 @@ def main() -> None:
             # sampling interval — it does not share the COCO detector above.
             confirmed_fall: list[dict] = []
             if pose_model is not None and total_frames % FALL_FRAME_INTERVAL == 0:
-                f_result = pose_model.predict(frame, verbose=False, conf=FALL_CONF)[0]
+                f_result = pose_model.predict(raw_frame, verbose=False, conf=FALL_CONF)[0]
                 last_poses = []
                 if f_result.keypoints is not None and len(f_result.keypoints) > 0:
                     xy_all = f_result.keypoints.xy.cpu().numpy()
@@ -715,78 +751,73 @@ def main() -> None:
                     confirmed_fall = fall_tracker.update(last_poses, now=t_now)
 
             if proximity_tracker is not None:
-                draw_proximity(frame, last_persons, last_vehicles, last_proximity_event)
+                draw_proximity(display_frame, last_persons, last_vehicles, last_proximity_event)
             if pose_model is not None:
-                draw_poses(frame, last_poses, confirmed_fall)
+                draw_poses(display_frame, last_poses, confirmed_fall)
 
-            draw_status_bar(frame, violations, last_proximity_event, bool(confirmed_fall))
-            draw_fps(frame, fps_smooth)
+            draw_status_bar(display_frame, violations, last_proximity_event, bool(confirmed_fall))
+            draw_fps(display_frame, fps_smooth)
 
-            if online and session and violations:
-                for vname, vconf in violations:
-                    last_t = last_alert_time.get(vname, 0.0)
-                    if time.time() - last_t >= COOLDOWN_SECONDS:
-                        code, body = post_ppe_alert(session, online, vname, vconf, camera_id)
-                        last_alert_time[vname] = time.time()
-                        if code == 201:
-                            alerts_sent += 1
-                            print(f"[ALERT] {vname} detected ({vconf:.2f}) → API response: {code}")
-                        else:
-                            print(f"[ALERT] {vname} detected ({vconf:.2f}) → API response: {code} {body[:200]}")
+            # Confirmed events go to the durable outbox; a background thread
+            # delivers them, so a slow or offline API never stalls capture
+            # and an outage does not lose the event.
+            for vname, vconf in violations:
+                last_t = last_alert_time.get(vname, 0.0)
+                if time.time() - last_t >= COOLDOWN_SECONDS:
+                    last_alert_time[vname] = time.time()
+                    if queue_event(outbox, rules, ppe_payload(vname, vconf, camera_id)):
+                        alerts_sent += 1
+                        print(f"[ALERT] {vname} detected ({vconf:.2f}) → queued")
 
             if confirmed_proximity is not None:
                 last_t = last_alert_time.get("VEHICLE_PROXIMITY", 0.0)
                 if time.time() - last_t >= COOLDOWN_SECONDS:
                     last_alert_time["VEHICLE_PROXIMITY"] = time.time()
-                    desc = proximity.describe(confirmed_proximity)
-                    code, body = post_proximity_alert(
-                        session, online, confirmed_proximity, camera_id
-                    )
-                    if code == 201:
+                    if queue_event(outbox, rules, proximity_payload(confirmed_proximity, camera_id)):
                         alerts_sent += 1
                         proximity_alerts_sent += 1
-                        print(f"[ALERT] {desc} → API response: {code}")
-                    else:
-                        print(f"[ALERT] {desc} → API response: {code} {body[:200]}")
+                        print(f"[ALERT] {proximity.describe(confirmed_proximity)} → queued")
 
             # The tracker itself latches each temporary person track until
             # movement re-arms it, so a second global cooldown would suppress
             # legitimate simultaneous events from different people.
             for event in confirmed_inactivity:
-                desc = inactivity.describe(event)
-                code, body = post_inactivity_alert(session, online, event, camera_id)
-                if code == 201:
+                if queue_event(outbox, rules, inactivity.alert_payload(event, camera_id)):
                     alerts_sent += 1
                     inactivity_alerts_sent += 1
-                    print(f"[ALERT] {desc} → API response: {code}")
-                else:
-                    print(f"[ALERT] {desc} → API response: {code} {body[:200]}")
+                    print(f"[ALERT] {inactivity.describe(event)} → queued")
 
             # Same reasoning as inactivity above: FallTracker latches per
             # track, so no additional cooldown is applied here.
             for event in confirmed_fall:
-                desc = fall_detection.describe(event)
-                code, body = post_fall_alert(session, online, event, camera_id)
-                if code == 201:
+                if queue_event(outbox, rules, fall_detection.alert_payload(event, camera_id)):
                     alerts_sent += 1
                     fall_alerts_sent += 1
-                    print(f"[ALERT] {desc} → API response: {code}")
-                else:
-                    print(f"[ALERT] {desc} → API response: {code} {body[:200]}")
+                    print(f"[ALERT] {fall_detection.describe(event)} → queued")
 
-            cv2.imshow(window_title, frame)
+            cv2.imshow(window_title, display_frame)
     finally:
         cap.release()
         cv2.destroyAllWindows()
+        rules.stop()
+        outbox.stop()
+        delivery = outbox.stats()
+        outbox.close()
         duration = time.perf_counter() - t_start
         print()
         print("=== Session summary ===")
         print(f"  Camera:                 {camera_id} ({source})")
         print(f"  Total frames processed: {total_frames}")
-        print(f"  Total alerts sent:      {alerts_sent}")
+        print(f"  Total alerts queued:    {alerts_sent}")
         print(f"    of which proximity:   {proximity_alerts_sent}")
         print(f"    of which inactivity:  {inactivity_alerts_sent}")
         print(f"    of which fall:        {fall_alerts_sent}")
+        print(f"  Still queued on disk:   {delivery['pending']} (delivered on next start)")
+        print(f"  Rejected by the API:    {delivery['dead']}")
+        if delivery["evicted"]:
+            print(f"  Evicted (queue full):   {delivery['evicted']}")
+        if delivery["last_error"]:
+            print(f"  Last delivery error:    {delivery['last_error']}")
         print(f"  Session duration:       {duration:.1f}s")
 
 

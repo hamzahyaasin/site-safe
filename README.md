@@ -85,13 +85,33 @@ python manage.py createsuperuser
 
 `createsuperuser` prompts for an **email** and password (not a username). Use these credentials to log in to the dashboard.
 
-Start the API server:
+Apply migrations (they also seed one default alert rule per alert type), then start the ASGI server. `daphne` serves both HTTP and the dashboard websocket; `runserver` also works for development because `daphne` is installed as an app.
 
 ```bash
-python manage.py runserver
+python manage.py migrate
+daphne -b 127.0.0.1 -p 8000 sitesafe.asgi:application
 ```
 
 The API runs at **http://127.0.0.1:8000/**.
+
+### Device tokens (cameras and vest gateways)
+
+Cameras and the vest gateway never log in as a person. Each gets a device token that can only post its own kind of data:
+
+```bash
+python manage.py create_service_token CAM-01 --kind CAMERA --camera-id CAM-01
+python manage.py create_service_token gateway-1 --kind VEST_GATEWAY
+```
+
+The key is printed once; only its hash is stored. Revoke a token in Django admin (**Service tokens → untick Active**). Producers send it as `Authorization: Device <key>`.
+
+### MQTT consumer (vest telemetry)
+
+```bash
+python manage.py run_mqtt_consumer
+```
+
+Run it alongside the ASGI server. When they are separate processes, set `REDIS_URL` so live updates from vests reach dashboard websockets.
 
 ### Backend environment variables
 
@@ -106,6 +126,13 @@ Copy `backend/.env.example` to `backend/.env`:
 | `DB_PASSWORD` | PostgreSQL password | `sitesafe` |
 | `DB_HOST` | Database host | `localhost` |
 | `DB_PORT` | Database port | `5432` |
+| `CORS_ALLOWED_ORIGINS` | Browser origins allowed for the API and websocket | `http://localhost:5173,http://127.0.0.1:5173` |
+| `JWT_ACCESS_MINUTES` | Access-token lifetime (the dashboard refreshes automatically) | `30` |
+| `REDIS_URL` | Channel layer for multi-process live updates | *(in-memory)* |
+| `REPORT_SERVICE_URL` | Report generation service | `http://localhost:3001/generate` |
+| `EMAIL_BACKEND` | Email notification backend | console (prints mail) |
+| `FIREBASE_CREDENTIALS_PATH` | Service-account JSON enabling push | *(push disabled)* |
+| `MQTT_BROKER_HOST` / `MQTT_PORT` / `MQTT_USERNAME` / `MQTT_PASSWORD` | Vest telemetry broker | `localhost` / `1883` |
 
 ---
 
@@ -165,11 +192,31 @@ ppe_dataset/
 
 The dataset config at `ai-module/ppe_dataset/data.yaml` defines 10 classes: compliant PPE (`helmet`, `vest`, …) and violations (`no-helmet`, `no-vest`, …).
 
-Verify the dataset before training:
+Audit split integrity and labels before training:
 
 ```bash
+python audit_dataset.py
 python verify_dataset.py
 ```
+
+`audit_dataset.py` is read-only. It reports source identities shared across
+splits, exact duplicate images, conflicting labels, malformed annotations,
+background-image counts, and image/label pairing errors. Add `--strict` to
+make any blocker return a non-zero exit code. The current legacy dataset is
+expected to fail strict mode until its source-grouped splits are rebuilt.
+
+Build a non-destructive dataset-v2 review and split proposal:
+
+```bash
+python prepare_dataset_v2.py
+```
+
+This writes ignored artifacts to `ai-module/dataset_v2_plan/`: a row-level
+manifest, connected source/duplicate groups, a CSV and HTML review pack for
+contradictory exact-image labels, and an optimized 70/15/15 split proposal.
+Source siblings, inferred video sessions, exact duplicates, and conservatively
+verified visual duplicates are indivisible. The command returns exit code `2`
+while label conflicts remain and never changes the legacy dataset.
 
 ### Train a model
 
@@ -195,23 +242,23 @@ python test_model.py
 
 ### Run live webcam inference
 
-1. Copy your trained weights to `ai-module/models/sitesafe_final.pt` (or update `MODEL_PATH` in `inference.py`).
-2. Edit the **CONFIG** block at the top of `ai-module/inference.py`:
-   - `API_BASE` — backend URL (default `http://127.0.0.1:8000/api`)
-   - `ADMIN_EMAIL` / `ADMIN_PASSWORD` — credentials for a backend user with API access
-   - `CAMERA_INDEX` — webcam device index (usually `0`)
-   - `COOLDOWN_SECONDS` — minimum time between repeated alerts for the same violation
+1. Place the PPE weights at `ai-module/models/sitesafe_v5.pt` (or update `MODEL_PATH` in `inference.py`).
+2. Issue a camera device token (see *Device tokens* above) and configure the environment:
+   - `SITESAFE_DEVICE_KEY` — the camera's device token (required to deliver alerts)
+   - `SITESAFE_API_BASE` — backend URL (default `http://127.0.0.1:8000/api`)
+   - `SITESAFE_CAMERA_SOURCE` / `SITESAFE_CAMERA_ID` — or `--source` / `--camera-id`
+   - `--ppe-conf` — runtime PPE candidate threshold (default `0.15`; calibrate on a clean validation set)
 3. Make sure the backend is running, then:
 
 ```bash
 cd ai-module
 source .venv/bin/activate
-python inference.py
+SITESAFE_DEVICE_KEY=ss_... python inference.py --camera-id CAM-01
 ```
 
-**Controls:** `Q` quit · `P` pause/unpause · `S` send a test alert
+**Controls:** `Q` quit · `P` pause/unpause · `S` queue a test alert
 
-If the API is unreachable, inference continues in offline mode (detections still shown, no alerts sent).
+Confirmed events are written to a local outbox (`ai-module/outbox/<camera>.sqlite3`) and delivered by a background thread with retries, so capture never waits on the network. Events queued while the API is down are delivered when it returns, including after a restart. Each event has an ID, so a retry is never stored twice. The camera also polls its alert rules from the dashboard every 60 seconds. A disabled alert type is not sent, and the INACTIVITY rule's `threshold_seconds` sets the stationary timeout.
 
 A lower-level webcam script without API integration is also available:
 
@@ -245,7 +292,11 @@ Then open **http://localhost:5173**, sign in, and use the Dashboard, Alerts, and
 | `GET/POST` | `/api/alerts/` | JWT | List / create alerts |
 | `POST` | `/api/alerts/{id}/resolve/` | JWT | Mark alert resolved |
 | `POST` | `/api/alerts/simulate/` | JWT | Create a simulated alert |
-| `POST` | `/api/alerts/ingest/` | Public | Ingest alert from external source |
+| `POST` | `/api/alerts/ingest/` | Vest gateway token | Ingest a vest alert by `vest_id` |
+| `POST` | `/api/v1/vests/telemetry/` | Vest gateway token | Vest GPS/battery/SOS telemetry |
+| `POST` | `/api/v1/camera-events/` | Camera token | Idempotent camera event (`event_id`) |
+| `GET` | `/api/v1/camera-config/?camera_id=` | Camera token | Effective alert rules for a camera |
+| `WS` | `/ws/dashboard/?token=<access>` | JWT | Live `alert_created/updated/resolved`, `vest_updated`, `worker_status_update` |
 | `GET/POST/…` | `/api/workers/` | JWT | Worker CRUD |
 | — | `/admin/` | Staff | Django admin |
 
@@ -265,7 +316,7 @@ curl -X POST http://127.0.0.1:8000/api/token/ \
 Confirm PostgreSQL is running and that `backend/.env` matches your database name, user, and password.
 
 **Frontend cannot reach the API**  
-Ensure the backend is on port 8000. CORS is configured for `http://localhost:5173` in `backend/sitesafe/settings.py`.
+Ensure the backend is on port 8000 and the frontend origin is listed in `CORS_ALLOWED_ORIGINS`. Point the frontend elsewhere with `VITE_API_URL` / `VITE_WS_URL` (see `frontend/.env.example`).
 
 **Login returns 401**  
 Users authenticate with **email**, not username. Create an account with `createsuperuser` or Django admin.
@@ -277,7 +328,7 @@ Train a model or place weights at the path set in `MODEL_PATH` inside `ai-module
 Try a different `CAMERA_INDEX` (e.g. `1` or `2`). Close other apps using the webcam.
 
 **No alerts from the AI module**  
-Check that the backend is running, credentials in `inference.py` are correct, and violations are detected (class names starting with `no-`). Alerts respect a cooldown period per violation type.
+Check the session summary printed on exit. *Still queued* means the API was unreachable or the device key was missing or rejected (`HTTP 401`). *Rejected by the API* means the payload failed validation, for example because the token is not allowed for that `camera_id`. Also check that the alert type is enabled in **Settings**. Alerts respect a cooldown period per violation type.
 
 ---
 

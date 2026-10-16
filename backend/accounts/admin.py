@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
-from .models import User
+from .models import ServiceToken, User
 
 
 @admin.register(User)
@@ -28,3 +28,15 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
     )
+
+
+@admin.register(ServiceToken)
+class ServiceTokenAdmin(admin.ModelAdmin):
+    """Tokens are issued with ``manage.py create_service_token``; admin is for review and revocation."""
+
+    list_display = ("name", "kind", "key_prefix", "is_active", "last_used_at", "created_at")
+    list_filter = ("kind", "is_active")
+    readonly_fields = ("key_prefix", "key_hash", "created_at", "last_used_at")
+
+    def has_add_permission(self, request):
+        return False

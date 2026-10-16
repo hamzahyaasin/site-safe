@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from sitesafe.validation import validate_camera_ids, validate_polygon
+
 from .models import Zone
 
 
@@ -18,6 +20,17 @@ class ZoneSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = ("id", "created_at")
+
+    def validate_boundaries(self, value):
+        return validate_polygon(value)
+
+    def validate_camera_ids(self, value):
+        return validate_camera_ids(value)
+
+    def validate_max_occupancy(self, value):
+        if value < 0:
+            raise serializers.ValidationError("max_occupancy must be zero (unlimited) or greater.")
+        return value
 
 
 class ZoneDetailSerializer(ZoneSerializer):

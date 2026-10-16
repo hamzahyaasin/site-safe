@@ -1,10 +1,26 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './AuthContext.jsx'
+import { refreshAccessToken, storageKeys } from '../api/axios.js'
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8000/ws/dashboard/'
 const POLL_MS = 5000
 const MAX_WS_RETRIES = 5
 const RECONNECT_DELAY_MS = 8000
+// Server close code for a missing/expired access token (alerts/consumers.py).
+const CLOSE_UNAUTHORIZED = 4401
+// Server events re-emitted to subscribers unchanged.
+const FORWARDED_EVENTS = new Set([
+  'alert_updated',
+  'alert_resolved',
+  'vest_updated',
+  'worker_status_update',
+])
+
+function socketUrl() {
+  const token = localStorage.getItem(storageKeys.access) || ''
+  const sep = WS_URL.includes('?') ? '&' : '?'
+  return `${WS_URL}${sep}token=${encodeURIComponent(token)}`
+}
 
 // eslint-disable-next-line react-refresh/only-export-components -- context consumed by useWebSocketContext hook
 export const WebSocketContext = createContext(null)
@@ -23,6 +39,7 @@ export function WebSocketProvider({ children }) {
   const connectWebSocketRef = useRef(() => {})
   const wsRetryCountRef = useRef(0)
   const prevStatusRef = useRef('reconnecting')
+  const hasConnectedRef = useRef(false)
 
   const emit = useCallback((event, payload) => {
     listenersRef.current.forEach((fn) => {
@@ -151,7 +168,7 @@ export function WebSocketProvider({ children }) {
     }
 
     try {
-      const ws = new WebSocket(WS_URL)
+      const ws = new WebSocket(socketUrl())
       wsRef.current = ws
       updateStatus('reconnecting')
 
@@ -159,6 +176,10 @@ export function WebSocketProvider({ children }) {
         wsRetryCountRef.current = 0
         updateStatus('live')
         stopPolling()
+        // Events published while the socket was down were missed, so ask
+        // every subscriber to reload its state from the API.
+        if (hasConnectedRef.current) emit('resync', null)
+        hasConnectedRef.current = true
       }
 
       ws.onmessage = (evt) => {
@@ -168,18 +189,30 @@ export function WebSocketProvider({ children }) {
             emit('alert_created', msg.payload)
             setUnreadAlerts((n) => n + 1)
             pulseBell()
-          } else if (msg.type === 'worker_status_update') {
-            emit('worker_status_update', msg.payload)
+          } else if (FORWARDED_EVENTS.has(msg.type)) {
+            emit(msg.type, msg.payload)
           }
         } catch {
           /* invalid message */
         }
       }
 
-      ws.onclose = () => {
+      ws.onclose = (evt) => {
+        if (wsRef.current !== ws) return
         wsRef.current = null
-        wsRetryCountRef.current += 1
         startPolling()
+        if (evt.code === CLOSE_UNAUTHORIZED) {
+          // Expired access token: renew it and reconnect straight away. A
+          // failed refresh is handled by the axios layer (sign-out).
+          refreshAccessToken()
+            .then(() => connectWebSocketRef.current())
+            .catch(() => {
+              wsRetryCountRef.current += 1
+              scheduleReconnect()
+            })
+          return
+        }
+        wsRetryCountRef.current += 1
         scheduleReconnect()
       }
 
@@ -201,6 +234,7 @@ export function WebSocketProvider({ children }) {
     if (!isAuthenticated) {
       knownAlertIdsRef.current = new Set()
       wsRetryCountRef.current = 0
+      hasConnectedRef.current = false
       prevStatusRef.current = 'reconnecting'
       // eslint-disable-next-line react-hooks/set-state-in-effect -- reset toast on logout
       setConnectionToast(null)

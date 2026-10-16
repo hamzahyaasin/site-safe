@@ -30,3 +30,6 @@ dist/
 
 # VS Code
 .vscode/
+
+# Local camera event outbox (queued alerts)
+ai-module/outbox/

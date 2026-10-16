@@ -4,27 +4,29 @@ from django.utils.dateparse import parse_date
 from datetime import datetime, time
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.db import IntegrityError, transaction
 
-from accounts.permissions import ReadOnlyOrAdmin, ReadOnlyOrSafetyOfficer
+from accounts.permissions import IsViewer, ReadOnlyOrAdmin, ReadOnlyOrSafetyOfficer
+from accounts.service_auth import IsCameraService, IsVestGateway
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from workers.models import Worker
 
-from .broadcast import broadcast_alert
-from .models import Alert, AlertConfig, AlertType, Detection, Severity
+from .models import Alert, AlertConfig, AlertSource, AlertType, Detection, Severity
+from .rules import rule_for, rule_for_alert, rules_for_camera
 from .serializers import (
     AlertConfigSerializer,
     AlertIngestSerializer,
     AlertSerializer,
     AlertSimulateSerializer,
+    CameraEventSerializer,
     DetectionSerializer,
 )
 
 
 class DashboardStatsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsViewer]
 
     def get(self, request, *args, **kwargs):
         now = timezone.now()
@@ -86,7 +88,6 @@ class AlertViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        broadcast_alert(serializer.instance)
         out = AlertSerializer(serializer.instance)
         return Response(out.data, status=status.HTTP_201_CREATED)
 
@@ -111,23 +112,110 @@ class AlertViewSet(
         serializer = AlertSimulateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         alert = serializer.save()
-        broadcast_alert(alert)
         return Response(AlertSerializer(alert).data, status=status.HTTP_201_CREATED)
 
 
-class AlertIngestView(APIView):
-    """POST alerts from the AI module (unauthenticated; protect in production)."""
+def _suppressed(rule):
+    return Response(
+        {"status": "suppressed", "alert_type": rule.alert_type, "reason": "Alert type disabled by rule."},
+        status=status.HTTP_202_ACCEPTED,
+    )
 
-    permission_classes = [AllowAny]
+
+class AlertIngestView(APIView):
+    """POST alerts from a vest gateway, identifying the worker by vest_id."""
+
+    permission_classes = [IsVestGateway]
 
     def post(self, request, *args, **kwargs):
         serializer = AlertIngestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        worker = Worker.objects.filter(
+            vest_id=serializer.validated_data["vest_id"], is_active=True
+        ).select_related("zone").first()
+        rule = rule_for(serializer.validated_data["alert_type"], worker.zone if worker else None)
+        if not rule.is_enabled:
+            return _suppressed(rule)
         alert = serializer.save()
-        broadcast_alert(alert)
         return Response(
             AlertSerializer(alert, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
+        )
+
+
+class CameraEventView(APIView):
+    """POST a confirmed event from an authenticated camera worker.
+
+    Responses: 201 stored, 200 already stored (same ``event_id``), 202
+    suppressed by a disabled rule. A camera treats all three as delivered.
+    """
+
+    permission_classes = [IsCameraService]
+
+    def post(self, request, *args, **kwargs):
+        serializer = CameraEventSerializer(
+            data=request.data, context={"service_token": request.auth}
+        )
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        existing = Alert.objects.filter(event_id=data["event_id"]).first()
+        if existing:
+            return Response(AlertSerializer(existing).data, status=status.HTTP_200_OK)
+
+        alert = Alert(
+            alert_type=data["alert_type"],
+            severity=data["severity"],
+            source=AlertSource.AI_CAMERA,
+            description=data["description"],
+            camera_id=data["camera_id"],
+            confidence=data["confidence"],
+            event_id=data["event_id"],
+        )
+        rule = rule_for_alert(alert)
+        if not rule.is_enabled:
+            return _suppressed(rule)
+        try:
+            with transaction.atomic():
+                alert.save()
+        except IntegrityError:
+            existing = Alert.objects.filter(event_id=data["event_id"]).first()
+            if existing is None:
+                raise
+            return Response(AlertSerializer(existing).data, status=status.HTTP_200_OK)
+        return Response(AlertSerializer(alert).data, status=status.HTTP_201_CREATED)
+
+
+class CameraConfigView(APIView):
+    """GET the effective rules for one camera, so the edge applies saved settings.
+
+    Inactivity uses ``threshold_seconds`` as its stationary timeout.
+    """
+
+    permission_classes = [IsCameraService]
+
+    def get(self, request, *args, **kwargs):
+        camera_id = (request.query_params.get("camera_id") or "").strip()
+        if not camera_id:
+            return Response({"detail": "camera_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not request.auth.allows_camera(camera_id):
+            return Response(
+                {"detail": "This device token may not read this camera's configuration."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        from sitemap.models import Zone
+
+        zone = Zone.objects.for_camera(camera_id).first()
+        rules = rules_for_camera(camera_id)
+        return Response(
+            {
+                "camera_id": camera_id,
+                "zone": zone.name if zone else None,
+                "rules": {
+                    t: {"is_enabled": r.is_enabled, "threshold_seconds": r.threshold_seconds}
+                    for t, r in rules.items()
+                },
+            }
         )
 
 
@@ -138,8 +226,13 @@ class DetectionViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            return [AllowAny()]
-        return [IsAuthenticated()]
+            return [IsCameraService()]
+        return [IsViewer()]
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["service_token"] = self.request.auth if self.action == "create" else None
+        return ctx
 
     def get_queryset(self):
         qs = super().get_queryset()

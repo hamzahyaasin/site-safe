@@ -6,7 +6,13 @@ class ZoneQuerySet(models.QuerySet):
         """Zones that list the given camera_id as one of their assigned cameras."""
         if not camera_id:
             return self.none()
-        return self.filter(camera_ids__contains=[camera_id])
+        from django.db import connections
+
+        if connections[self.db].features.supports_json_field_contains:
+            return self.filter(camera_ids__contains=[camera_id])
+        # SQLite (used by the test settings) has no JSON containment lookup.
+        ids = [pk for pk, cams in self.values_list("pk", "camera_ids") if camera_id in (cams or [])]
+        return self.filter(pk__in=ids)
 
 
 class Zone(models.Model):

@@ -33,8 +33,17 @@ export function useAlerts(initialParams = {}) {
   }, [fetchAlerts])
 
   useEffect(() => {
+    const { is_resolved: resolvedFilter } = JSON.parse(paramsKey)
+    const onlyOpen = String(resolvedFilter) === 'false'
     return subscribe((event, payload) => {
-      if (event === 'alert_created') {
+      if (event === 'resync') {
+        void fetchAlerts()
+      } else if (event === 'alert_updated' || event === 'alert_resolved') {
+        setAlerts((prev) => {
+          if (onlyOpen && payload.is_resolved) return prev.filter((a) => a.id !== payload.id)
+          return prev.map((a) => (a.id === payload.id ? payload : a))
+        })
+      } else if (event === 'alert_created') {
         setAlerts((prev) => {
           if (prev.some((a) => a.id === payload.id)) return prev
           return [payload, ...prev]
@@ -49,7 +58,7 @@ export function useAlerts(initialParams = {}) {
         }, 2600)
       }
     })
-  }, [subscribe])
+  }, [subscribe, paramsKey, fetchAlerts])
 
   const resolveAlert = useCallback(
     async (id) => {

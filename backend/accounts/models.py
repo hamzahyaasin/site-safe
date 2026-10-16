@@ -91,3 +91,58 @@ class UserPreferences(models.Model):
 
     def __str__(self):
         return f"Preferences for {self.user.email}"
+
+
+class ServiceToken(models.Model):
+    """Credential for a non-human producer: a camera worker or a vest gateway.
+
+    Cameras and gateways used to authenticate as a human admin account, which
+    put a real password in source and let a compromised edge process do
+    anything an admin could. A service token is scoped to the one kind of data
+    it produces and cannot use any human endpoint. Only a SHA-256 hash of the
+    key is stored; the plaintext is shown once when the token is created.
+    """
+
+    class Kind(models.TextChoices):
+        CAMERA = "CAMERA", "Camera worker"
+        VEST_GATEWAY = "VEST_GATEWAY", "Vest gateway"
+
+    name = models.CharField(max_length=100, unique=True)
+    kind = models.CharField(max_length=32, choices=Kind.choices)
+    key_prefix = models.CharField(max_length=12, db_index=True)
+    key_hash = models.CharField(max_length=64, unique=True)
+    camera_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Camera tokens only: camera_ids this token may report for. Empty = any.",
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.kind})"
+
+    @staticmethod
+    def hash_key(key: str) -> str:
+        import hashlib
+
+        return hashlib.sha256(key.encode()).hexdigest()
+
+    @classmethod
+    def issue(cls, name: str, kind: str, camera_ids=None):
+        """Create a token and return (instance, plaintext_key)."""
+        import secrets
+
+        key = f"ss_{secrets.token_urlsafe(32)}"
+        token = cls.objects.create(
+            name=name,
+            kind=kind,
+            key_prefix=key[:12],
+            key_hash=cls.hash_key(key),
+            camera_ids=list(camera_ids or []),
+        )
+        return token, key
+
+    def allows_camera(self, camera_id: str) -> bool:
+        return not self.camera_ids or camera_id in self.camera_ids

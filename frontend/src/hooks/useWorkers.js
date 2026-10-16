@@ -37,9 +37,11 @@ export function useWorkers() {
         }, 1200)
       } else if (event === 'workers_refreshed') {
         setWorkers(payload)
+      } else if (event === 'resync') {
+        void fetchWorkers()
       }
     })
-  }, [subscribe])
+  }, [subscribe, fetchWorkers])
 
   const createWorker = useCallback(
     async (body) => {

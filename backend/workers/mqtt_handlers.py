@@ -1,9 +1,14 @@
+import logging
+
+from django.db import transaction
 from django.utils import timezone
 
 from alerts.models import Alert, AlertSource, AlertType, Severity
 from sitemap.geofence import check_worker_zone
 
 from .models import ActivityLog, SmartVest
+
+logger = logging.getLogger(__name__)
 
 
 def log_zone_change(worker, new_zone, lat, lng):
@@ -41,12 +46,38 @@ def log_zone_change(worker, new_zone, lat, lng):
         )
 
 
+def validated_payload(payload):
+    """Validate a raw MQTT payload; returns clean data or None (and logs) if invalid."""
+    from .serializers import VestTelemetrySerializer
+
+    serializer = VestTelemetrySerializer(data=payload if isinstance(payload, dict) else {})
+    if not serializer.is_valid():
+        logger.warning("Rejected vest telemetry %r: %s", payload, serializer.errors)
+        return None
+    data = dict(serializer.validated_data)
+    data.pop("vest_id", None)
+    return data
+
+
 def apply_vest_telemetry(vest_id, payload):
     """
-    Update vest state from telemetry payload.
+    Update vest state from an already-validated telemetry payload.
     Returns the updated SmartVest, or None if vest_id is unknown.
+
+    Saving the vest and any SOS alert fires model signals that broadcast the
+    change to dashboards after the transaction commits.
     """
-    vest = SmartVest.objects.filter(vest_id=vest_id).select_related("worker").first()
+    with transaction.atomic():
+        return _apply(vest_id, payload)
+
+
+def _apply(vest_id, payload):
+    vest = (
+        SmartVest.objects.select_for_update()
+        .filter(vest_id=vest_id)
+        .select_related("worker")
+        .first()
+    )
     if not vest:
         return None
 
@@ -84,11 +115,14 @@ def apply_vest_telemetry(vest_id, payload):
 
 def handle_telemetry(vest_id, payload):
     """Handle sitesafe/vest/{vest_id}/telemetry messages."""
-    apply_vest_telemetry(vest_id, payload)
+    data = validated_payload(payload)
+    if data is not None:
+        apply_vest_telemetry(vest_id, data)
 
 
 def handle_sos(vest_id, payload):
     """Handle sitesafe/vest/{vest_id}/sos messages."""
-    data = dict(payload)
-    data["sos_active"] = True
-    apply_vest_telemetry(vest_id, data)
+    data = validated_payload(payload)
+    if data is not None:
+        data["sos_active"] = True
+        apply_vest_telemetry(vest_id, data)

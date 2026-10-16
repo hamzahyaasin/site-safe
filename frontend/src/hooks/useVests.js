@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useWebSocketContext } from './useWebSocketContext.js'
 
 function normalizeList(data) {
   return Array.isArray(data) ? data : data?.results || []
@@ -10,6 +11,7 @@ const POLL_MS = 10000
 export function useVests(options = {}) {
   const { poll = true } = options
   const { api } = useAuth()
+  const { subscribe } = useWebSocketContext()
   const [vests, setVests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -56,6 +58,20 @@ export function useVests(options = {}) {
   useEffect(() => {
     fetchVests()
   }, [fetchVests])
+
+  useEffect(() => {
+    return subscribe((event, payload) => {
+      if (event === 'vest_updated') {
+        setVests((prev) =>
+          prev.some((v) => v.id === payload.id)
+            ? prev.map((v) => (v.id === payload.id ? payload : v))
+            : [payload, ...prev],
+        )
+      } else if (event === 'resync') {
+        void fetchVests()
+      }
+    })
+  }, [subscribe, fetchVests])
 
   useEffect(() => {
     if (!poll) return undefined

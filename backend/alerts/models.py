@@ -57,6 +57,17 @@ class Alert(models.Model):
         help_text="GPS coords: {lat, lng}",
     )
     snapshot = models.ImageField(upload_to="alert_snapshots/", null=True, blank=True)
+    confidence = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Detector confidence (0-1) for AI camera alerts",
+    )
+    event_id = models.UUIDField(
+        null=True,
+        blank=True,
+        unique=True,
+        help_text="Producer-assigned idempotency key; a retried event is stored once",
+    )
     is_resolved = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
@@ -106,6 +117,20 @@ class AlertConfig(models.Model):
     notify_email = models.BooleanField(default=True)
     notify_push = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["alert_type"],
+                condition=models.Q(zone__isnull=True),
+                name="unique_global_alert_config",
+            ),
+            models.UniqueConstraint(
+                fields=["zone", "alert_type"],
+                condition=models.Q(zone__isnull=False),
+                name="unique_zone_alert_config",
+            ),
+        ]
 
     def __str__(self):
         zone_name = self.zone.name if self.zone_id else "Global"

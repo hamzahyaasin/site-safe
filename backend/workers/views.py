@@ -4,15 +4,20 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from accounts.permissions import ReadOnlyOrSafetyOfficer
+from accounts.service_auth import IsVestGateway
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import ActivityLog, SmartVest, Worker
 from .mqtt_handlers import apply_vest_telemetry
-from .serializers import ActivityLogSerializer, SmartVestSerializer, WorkerSerializer
+from .serializers import (
+    ActivityLogSerializer,
+    SmartVestSerializer,
+    VestTelemetrySerializer,
+    WorkerSerializer,
+)
 
 
 def _day_bounds(day):
@@ -138,11 +143,16 @@ class VestTelemetryView(APIView):
     Payload: { vest_id, latitude, longitude, battery_level, sos_active }
     """
 
-    permission_classes = [AllowAny]  # gateway auth in production
+    permission_classes = [IsVestGateway]
 
     def post(self, request):
-        vest_id = request.data.get("vest_id")
-        vest = apply_vest_telemetry(vest_id, request.data)
+        serializer = VestTelemetrySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        vest_id = data.pop("vest_id", None)
+        if not vest_id:
+            return Response({"vest_id": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        vest = apply_vest_telemetry(vest_id, data)
         if not vest:
             return Response({"error": "Unknown vest"}, status=status.HTTP_404_NOT_FOUND)
         return Response({"status": "ok"})
