@@ -37,6 +37,14 @@ def point_in_polygon(lat, lng, boundaries):
 RISK_ORDER = {"RESTRICTED": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1}
 
 
+def zone_at(zones, lat, lng):
+    """Highest-risk zone among ``zones`` containing (lat, lng), or None."""
+    matches = [zone for zone in zones if point_in_polygon(lat, lng, zone.boundaries)]
+    if not matches:
+        return None
+    return max(matches, key=lambda z: (RISK_ORDER.get(z.risk_level, 0), -z.pk))
+
+
 def check_worker_zone(worker, lat, lng):
     """
     Return the active zone containing (lat, lng), or None.
@@ -46,11 +54,4 @@ def check_worker_zone(worker, lat, lng):
     """
     from .models import Zone
 
-    matches = [
-        zone
-        for zone in Zone.objects.filter(is_active=True)
-        if point_in_polygon(lat, lng, zone.boundaries)
-    ]
-    if not matches:
-        return None
-    return max(matches, key=lambda z: (RISK_ORDER.get(z.risk_level, 0), -z.pk))
+    return zone_at(Zone.objects.filter(is_active=True), lat, lng)

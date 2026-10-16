@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from accounts.permissions import IsSafetyOfficer
 
 from .models import Report
-from .proxy import proxy_generate_report
+from .proxy import content_type_for, proxy_generate_report
 from .serializers import ReportGenerateSerializer, ReportSerializer
 
 
@@ -32,6 +32,8 @@ class GenerateReportView(APIView):
             data["report_type"],
             data["date_from"],
             data["date_to"],
+            data["file_format"],
+            data["tz"],
         )
         if error_body is not None:
             return Response(error_body, status=status_code)
@@ -55,6 +57,6 @@ class ReportDownloadView(APIView):
             content = fh.read()
         return HttpResponse(
             content,
-            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            content_type=content_type_for(report.file_format),
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )

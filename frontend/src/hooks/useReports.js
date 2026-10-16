@@ -42,18 +42,18 @@ export function useReports() {
   }, [api])
 
   const generateReport = useCallback(
-    async ({ report_type, date_from, date_to }) => {
+    async ({ report_type, date_from, date_to, file_format = 'DOCX', tz }) => {
       setGenerating(true)
       setError(null)
       try {
         const response = await api.post(
           'v1/reports/generate/',
-          { report_type, date_from, date_to },
+          { report_type, date_from, date_to, file_format, tz },
           { responseType: 'blob' },
         )
         const filename =
           parseFilename(response.headers['content-disposition']) ||
-          `${report_type.toLowerCase()}_report.docx`
+          `${report_type.toLowerCase()}_report.${file_format.toLowerCase()}`
         downloadBlob(response.data, filename)
         await loadReports()
         return filename

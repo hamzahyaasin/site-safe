@@ -130,6 +130,22 @@ Draw zone boundaries on the map on the **Zones** page (Admin only). Vest GPS pos
 
 Where zones overlap, the highest-risk zone wins. Occupancy counts only workers whose vests are online. Camera-only zones have no boundary, so they have no GPS presence.
 
+### QR worker badges
+
+On the **Workers** page, edit a worker and choose **Print badge**. The QR code encodes only a random code (`SSW1:…`), never a name or phone number. Print it at 100% scale (60 mm) and wear it on the helmet front or chest. **Reissue badge** revokes every earlier printout.
+
+A camera reads badges on the sampled frames and links each one to the person box that contains it. A PPE, fall or inactivity alert for that person is then attributed to the worker. A badge that is ambiguous (overlapping people), unreadable or revoked leaves the alert unidentified. The camera never guesses. Disable reading with `--no-qr`.
+
+### Report service
+
+```bash
+cd report-service && npm ci
+DJANGO_API_URL=http://localhost:8000/api/ npm start   # listens on :3001
+npm test
+```
+
+Reports come in Word or PDF. Each report covers whole calendar days in the requesting user's time zone. The safety performance report gives counts, time to resolve and days without a recorded PPE violation per zone. It gives no compliance percentage, because the system records detected violations, not compliant observations, so there is no denominator. Its method section states each definition.
+
 ### Backend environment variables
 
 Copy `backend/.env.example` to `backend/.env`:
@@ -311,7 +327,9 @@ Then open **http://localhost:5173**, sign in, and use the Dashboard, Alerts, and
 | `POST` | `/api/alerts/simulate/` | JWT | Create a simulated alert |
 | `POST` | `/api/alerts/ingest/` | Vest gateway token | Ingest a vest alert by `vest_id` |
 | `POST` | `/api/v1/vests/telemetry/` | Vest gateway token | Vest GPS/battery/SOS telemetry |
-| `POST` | `/api/v1/camera-events/` | Camera token | Idempotent camera event (`event_id`) |
+| `POST` | `/api/v1/camera-events/` | Camera token | Idempotent camera event (`event_id`, optional `badge_code`) |
+| `GET/POST` | `/api/workers/{id}/badge/` | Safety Officer | Badge payload to print / reissue (revokes the old one) |
+| `POST` | `/api/v1/reports/generate/` | Safety Officer | `report_type`, `date_from`, `date_to`, `file_format` (DOCX/PDF), `tz` |
 | `GET` | `/api/v1/camera-config/?camera_id=` | Camera token | Effective alert rules for a camera |
 | `WS` | `/ws/dashboard/?token=<access>` | JWT | Live `alert_created/updated/resolved`, `vest_updated`, `worker_status_update` |
 | `GET/POST/…` | `/api/workers/` | JWT | Worker CRUD |

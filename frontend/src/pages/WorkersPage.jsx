@@ -8,6 +8,7 @@ import WorkerStatusGrid from '../components/dashboard/WorkerStatusGrid.jsx'
 import Button from '../components/ui/Button.jsx'
 import Drawer from '../components/ui/Drawer.jsx'
 import Input, { Select } from '../components/ui/Input.jsx'
+import { printBadge } from '../lib/badge.js'
 
 const EMPTY = { name: '', role: '', phone: '', zone: '', vest: '', is_active: true }
 
@@ -22,7 +23,7 @@ function errorText(err) {
 }
 
 export default function WorkersPage() {
-  const { canOperate } = useAuth()
+  const { canOperate, api } = useAuth()
   const { workers, loading, highlightIds, createWorker, updateWorker } = useWorkers()
   const { vests } = useVests({ poll: false })
   const { zones } = useZones()
@@ -91,6 +92,24 @@ export default function WorkersPage() {
       setError(errorText(e))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function badgeAction(reissue) {
+    if (
+      reissue &&
+      !window.confirm(`Issue a new badge for ${editing.name}? Every badge printed earlier stops working.`)
+    ) {
+      return
+    }
+    setError('')
+    try {
+      const { data } = reissue
+        ? await api.post(`workers/${editing.id}/badge/`)
+        : await api.get(`workers/${editing.id}/badge/`)
+      await printBadge(data)
+    } catch (e) {
+      setError(errorText(e))
     }
   }
 
@@ -213,6 +232,22 @@ export default function WorkersPage() {
               </option>
             ))}
           </Select>
+          {isEdit && editing.is_active ? (
+            <div className="rounded-md border border-zinc-800 p-3">
+              <p className="text-xs font-medium text-zinc-300">QR identity badge</p>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Cameras attribute alerts to this worker when the badge is readable on them.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Button type="button" variant="secondary" size="sm" onClick={() => badgeAction(false)}>
+                  Print badge
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => badgeAction(true)}>
+                  Reissue badge
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <p className="text-[11px] text-zinc-500">
             Only unassigned vests are listed. Register new vests on the Vest Management page.
             Deactivating a worker releases their vest and keeps their incident history.

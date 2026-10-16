@@ -28,7 +28,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-07 | Warn when a worker is too close to a vehicle | M | Calibrated distance threshold; video evaluation | `ai-module/proximity.py` | `alerts/test_proximity.py` (9) | Tested |
 | FR-08 | Detect prolonged inactivity; timeout configurable from the dashboard | M | Changing the INACTIVITY rule changes the camera timeout within 60 s | `ai-module/inactivity.py`, `CameraRules` | `alerts/test_inactivity.py` (10), `test_inference_config.py` | Tested |
 | FR-09 | Fire/smoke detection with hot-work permit suppression | M | Licensed fixture videos pass; a permitted hot-work fire is downgraded, not dropped | — | — | Missing |
-| FR-10 | QR worker identification linking camera events to a worker | M | Measured correct-association rate at a defined size, distance and lighting | — | — | Missing |
+| FR-10 | QR worker identification linking camera events to a worker | M | Correct-association, unknown and wrong-person rates measured at a stated size, distance, angle and lighting | `ai-module/identity.py`, `group_violations` in `inference.py`, `Worker.badge_code`, `/workers/{id}/badge/`, `frontend/src/lib/badge.js` | `test_identity.py` (14, including real OpenCV QR encode→decode); `workers/tests.py` Badge/CameraBadgeIdentity (7); e2e 16 Oct (synthetic frame: badge decoded → alert attributed to Ali; second person unidentified) | Integrated (synthetic frames only; **physical camera test pending**) |
 | FR-11 | Camera events reach the API reliably | M | 100 events queued in a 5-minute outage arrive exactly once after recovery | `ai-module/event_outbox.py`, `CameraEventView` | `test_event_outbox.py` (8), `alerts/test_ingest.py`; e2e 16 Oct (3 queued while API down → 2 stored, 1 dead-lettered for wrong camera) | Integrated (small fixture) |
 | FR-12 | Only authorised devices can submit data | M | Anonymous, revoked, wrong-kind or wrong-camera tokens are rejected | `accounts/service_auth.py` | `alerts/test_ingest.py` | Tested |
 | FR-13 | Live dashboard updates for every alert/vest/worker change | M | Two sessions converge after create, resolve, SOS and reconnect | `alerts/events.py`, signals, `WebSocketContext.jsx` | `alerts/test_realtime.py`; e2e 16 Oct (two clients each got created, created, resolved); browser check (live FALL appears, resolve removes it) | Integrated |
@@ -45,7 +45,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-24 | Worker activity history (check-in/out, idle, zone transitions) | M | Generated automatically and reconciled with annotated scenarios | `workers/` (GPS zone enter/exit automatic; check-in/out, idle manual) | `workers/tests.py` | Coded (partial) |
 | FR-25 | Incident list, detail, resolve, CSV export | M | Resolve is broadcast; filters include every type | `frontend/src/components/incidents/` | FALL filter added 16 Oct; resolve broadcast covered by FR-13 | Coded |
 | FR-26 | Dashboard KPIs and charts reflect recorded data only | M | Every displayed number reconciles to the API; nothing fabricated | `DashboardStatsView`, `KpiStrip.jsx`, `DashboardCharts.jsx`, `WorkerStatusGrid.jsx` | `workers/tests.py` DashboardStatsTests (3); browser check 16 Oct | Integrated |
-| FR-27 | Incident and compliance reports in DOCX and PDF | M | Fixtures reconcile exactly; PDF is produced | `report-service/`, `reports/` | — | Coded (DOCX only) |
+| FR-27 | Incident and safety-performance reports in DOCX and PDF | M | Fixtures reconcile exactly; PDF produced; no unsupported percentages; period in the user's time zone | `report-service/lib/*`, `templates/*`, `backend/reports/` | `report-service/test` (12); `reports/tests.py` (6); e2e 16 Oct (both types, both formats via API → service; PDF inspected) | Integrated |
 | FR-28 | Mobile app: login, alerts, resolve, push | M | An Android build receives a push and resolves an incident | — | — | Missing |
 | FR-29 | Alert evidence (snapshot, confidence, model version) | S | Each AI incident is traceable to its frame and model | `Alert.confidence`, `Alert.snapshot` field | — | Coded (confidence only) |
 
@@ -59,7 +59,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | — | Not measured |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | — | Not run |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend + AI tests pass; frontend build passes, lint clean | 120 + 22 pass; build OK; lint clean (16 Oct) | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | 134 + 35 + 12 pass; build OK; lint clean (16 Oct) | Met |
 
 ## Progress ledger
 
@@ -131,4 +131,34 @@ Known defects / limitations:
 Human inputs still needed: real site coordinates for zones; supervisor view on the
   "mean time to resolve" KPI replacing the unsupported compliance %
 Next independent task: Stage 3 (dataset remediation / retraining) or Stage 4 (QR, PDF reports)
+```
+
+```text
+Phase / task IDs: Stage 4 part 1 (QR worker identification; PDF reports with defined metrics)
+Status: tested; integration-checked on a throwaway SQLite database; QR not tested with a physical camera
+Requirement IDs covered: FR-10, FR-27 (and zone attribution for FR-20 alerts)
+Commit / working-tree reference: uncommitted, branch stage-0-1-security-events, 16 Oct 2026
+Files changed and migration notes:
+  backend: Worker.badge_code (migration workers 0006 gives each existing worker its own
+  random code), badge endpoint, camera events accept badge_code, alert zone_name falls back
+  to the zone containing the alert's GPS location, alert/activity ?start_date/?end_date/?tz
+  local-day filtering, reports: file_format (migration reports 0002), report stored before
+  being returned, upstream errors relayed, content type verified; reports/__init__.py
+  added (its tests were not being discovered); dead docx_builder.py removed
+  ai-module: identity.py (OpenCV QR decoding, person association, ambiguity rules),
+  per-person PPE grouping and cooldown, badge on fall/inactivity events, --no-qr
+  report-service: metrics.js (no compliance %), shared document model rendered by
+  render-docx.js and render-pdf.js (pdfkit 0.20.2), server-side period filtering, pagination
+  following, CORS removed (service is called only by the backend), node:test suite
+  frontend: Print / Reissue badge (qrcode 1.5.4), report format selector, local-date defaults
+Tests run (16 Oct 2026): backend 134 OK; ai-module 35 OK; report-service 12 OK; frontend lint
+  clean, build OK; e2e: real QR decode → outbox → API attribution; reports in both formats
+Known defects / limitations:
+  - QR reading range, angle and lighting are not yet measured; small or distant badges will
+    not decode at the default detector input size.
+  - Identity uses box overlap between samples; crossing people can swap tracks.
+  - The incident log is capped at 1000 rows per report (the report states this).
+Human inputs still needed: print badges and record a physical QR test (distance and lighting);
+  supervisor sign-off on replacing the compliance % with the defined metrics
+Next independent task: Stage 4 part 2 — mobile app (React Native) — or Stage 3 dataset work
 ```

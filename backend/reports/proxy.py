@@ -1,14 +1,22 @@
-import io
 import re
 
 import requests
 from django.conf import settings
 from django.core.files.base import ContentFile
-from django.http import StreamingHttpResponse
+from django.http import HttpResponse
 
 from .models import Report
 
-DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+CONTENT_TYPES = {
+    Report.Format.DOCX: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    Report.Format.PDF: "application/pdf",
+}
+# Generated reports are small; anything larger indicates a fault upstream.
+MAX_REPORT_BYTES = 50 * 1024 * 1024
+
+
+def content_type_for(file_format):
+    return CONTENT_TYPES.get(file_format, "application/octet-stream")
 
 
 def extract_bearer_token(request):
@@ -26,10 +34,21 @@ def parse_filename(content_disposition, fallback):
     return match.group(1) if match else fallback
 
 
-def proxy_generate_report(request, report_type, date_from, date_to):
+def _error_body(upstream):
+    try:
+        return upstream.json()
+    except ValueError:
+        return {"detail": (upstream.text or "Report service error.")[:1000]}
+
+
+def proxy_generate_report(request, report_type, date_from, date_to, file_format, tz=""):
     """
-    Forward report generation to the Node report-service and stream the .docx
-    response back to the client. Returns (response, error_body, status_code).
+    Ask the Node report service for a document, store it, then return it.
+
+    The whole document is received and saved before anything is sent to the
+    browser, so report history is complete even if the download is
+    interrupted, and a failed or truncated generation is never recorded.
+    Returns (response, error_body, status_code).
     """
     api_token = extract_bearer_token(request)
     if not api_token:
@@ -39,6 +58,8 @@ def proxy_generate_report(request, report_type, date_from, date_to):
         "report_type": report_type,
         "date_from": date_from.isoformat(),
         "date_to": date_to.isoformat(),
+        "format": file_format,
+        "tz": tz,
         "api_token": api_token,
     }
 
@@ -46,44 +67,35 @@ def proxy_generate_report(request, report_type, date_from, date_to):
         upstream = requests.post(
             settings.REPORT_SERVICE_URL,
             json=payload,
-            stream=True,
             timeout=settings.REPORT_SERVICE_TIMEOUT,
         )
     except requests.RequestException as exc:
         return None, {"detail": f"Report service unavailable: {exc}"}, 502
 
     if upstream.status_code != 200:
-        upstream.close()
-        try:
-            error_body = upstream.json()
-        except ValueError:
-            error_body = {"detail": upstream.text or "Report service error."}
         status_code = upstream.status_code if 400 <= upstream.status_code < 600 else 502
-        return None, error_body, status_code
+        return None, _error_body(upstream), status_code
 
-    fallback_name = f"{report_type.lower()}_report_{date_from}_{date_to}.docx"
+    content = upstream.content
+    expected = content_type_for(file_format)
+    if not content or len(content) > MAX_REPORT_BYTES:
+        return None, {"detail": "Report service returned an empty or oversized document."}, 502
+    if upstream.headers.get("Content-Type", "").split(";")[0] != expected:
+        return None, {"detail": "Report service returned an unexpected document type."}, 502
+
+    extension = file_format.lower()
+    fallback_name = f"{report_type.lower()}_report_{date_from}_{date_to}.{extension}"
     filename = parse_filename(upstream.headers.get("Content-Disposition"), fallback_name)
-    content_type = upstream.headers.get("Content-Type", DOCX_CONTENT_TYPE)
 
-    def streaming_content():
-        collected = io.BytesIO()
-        try:
-            for chunk in upstream.iter_content(chunk_size=8192):
-                if chunk:
-                    collected.write(chunk)
-                    yield chunk
-        finally:
-            upstream.close()
+    report = Report(
+        report_type=report_type,
+        file_format=file_format,
+        date_from=date_from,
+        date_to=date_to,
+        created_by=request.user,
+    )
+    report.file.save(filename, ContentFile(content), save=True)
 
-        collected.seek(0)
-        report = Report(
-            report_type=report_type,
-            date_from=date_from,
-            date_to=date_to,
-            created_by=request.user,
-        )
-        report.file.save(filename, ContentFile(collected.read()), save=True)
-
-    response = StreamingHttpResponse(streaming_content(), content_type=content_type)
+    response = HttpResponse(content, content_type=expected)
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response, None, 200

@@ -1,104 +1,101 @@
-const { Document } = require('docx')
-const {
-  bodyText,
-  bulletItem,
-  dataTable,
-  formatDate,
-  formatLabel,
-  sectionHeading,
-  titlePage,
-} = require('./shared')
+const { ALERT_TYPES, SEVERITIES, computeIncidentMetrics } = require('../lib/metrics')
+const { formatDate, formatDuration, formatLabel, plural, was } = require('../lib/format')
 
-function countByField(items, field) {
-  return items.reduce((acc, item) => {
-    const key = item[field] ?? 'UNKNOWN'
-    acc[key] = (acc[key] ?? 0) + 1
-    return acc
-  }, {})
-}
+// A report never silently drops rows: beyond this the log is cut and the
+// report says so.
+const MAX_LOG_ROWS = 1000
 
-function severityChartDescription(bySeverity, total) {
-  if (total === 0) {
-    return 'No incidents were recorded during this reporting period.'
+function buildIncidentReport({ alerts, dateFrom, dateTo, tz, generatedAt = new Date() }) {
+  const m = computeIncidentMetrics({ alerts, tz })
+  const shown = m.log.slice(0, MAX_LOG_ROWS)
+
+  return {
+    title: 'Site-Safe Incident Report',
+    subtitle: 'Safety incidents recorded in the reporting period',
+    meta: [
+      `Reporting period: ${dateFrom} to ${dateTo} (${tz || 'UTC'})`,
+      `Generated: ${formatDate(generatedAt.toISOString(), tz)}`,
+    ],
+    sections: [
+      {
+        heading: 'Summary',
+        blocks: [
+          {
+            type: 'p',
+            text:
+              m.total === 0
+                ? 'No incidents were recorded from cameras or vests in this period.'
+                : `${plural(m.total, 'incident')} ${was(m.total)} recorded from cameras and vests: ${m.open} open and ${m.resolved} resolved, ${m.critical} of critical severity. ${m.identified} ${was(m.identified)} attributed to an identified worker.`,
+          },
+          ...(m.simulated
+            ? [
+                {
+                  type: 'p',
+                  text: `${plural(m.simulated, 'simulated test alert')} also ${m.simulated === 1 ? 'exists' : 'exist'} in this period. They are listed in the log but excluded from every figure.`,
+                },
+              ]
+            : []),
+          {
+            type: 'table',
+            headers: ['Measure', 'Value'],
+            widths: [3, 2],
+            rows: [
+              ['Incidents (excluding simulated)', String(m.total)],
+              ['Open', String(m.open)],
+              ['Resolved', String(m.resolved)],
+              ['Median time to resolve', formatDuration(m.resolution.medianMinutes)],
+              ['90th percentile time to resolve', formatDuration(m.resolution.p90Minutes)],
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Incidents by Type and Severity',
+        blocks: [
+          {
+            type: 'table',
+            headers: ['Type', 'Count'],
+            widths: [3, 1],
+            rows: ALERT_TYPES.map((t) => [formatLabel(t), String(m.byType[t] ?? 0)]),
+          },
+          {
+            type: 'table',
+            headers: ['Severity', 'Count'],
+            widths: [3, 1],
+            rows: SEVERITIES.map((s) => [formatLabel(s), String(m.bySeverity[s] ?? 0)]),
+          },
+        ],
+      },
+      {
+        heading: 'Incident Log',
+        blocks: [
+          {
+            type: 'p',
+            text:
+              m.log.length > MAX_LOG_ROWS
+                ? `Showing the ${MAX_LOG_ROWS} most recent of ${m.log.length} entries; narrow the period for the full list.`
+                : `All ${plural(m.log.length, 'entry')}, newest first. Times are in ${tz || 'UTC'}.`,
+          },
+          {
+            type: 'table',
+            headers: ['Time', 'Type', 'Severity', 'Worker', 'Camera / Source', 'Status', 'Description'],
+            widths: [1.6, 1.3, 0.9, 1.2, 1.2, 0.8, 2.6],
+            rows: shown.length
+              ? shown.map((a) => [
+                  formatDate(a.timestamp, tz),
+                  formatLabel(a.alert_type),
+                  formatLabel(a.severity),
+                  a.worker_name || 'Not identified',
+                  a.source === 'SIMULATED' ? 'Simulated' : a.camera_id || formatLabel(a.source),
+                  a.is_resolved ? 'Resolved' : 'Open',
+                  a.description ? String(a.description).slice(0, 160) : '—',
+                ])
+              : [['—', '—', '—', '—', '—', '—', 'No incidents in period']],
+          },
+        ],
+      },
+    ],
   }
-
-  const order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
-  const parts = order
-    .filter((level) => bySeverity[level])
-    .map((level) => {
-      const count = bySeverity[level]
-      const pct = ((count / total) * 100).toFixed(1)
-      const barLength = Math.max(1, Math.round((count / total) * 20))
-      const bar = '█'.repeat(barLength)
-      return `${formatLabel(level)}: ${count} (${pct}%) ${bar}`
-    })
-
-  return [
-    'Severity distribution (text representation of chart data):',
-    ...parts,
-    `Total incidents analysed: ${total}.`,
-  ].join('\n')
 }
 
-function buildIncidentReport({ alerts, dateFrom, dateTo }) {
-  const total = alerts.length
-  const unresolved = alerts.filter((alert) => !alert.is_resolved).length
-  const resolved = total - unresolved
-  const critical = alerts.filter((alert) => alert.severity === 'CRITICAL').length
-  const byType = countByField(alerts, 'alert_type')
-  const bySeverity = countByField(alerts, 'severity')
-  const bySource = countByField(alerts, 'source')
-
-  const tableRows = alerts.slice(0, 500).map((alert) => [
-    formatDate(alert.timestamp),
-    formatLabel(alert.alert_type),
-    alert.severity ?? '—',
-    alert.worker_name ?? '—',
-    formatLabel(alert.source),
-    alert.is_resolved ? 'Resolved' : 'Open',
-    alert.description ? String(alert.description).slice(0, 80) : '—',
-  ])
-
-  const children = [
-    ...titlePage('Site-Safe Incident Report', 'Safety Incident Analysis', [
-      `Reporting period: ${dateFrom} to ${dateTo}`,
-      `Generated: ${new Date().toLocaleString()}`,
-      'Confidential — Internal Use Only',
-    ]),
-    sectionHeading('Executive Summary'),
-    bodyText(
-      `This report summarises ${total} safety incident${total === 1 ? '' : 's'} recorded between ${dateFrom} and ${dateTo}.`,
-    ),
-    bulletItem(`Total incidents: ${total}`),
-    bulletItem(`Open incidents: ${unresolved}`),
-    bulletItem(`Resolved incidents: ${resolved}`),
-    bulletItem(`Critical severity incidents: ${critical}`),
-    bulletItem(`Resolution rate: ${total ? ((resolved / total) * 100).toFixed(1) : '100.0'}%`),
-
-    sectionHeading('Incidents by Type'),
-    ...Object.entries(byType).map(([type, count]) => bulletItem(`${formatLabel(type)}: ${count}`)),
-
-    sectionHeading('Incidents by Source'),
-    ...Object.entries(bySource).map(([source, count]) => bulletItem(`${formatLabel(source)}: ${count}`)),
-
-    sectionHeading('Incident Log'),
-    bodyText('Detailed listing of all incidents within the reporting period (most recent first).'),
-    dataTable(
-      ['Timestamp', 'Type', 'Severity', 'Worker', 'Source', 'Status', 'Description'],
-      tableRows.length ? tableRows : [['—', '—', '—', '—', '—', '—', 'No incidents in period']],
-      [1800, 1200, 900, 1200, 1100, 900, 1900],
-    ),
-
-    sectionHeading('Severity Breakdown'),
-    bodyText(severityChartDescription(bySeverity, total)),
-    ...Object.entries(bySeverity).map(([severity, count]) =>
-      bulletItem(`${formatLabel(severity)}: ${count} incident${count === 1 ? '' : 's'}`),
-    ),
-  ]
-
-  return new Document({
-    sections: [{ properties: {}, children }],
-  })
-}
-
-module.exports = { buildIncidentReport }
+module.exports = { buildIncidentReport, MAX_LOG_ROWS }

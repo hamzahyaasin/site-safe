@@ -181,6 +181,12 @@ class ZoneBreachTests(TestCase):
         SmartVest.objects.filter(vest_id="V-1").update(last_seen=timezone.now() - timedelta(hours=1))
         self.assertEqual(observed_occupancy(self.site.pk), 0)
 
+    def test_breach_alert_reports_zone_where_it_happened(self):
+        apply_vest_telemetry("V-1", {"latitude": 0.5, "longitude": 0.5})
+        from alerts.serializers import AlertSerializer
+
+        self.assertEqual(AlertSerializer(self.breaches().get()).data["zone_name"], "Crane")
+
     def test_zone_api_shows_assigned_and_observed(self):
         apply_vest_telemetry("V-1", {"latitude": 0.1, "longitude": 0.1})
         from rest_framework.test import APIClient
@@ -230,3 +236,79 @@ class DashboardStatsTests(APITestCase):
     def test_bad_timezone_falls_back(self):
         r = self.client.get("/api/dashboard/stats/", {"tz": "Not/AZone"})
         self.assertEqual(r.data["timezone"], "UTC")
+
+
+class BadgeTests(APITestCase):
+    def setUp(self):
+        self.officer = officer()
+        self.worker = Worker.objects.create(name="Ali", role="Rigger")
+
+    def test_each_worker_gets_unique_code(self):
+        other = Worker.objects.create(name="Sara")
+        self.assertTrue(self.worker.badge_code)
+        self.assertNotEqual(self.worker.badge_code, other.badge_code)
+
+    def test_badge_payload_requires_officer(self):
+        viewer = User.objects.create_user(email="v@x.io", password="pw12345678")
+        viewer.role = Role.VIEWER
+        viewer.save()
+        self.client.force_authenticate(viewer)
+        self.assertEqual(self.client.get(f"/api/workers/{self.worker.id}/badge/").status_code, 403)
+        listing = self.client.get("/api/workers/").data[0]
+        self.assertNotIn("badge_code", listing)
+        self.client.force_authenticate(self.officer)
+        r = self.client.get(f"/api/workers/{self.worker.id}/badge/")
+        self.assertEqual(r.data["payload"], f"SSW1:{self.worker.badge_code}")
+
+    def test_reissue_revokes_old_code(self):
+        self.client.force_authenticate(self.officer)
+        old = self.worker.badge_payload
+        new = self.client.post(f"/api/workers/{self.worker.id}/badge/").data["payload"]
+        self.assertNotEqual(old, new)
+        self.assertIsNone(Worker.from_badge(old))
+        self.assertEqual(Worker.from_badge(new), self.worker)
+
+    def test_deactivated_worker_badge_not_recognised(self):
+        self.worker.is_active = False
+        self.worker.save()
+        self.assertIsNone(Worker.from_badge(self.worker.badge_payload))
+
+
+class CameraBadgeIdentityTests(APITestCase):
+    def setUp(self):
+        _, key = ServiceToken.issue("cam", ServiceToken.Kind.CAMERA)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Device {key}")
+        self.worker = Worker.objects.create(name="Ali")
+
+    def post(self, badge):
+        import uuid
+
+        return self.client.post(
+            "/api/v1/camera-events/",
+            {
+                "event_id": str(uuid.uuid4()),
+                "camera_id": "CAM-01",
+                "alert_type": "PPE_VIOLATION",
+                "severity": "HIGH",
+                "description": "Missing PPE: no-helmet",
+                "badge_code": badge,
+            },
+            format="json",
+        )
+
+    def test_known_badge_attributes_worker(self):
+        r = self.post(self.worker.badge_payload)
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.data["worker"], self.worker.id)
+        self.assertIn("identified by QR badge", r.data["description"])
+
+    def test_unknown_badge_stays_unidentified(self):
+        r = self.post("SSW1:not-a-real-code")
+        self.assertEqual(r.status_code, 201)
+        self.assertIsNone(r.data["worker"])
+        self.assertIn("not recognised", r.data["description"])
+
+    def test_no_badge(self):
+        r = self.post("")
+        self.assertIsNone(r.data["worker"])
+        self.assertNotIn("badge", r.data["description"])

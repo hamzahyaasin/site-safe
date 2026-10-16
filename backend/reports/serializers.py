@@ -7,6 +7,19 @@ class ReportGenerateSerializer(serializers.Serializer):
     report_type = serializers.ChoiceField(choices=Report.ReportType.choices)
     date_from = serializers.DateField()
     date_to = serializers.DateField()
+    file_format = serializers.ChoiceField(choices=Report.Format.choices, default=Report.Format.DOCX)
+    tz = serializers.CharField(required=False, allow_blank=True, default="", max_length=64)
+
+    def validate_tz(self, value):
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        if not value:
+            return ""
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise serializers.ValidationError("Unknown time zone.") from exc
+        return value
 
     def validate(self, attrs):
         if attrs["date_from"] > attrs["date_to"]:
@@ -25,6 +38,7 @@ class ReportSerializer(serializers.ModelSerializer):
             "id",
             "report_type",
             "report_type_label",
+            "file_format",
             "date_from",
             "date_to",
             "filename",

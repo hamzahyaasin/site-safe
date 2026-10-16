@@ -3,7 +3,7 @@ import Button from '../components/ui/Button.jsx'
 import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card.jsx'
 import DataTable from '../components/ui/DataTable.jsx'
 import Input from '../components/ui/Input.jsx'
-import { cn } from '../lib/utils.js'
+import { browserTimeZone, cn } from '../lib/utils.js'
 import { useReports } from '../hooks/useReports.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -11,18 +11,28 @@ const REPORT_TYPES = [
   { id: 'INCIDENT', label: 'Incident Report', description: 'All alerts and incidents in the selected period' },
   {
     id: 'COMPLIANCE',
-    label: 'Compliance Report',
-    description: 'Worker activity, PPE compliance, and resolution summary',
+    label: 'Safety Performance Report',
+    description: 'Incidents, PPE violations, violation-free days and response time by zone',
   },
 ]
+
+const FORMATS = [
+  { id: 'PDF', label: 'PDF' },
+  { id: 'DOCX', label: 'Word (.docx)' },
+]
+
+function localIsoDate(d) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 
 function defaultDateRange() {
   const dateTo = new Date()
   const dateFrom = new Date()
   dateFrom.setDate(dateFrom.getDate() - 30)
   return {
-    date_from: dateFrom.toISOString().slice(0, 10),
-    date_to: dateTo.toISOString().slice(0, 10),
+    date_from: localIsoDate(dateFrom),
+    date_to: localIsoDate(dateTo),
   }
 }
 
@@ -56,6 +66,7 @@ function ReportsWorkspace() {
   const { reports, loading, generating, error, generateReport, downloadReport } = useReports()
   const [reportType, setReportType] = useState('INCIDENT')
   const [{ date_from, date_to }, setDateRange] = useState(defaultDateRange)
+  const [fileFormat, setFileFormat] = useState('PDF')
   const [formError, setFormError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
@@ -70,7 +81,13 @@ function ReportsWorkspace() {
     }
 
     try {
-      const filename = await generateReport({ report_type: reportType, date_from, date_to })
+      const filename = await generateReport({
+        report_type: reportType,
+        date_from,
+        date_to,
+        file_format: fileFormat,
+        tz: browserTimeZone(),
+      })
       setSuccessMsg(`Report generated: ${filename}`)
     } catch (err) {
       setFormError(err.message || 'Failed to generate report')
@@ -80,6 +97,7 @@ function ReportsWorkspace() {
   const columns = [
     { key: 'created_at', header: 'Generated', render: (row) => formatDate(row.created_at) },
     { key: 'type', header: 'Type', render: (row) => row.report_type_label || row.report_type },
+    { key: 'format', header: 'Format', render: (row) => row.file_format || 'DOCX' },
     {
       key: 'period',
       header: 'Period',
@@ -160,6 +178,27 @@ function ReportsWorkspace() {
                 required
               />
             </div>
+
+            <fieldset>
+              <legend className="mb-2 text-xs font-medium text-zinc-400">Format</legend>
+              <div className="flex gap-4">
+                {FORMATS.map((f) => (
+                  <label key={f.id} className="flex items-center gap-2 text-sm text-zinc-300">
+                    <input
+                      type="radio"
+                      name="file_format"
+                      value={f.id}
+                      checked={fileFormat === f.id}
+                      onChange={() => setFileFormat(f.id)}
+                    />
+                    {f.label}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Days run midnight to midnight in your time zone ({browserTimeZone() || 'UTC'}).
+              </p>
+            </fieldset>
 
             {formError ? (
               <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">

@@ -116,37 +116,6 @@ function dataTable(headers, rows, columnWidths) {
   })
 }
 
-function formatDate(iso) {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return String(iso)
-  }
-}
-
-function formatLabel(value) {
-  return String(value ?? '—').replace(/_/g, ' ')
-}
-
-function filterByDateRange(items, dateFrom, dateTo, field = 'timestamp') {
-  const start = new Date(`${dateFrom}T00:00:00`)
-  const end = new Date(`${dateTo}T23:59:59.999`)
-
-  return items.filter((item) => {
-    const raw = item[field]
-    if (!raw) return false
-    const date = new Date(raw)
-    return date >= start && date <= end
-  })
-}
-
 module.exports = {
   FONT,
   SIZE,
@@ -157,7 +126,4 @@ module.exports = {
   bodyText,
   bulletItem,
   dataTable,
-  formatDate,
-  formatLabel,
-  filterByDateRange,
 }

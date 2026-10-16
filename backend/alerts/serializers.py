@@ -59,10 +59,20 @@ class AlertSerializer(serializers.ModelSerializer):
         return obj.worker.vest_id if obj.worker_id else None
 
     def get_zone_name(self, obj):
-        if not obj.camera_id:
-            return None
-        zone = Zone.objects.for_camera(obj.camera_id).first()
-        return zone.name if zone else None
+        """Where the alert happened: the camera's zone, else the zone that
+        contains its GPS location. Never the worker's assigned zone."""
+        if obj.camera_id:
+            zone = Zone.objects.for_camera(obj.camera_id).first()
+            if zone:
+                return zone.name
+        loc = obj.location or {}
+        if loc.get("lat") is not None and loc.get("lng") is not None:
+            from sitemap.geofence import zone_at
+
+            zones = self.context.setdefault("_active_zones", list(Zone.objects.filter(is_active=True)))
+            zone = zone_at(zones, loc["lat"], loc["lng"])
+            return zone.name if zone else None
+        return None
 
     def create(self, validated_data):
         validated_data.setdefault("source", AlertSource.AI_CAMERA)
@@ -106,6 +116,10 @@ class CameraEventSerializer(serializers.Serializer):
     severity = serializers.ChoiceField(choices=Severity.choices)
     description = serializers.CharField(required=False, allow_blank=True, default="", max_length=1000)
     confidence = serializers.FloatField(required=False, allow_null=True, default=None)
+    # Decoded from a worker's QR badge by the camera, when one was readable
+    # on the person the event concerns. Unknown or revoked codes are stored
+    # as unidentified, never matched approximately.
+    badge_code = serializers.CharField(required=False, allow_blank=True, default="", max_length=64)
 
     def validate_camera_id(self, value):
         value = value.strip()

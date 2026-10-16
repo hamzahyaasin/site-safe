@@ -5,7 +5,7 @@ from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 
-from accounts.permissions import ReadOnlyOrSafetyOfficer
+from accounts.permissions import IsSafetyOfficer, ReadOnlyOrSafetyOfficer
 from accounts.service_auth import IsVestGateway
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -24,18 +24,6 @@ def _day_bounds(day):
     start = timezone.make_aware(datetime.combine(day, time.min))
     end = timezone.make_aware(datetime.combine(day, time.max))
     return start, end
-
-
-def _filter_by_date_range(qs, param_prefix, start_date, end_date):
-    if start_date:
-        day = parse_date(start_date)
-        if day:
-            qs = qs.filter(**{f"{param_prefix}__gte": _day_bounds(day)[0]})
-    if end_date:
-        day = parse_date(end_date)
-        if day:
-            qs = qs.filter(**{f"{param_prefix}__lte": _day_bounds(day)[1]})
-    return qs
 
 
 def compute_activity_summary(worker_id, day):
@@ -86,6 +74,23 @@ class WorkerViewSet(viewsets.ModelViewSet):
     serializer_class = WorkerSerializer
     permission_classes = [ReadOnlyOrSafetyOfficer]
 
+    @action(detail=True, methods=["get", "post"], permission_classes=[IsSafetyOfficer])
+    def badge(self, request, pk=None):
+        """GET the QR badge payload to print; POST to reissue it, which
+        revokes every previously printed badge for this worker."""
+        worker = self.get_object()
+        if request.method == "POST":
+            worker.reissue_badge()
+        return Response(
+            {
+                "worker": worker.pk,
+                "name": worker.name,
+                "role": worker.role,
+                "payload": worker.badge_payload,
+                "is_active": worker.is_active,
+            }
+        )
+
 
 class SmartVestViewSet(viewsets.ModelViewSet):
     queryset = SmartVest.objects.select_related("worker").all()
@@ -101,15 +106,12 @@ class ActivityLogViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        from alerts.views import filter_local_dates
+
         worker_id = self.request.query_params.get("worker_id")
         if worker_id:
             qs = qs.filter(worker_id=worker_id)
-        return _filter_by_date_range(
-            qs,
-            "timestamp",
-            self.request.query_params.get("start_date"),
-            self.request.query_params.get("end_date"),
-        )
+        return filter_local_dates(qs, "timestamp", self.request)
 
     @action(detail=False, methods=["get"])
     def summary(self, request):

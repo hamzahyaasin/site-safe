@@ -25,6 +25,24 @@ from .serializers import (
 )
 
 
+def filter_local_dates(qs, field, request):
+    """Apply ?start_date= / ?end_date= (YYYY-MM-DD, inclusive) as whole days in ?tz=.
+
+    Report periods are chosen as calendar days by the user, so the bounds
+    must be that user's midnight, not the server's.
+    """
+    from datetime import timedelta
+
+    tz = _request_timezone(request)
+    start = parse_date(request.query_params.get("start_date") or "")
+    end = parse_date(request.query_params.get("end_date") or "")
+    if start:
+        qs = qs.filter(**{f"{field}__gte": datetime.combine(start, time.min, tzinfo=tz)})
+    if end:
+        qs = qs.filter(**{f"{field}__lt": datetime.combine(end + timedelta(days=1), time.min, tzinfo=tz)})
+    return qs
+
+
 def _request_timezone(request):
     """IANA zone from ?tz= (the browser's), else the server's TIME_ZONE."""
     from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -172,7 +190,7 @@ class AlertViewSet(
         severity = self.request.query_params.get("severity")
         if severity:
             qs = qs.filter(severity=severity)
-        return qs
+        return filter_local_dates(qs, "timestamp", self.request)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -253,14 +271,24 @@ class CameraEventView(APIView):
         if existing:
             return Response(AlertSerializer(existing).data, status=status.HTTP_200_OK)
 
+        description = data["description"]
+        worker = None
+        if data["badge_code"]:
+            worker = Worker.from_badge(data["badge_code"])
+            description = (
+                f"{description} (identified by QR badge)"
+                if worker
+                else f"{description} (QR badge not recognised)"
+            )
         alert = Alert(
             alert_type=data["alert_type"],
             severity=data["severity"],
             source=AlertSource.AI_CAMERA,
-            description=data["description"],
+            description=description,
             camera_id=data["camera_id"],
             confidence=data["confidence"],
             event_id=data["event_id"],
+            worker=worker,
         )
         rule = rule_for_alert(alert)
         if not rule.is_enabled:

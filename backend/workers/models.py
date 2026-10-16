@@ -1,4 +1,15 @@
+import secrets
+
 from django.db import models
+
+# Printed on worker QR badges as "SSW1:<code>". The code is random and
+# carries no personal data; reissuing a badge replaces it, which revokes
+# the old printout.
+BADGE_PREFIX = "SSW1:"
+
+
+def new_badge_code():
+    return secrets.token_urlsafe(9)
 
 
 class Worker(models.Model):
@@ -16,6 +27,12 @@ class Worker(models.Model):
     )
     role = models.CharField(max_length=50, blank=True, default="")
     phone = models.CharField(max_length=20, blank=True, default="")
+    badge_code = models.CharField(
+        max_length=32,
+        unique=True,
+        default=new_badge_code,
+        help_text="Random identifier encoded in the worker's QR badge",
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -24,6 +41,22 @@ class Worker(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def badge_payload(self):
+        return f"{BADGE_PREFIX}{self.badge_code}"
+
+    def reissue_badge(self):
+        self.badge_code = new_badge_code()
+        self.save(update_fields=["badge_code"])
+
+    @classmethod
+    def from_badge(cls, value):
+        """Active worker for a badge code or full ``SSW1:`` payload, else None."""
+        if not value:
+            return None
+        code = value[len(BADGE_PREFIX):] if value.startswith(BADGE_PREFIX) else value
+        return cls.objects.filter(badge_code=code, is_active=True).first()
 
     @property
     def vest_id(self):

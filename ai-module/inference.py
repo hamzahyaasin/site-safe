@@ -22,6 +22,7 @@ import requests
 from ultralytics import YOLO
 
 import fall_detection
+import identity
 from event_outbox import EventOutbox
 import inactivity
 import proximity
@@ -117,6 +118,44 @@ def api_url(*parts: str) -> str:
     return base + "/" + "/".join(parts)
 
 
+def class_name(names, cid: int) -> str:
+    if isinstance(names, (list, tuple)):
+        raw = names[cid] if cid < len(names) else cid
+    elif isinstance(names, dict):
+        raw = names.get(cid, names.get(str(cid), cid))
+    else:
+        raw = cid
+    return str(raw)
+
+
+def violation_boxes(names, boxes_xyxy, confs, clss) -> list[tuple[str, float, tuple]]:
+    """Every violation detection as (class_name, conf, box), one per box."""
+    out = []
+    for i in range(len(clss)):
+        name = class_name(names, int(clss[i]))
+        if is_violation_class(name):
+            out.append((name, float(confs[i]), tuple(float(v) for v in boxes_xyxy[i].tolist())))
+    return out
+
+
+def group_violations(
+    detections: list[tuple[str, float, tuple]],
+    tracker: identity.IdentityTracker | None,
+) -> dict[tuple[str, str | None], float]:
+    """Collapse detections to one entry per (class, badge), keeping max confidence.
+
+    Identified people are kept apart so two workers missing a helmet raise
+    two alerts; all unidentified detections of a class share one entry, as
+    before identification existed.
+    """
+    grouped: dict[tuple[str, str | None], float] = {}
+    for name, conf, box in detections:
+        badge = tracker.identify_box(box) if tracker else None
+        key = (name, badge)
+        grouped[key] = max(conf, grouped.get(key, 0.0))
+    return grouped
+
+
 def is_violation_class(name: str) -> bool:
     n = name.strip().lower()
     return n.startswith("no-") or n.startswith("no_")
@@ -204,14 +243,25 @@ class CameraRules:
         self._stop.set()
 
 
-def ppe_payload(violation_label: str, confidence: float, camera_id: str) -> dict:
-    return {
+def ppe_payload(
+    violation_label: str, confidence: float, camera_id: str, badge: str | None = None
+) -> dict:
+    payload = {
         "alert_type": "PPE_VIOLATION",
         "severity": "HIGH",
         "description": f"Missing PPE: {violation_label} (conf: {confidence:.2f})",
         "camera_id": camera_id,
         "confidence": round(float(confidence), 4),
     }
+    if badge:
+        payload["badge_code"] = badge
+    return payload
+
+
+def with_badge(payload: dict, badge: str | None) -> dict:
+    if badge:
+        payload = {**payload, "badge_code": badge}
+    return payload
 
 
 def proximity_payload(event: dict, camera_id: str) -> dict:
@@ -296,6 +346,26 @@ def draw_poses(
         cv2.putText(
             frame, "FALL", (cx - 24, cy - 32),
             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA,
+        )
+
+
+def draw_identities(frame: np.ndarray, tracker: identity.IdentityTracker | None) -> None:
+    """Label people identified by a QR badge with the badge's last characters."""
+    if tracker is None:
+        return
+    for track in tracker.tracks:
+        if not track.badge:
+            continue
+        x1, y1 = int(track.box[0]), int(track.box[1])
+        cv2.putText(
+            frame,
+            f"ID ..{track.badge[-4:]}",
+            (x1, max(y1 - 22, 30)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 200, 0),
+            1,
+            cv2.LINE_AA,
         )
 
 
@@ -467,6 +537,13 @@ def parse_args() -> argparse.Namespace:
         "Calibrate this per camera resolution and view.",
     )
     parser.add_argument(
+        "--no-qr",
+        action="store_true",
+        help="Disable QR badge identification. When enabled (the default) it "
+        "needs the person detector, so it is also off with both "
+        "--no-proximity and --no-inactivity.",
+    )
+    parser.add_argument(
         "--no-fall",
         action="store_true",
         help="Disable fall detection. Uses its own pose model independent of "
@@ -590,6 +667,19 @@ def main() -> None:
                 file=sys.stderr,
             )
 
+    qr_decoder = None
+    identity_tracker = None
+    if not args.no_qr:
+        if coco_model is not None:
+            qr_decoder = identity.QrDecoder()
+            identity_tracker = identity.IdentityTracker()
+            print(f"[{camera_id}] QR badge identification enabled")
+        else:
+            print(
+                f"[{camera_id}] QR badge identification needs the person detector; disabled",
+                file=sys.stderr,
+            )
+
     print(f"[{camera_id}] opening {'stream' if networked else 'device index'}: {source}")
     cap = cv2.VideoCapture(source)
     if networked:
@@ -661,6 +751,8 @@ def main() -> None:
                     # Same reasoning: paused time must not silently count
                     # toward a collapsed-posture persistence window either.
                     fall_tracker.reset()
+                if identity_tracker is not None:
+                    identity_tracker.reset()
                 print(f"[{'PAUSED' if paused else 'RESUME'}] detection")
             if key == ord("s"):
                 forced = {
@@ -702,11 +794,13 @@ def main() -> None:
             result = results[0]
             names = result.names
             violations: list[tuple[str, float]] = []
+            violation_dets: list[tuple[str, float, tuple]] = []
             if result.boxes is not None and len(result.boxes) > 0:
                 xyxy = result.boxes.xyxy.cpu().numpy()
                 confs = result.boxes.conf.cpu().numpy()
                 clss = result.boxes.cls.cpu().numpy().astype(int)
                 violations = plot_detections(display_frame, names, xyxy, confs, clss)
+                violation_dets = violation_boxes(names, xyxy, confs, clss)
 
             # The shared COCO detector runs on a sampled subset of frames;
             # between samples the previous proximity result is reused for its
@@ -733,6 +827,8 @@ def main() -> None:
                     confirmed_inactivity = inactivity_tracker.update(
                         last_persons, now=t_now
                     )
+                if identity_tracker is not None:
+                    identity_tracker.update(last_persons, qr_decoder.decode(raw_frame), now=t_now)
 
             # The pose model is an independent forward pass with its own
             # sampling interval — it does not share the COCO detector above.
@@ -755,19 +851,24 @@ def main() -> None:
             if pose_model is not None:
                 draw_poses(display_frame, last_poses, confirmed_fall)
 
+            draw_identities(display_frame, identity_tracker)
             draw_status_bar(display_frame, violations, last_proximity_event, bool(confirmed_fall))
             draw_fps(display_frame, fps_smooth)
 
             # Confirmed events go to the durable outbox; a background thread
             # delivers them, so a slow or offline API never stalls capture
             # and an outage does not lose the event.
-            for vname, vconf in violations:
-                last_t = last_alert_time.get(vname, 0.0)
+            # Cooldown is per (violation, badge) so identified workers are
+            # alerted independently of each other and of unidentified people.
+            for (vname, badge), vconf in group_violations(violation_dets, identity_tracker).items():
+                key = f"{vname}|{badge or ''}"
+                last_t = last_alert_time.get(key, 0.0)
                 if time.time() - last_t >= COOLDOWN_SECONDS:
-                    last_alert_time[vname] = time.time()
-                    if queue_event(outbox, rules, ppe_payload(vname, vconf, camera_id)):
+                    last_alert_time[key] = time.time()
+                    if queue_event(outbox, rules, ppe_payload(vname, vconf, camera_id, badge)):
                         alerts_sent += 1
-                        print(f"[ALERT] {vname} detected ({vconf:.2f}) → queued")
+                        who = f" [{badge}]" if badge else ""
+                        print(f"[ALERT] {vname}{who} detected ({vconf:.2f}) → queued")
 
             if confirmed_proximity is not None:
                 last_t = last_alert_time.get("VEHICLE_PROXIMITY", 0.0)
@@ -782,7 +883,8 @@ def main() -> None:
             # movement re-arms it, so a second global cooldown would suppress
             # legitimate simultaneous events from different people.
             for event in confirmed_inactivity:
-                if queue_event(outbox, rules, inactivity.alert_payload(event, camera_id)):
+                badge = identity_tracker.identify_box(event["person_box"]) if identity_tracker else None
+                if queue_event(outbox, rules, with_badge(inactivity.alert_payload(event, camera_id), badge)):
                     alerts_sent += 1
                     inactivity_alerts_sent += 1
                     print(f"[ALERT] {inactivity.describe(event)} → queued")
@@ -790,7 +892,8 @@ def main() -> None:
             # Same reasoning as inactivity above: FallTracker latches per
             # track, so no additional cooldown is applied here.
             for event in confirmed_fall:
-                if queue_event(outbox, rules, fall_detection.alert_payload(event, camera_id)):
+                badge = identity_tracker.identify(event["centroid"]) if identity_tracker else None
+                if queue_event(outbox, rules, with_badge(fall_detection.alert_payload(event, camera_id), badge)):
                     alerts_sent += 1
                     fall_alerts_sent += 1
                     print(f"[ALERT] {fall_detection.describe(event)} → queued")

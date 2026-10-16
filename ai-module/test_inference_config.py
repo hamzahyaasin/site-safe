@@ -40,7 +40,9 @@ class InferenceConfigurationTests(unittest.TestCase):
 
 class CameraRulesTests(unittest.TestCase):
     def test_no_credentials_in_source(self):
-        source = open(inference.__file__).read()
+        from pathlib import Path
+
+        source = Path(inference.__file__).read_text()
         self.assertNotIn("ADMIN_PASSWORD", source)
         self.assertNotIn("@gmail.com", source)
 

@@ -33,3 +33,6 @@ dist/
 
 # Local camera event outbox (queued alerts)
 ai-module/outbox/
+
+# Uploaded and generated files (reports, alert snapshots)
+backend/media/

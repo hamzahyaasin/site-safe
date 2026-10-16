@@ -5,9 +5,14 @@ from django.db import models
 class Report(models.Model):
     class ReportType(models.TextChoices):
         INCIDENT = "INCIDENT", "Incident Report"
-        COMPLIANCE = "COMPLIANCE", "Compliance Report"
+        COMPLIANCE = "COMPLIANCE", "Safety Performance Report"
+
+    class Format(models.TextChoices):
+        DOCX = "DOCX", "Word (.docx)"
+        PDF = "PDF", "PDF"
 
     report_type = models.CharField(max_length=32, choices=ReportType.choices)
+    file_format = models.CharField(max_length=8, choices=Format.choices, default=Format.DOCX)
     date_from = models.DateField()
     date_to = models.DateField()
     file = models.FileField(upload_to="reports/")
