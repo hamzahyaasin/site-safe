@@ -4,6 +4,7 @@ ai-module/ppe_dataset/valid/
 ai-module/ppe_dataset/test/
 ai-module/ppe_dataset/README*.txt
 ai-module/ppe_dataset.zip
+ai-module/dataset_v2_plan/
 
 # Model weights - too large for git
 *.pt

@@ -54,11 +54,22 @@ def yolo_line_to_box(line: str, w: int, h: int) -> tuple[int, int, int, int, int
     if len(parts) < 5:
         return None
     cls_id = int(parts[0])
-    xc, yc, bw, bh = map(float, parts[1:5])
-    x1 = int((xc - bw / 2) * w)
-    y1 = int((yc - bh / 2) * h)
-    x2 = int((xc + bw / 2) * w)
-    y2 = int((yc + bh / 2) * h)
+    coordinates = list(map(float, parts[1:]))
+    if len(coordinates) == 4:
+        xc, yc, bw, bh = coordinates
+        x1 = int((xc - bw / 2) * w)
+        y1 = int((yc - bh / 2) * h)
+        x2 = int((xc + bw / 2) * w)
+        y2 = int((yc + bh / 2) * h)
+    elif len(coordinates) >= 6 and len(coordinates) % 2 == 0:
+        # Some source labels are YOLO polygons.  Preview their enclosing box
+        # instead of incorrectly treating the first two vertices as x/y/w/h.
+        xs = coordinates[0::2]
+        ys = coordinates[1::2]
+        x1, x2 = int(min(xs) * w), int(max(xs) * w)
+        y1, y2 = int(min(ys) * h), int(max(ys) * h)
+    else:
+        return None
     x1, x2 = max(0, x1), min(w - 1, x2)
     y1, y2 = max(0, y1), min(h - 1, y2)
     return x1, y1, x2, y2, cls_id

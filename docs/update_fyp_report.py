@@ -747,6 +747,61 @@ def replace_fall_detection_content(doc: Document) -> None:
         insert_before(reference, [clone_paragraph(template, text) for text in extra])
 
 
+MODEL_V5_TRAINING_HYPERPARAMS = [
+    # (value, rationale) for each row of Table 4.5, column 0 (parameter
+    # name) unchanged. Verified against
+    # ai-module/models/sitesafe_v5_export/run_manifest.json and args.yaml.
+    ("YOLO11-m (medium)", "Retrained on a Colab T4 GPU; larger capacity than the nano baseline used for the recorded prototype"),
+    ("640 x 640", "Standard Ultralytics training resolution, up from 416px for the nano baseline"),
+    ("16", "Fits the T4's 14.9GB of memory at 640px"),
+    ("150 requested, early-stopped after 102 (best at epoch 77)", "patience=25: stopped after 25 epochs with no held-out-relevant validation improvement"),
+    ("AdamW", "Unchanged from the nano baseline"),
+    ("0.001 initial, linear decay to 1% (lrf=0.01)", "cos_lr disabled for this run, unlike the nano baseline's cosine schedule"),
+    ("Mosaic, flip, HSV, scale (Ultralytics defaults)", "Mosaic disabled for the final 10 epochs (close_mosaic=10)"),
+    ("0.15", "Runtime inference threshold used by the pipeline; unchanged from the nano baseline"),
+    ("0.7", "Ultralytics default; no explicit override in training or inference"),
+]
+
+MODEL_V5_PER_CLASS = [
+    # (class, precision, recall, mAP@0.5) for Table 4.6, verified against
+    # ai-module/models/sitesafe_v5_export/held_out_test_metrics.json.
+    ("helmet", "0.893", "0.959", "0.958"),
+    ("no-helmet", "0.249", "0.714", "0.309"),
+    ("vest", "0.853", "0.954", "0.962"),
+    ("no-vest", "0.578", "0.879", "0.782"),
+    ("boots", "0.845", "0.998", "0.977"),
+    ("no-boots", "0.127", "0.596", "0.130"),
+    ("gloves", "0.222", "0.316", "0.276"),
+    ("no-gloves", "0.109", "0.323", "0.062"),
+    ("goggles", "0.470", "0.793", "0.635"),
+    ("no-goggles", "0.321", "0.750", "0.530"),
+]
+
+
+def replace_model_performance_content(doc: Document) -> None:
+    """Swap the nano-baseline Table 4.5/4.6 figures for the measured
+    YOLO11-medium retrain, and rewrite the Chapter 4 paragraph that cites
+    the old numbers directly (a duplicate of Section 5.3's figures that
+    the original fall-detection pass missed).
+    """
+    hyperparams = table_after_caption(doc, "Table 4.5: YOLOv11 Training Hyperparameters")
+    for row, (value, rationale) in zip(list(hyperparams.rows)[1:], MODEL_V5_TRAINING_HYPERPARAMS):
+        set_cell_text(row.cells[1], value)
+        set_cell_text(row.cells[2], rationale)
+
+    performance = table_after_caption(doc, "Table 4.6: Per-Class Detection Performance")
+    for row, (cls, precision, recall, map50) in zip(list(performance.rows)[1:], MODEL_V5_PER_CLASS):
+        assert row.cells[0].text.strip() == cls, f"Row order mismatch: expected {cls!r}"
+        set_cell_text(row.cells[1], precision)
+        set_cell_text(row.cells[2], recall)
+        set_cell_text(row.cells[3], map50)
+
+    set_paragraph_text(
+        find_paragraph(doc, "Evaluating the trained weights on the held-out test split", exact=False),
+        "Evaluating the retrained YOLO11-medium weights on the held-out test split gives a mean Average Precision (mAP@0.5) of 56.2 percent, with mAP@0.5:0.95 of 0.345, mean precision 0.467 and mean recall 0.728 — a modest gain over the earlier nano baseline (mAP@0.5 54.4 percent), driven mainly by a recall improvement (0.665 to 0.728) at a small cost to precision (0.481 to 0.467). Table 4.6 reports the per-class figures from that same evaluation run. The aggregate number conceals a split in behaviour that matters more than the headline figure. The model identifies equipment that is present with high reliability: helmet, vest and boots all exceed 0.95 mAP@0.5. It remains markedly weaker at recognising equipment that is absent, which is precisely the condition the system exists to detect; no-gloves reaches only 0.062, no-boots 0.130 and no-helmet 0.309. Absence is a harder visual target than presence, since it must be inferred from the region where equipment would be rather than from the equipment itself, and the negative classes are less well represented in the dataset. The practical consequence is unchanged: the current weights are more dependable for confirming compliance than for catching a violation, and raising the negative-class scores remains the highest-value improvement available to the vision module. These figures come from a 102-epoch run of the medium model at 640 pixels on a Colab T4 GPU (early-stopped from a 150-epoch budget, best weights at epoch 77), so the larger, longer-trained configuration proposed as future work in the earlier revision has now been measured and did not resolve the negative-class weakness; targeted data collection for the weakest classes is recorded as future work in Section 6.2.",
+    )
+
+
 def restructure_chapters(doc: Document) -> None:
     if not AUTOMATED_TEST_ROWS or not AUTOMATED_TEST_SUMMARY:
         raise RuntimeError("Set verified automated-test rows and summary before building")
