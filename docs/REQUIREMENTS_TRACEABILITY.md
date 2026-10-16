@@ -34,7 +34,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-13 | Live dashboard updates for every alert/vest/worker change | M | Two sessions converge after create, resolve, SOS and reconnect | `alerts/events.py`, signals, `WebSocketContext.jsx` | `alerts/test_realtime.py`; e2e 16 Oct (two clients each got created, created, resolved); browser check (live FALL appears, resolve removes it) | Integrated |
 | FR-14 | Websocket requires a valid user token from an allowed origin | M | No token, a bad token or an expired token gives close code 4401; a foreign origin is refused | `sitesafe/ws_auth.py`, `asgi.py`, `consumers.py` | `alerts/test_realtime.py` | Tested |
 | FR-15 | Alert rules (enable, threshold, notify) change runtime behaviour | M | A disabled type stores nothing. Notify flags gate push/email. SOS cannot be disabled. | `alerts/rules.py`, `notify.py`, seed migration 0009 | `alerts/test_ingest.py` | Tested |
-| FR-16 | Push notifications to subscribed users | S | An installed client receives a test push; preferences are respected | `sitesafe/notifications.py`, `alerts/notify.py` | Mocked in tests | Coded (no client) |
+| FR-16 | Push notifications to subscribed users | S | An installed Android client receives a test push; preferences and rules respected; tap opens the alert | `sitesafe/notifications.py` (Android channel `safety-alerts`), `alerts/notify.py`, `mobile/lib/push.ts` | Backend rule/preference tests (mocked FCM); `mobile/__tests__/push.test.ts` | Coded (**needs Firebase project + Android dev build to verify**) |
 | FR-17 | Email notifications | S | Mail to opted-in users when the rule enables it | `alerts/notify.py` | `alerts/test_ingest.py` (locmem) | Tested |
 | FR-18 | Worker registry: create, edit, deactivate from the UI | M | All three operations work in the browser; one vest per worker | `pages/WorkersPage.jsx`, `WorkerSerializer` (vest assignment), migration workers 0004 | `workers/tests.py` (7); browser check 16 Oct (registered worker with VEST-003) | Integrated |
 | FR-19 | Zones with polygon boundaries and camera assignment | M | Invalid geometry/camera lists rejected; boundary drawn on a map | `sitemap/`, `components/map/SiteMap.jsx`, `ZonesPage.jsx` | `sitemap/tests.py` (7); browser check 16 Oct (3-click polygon saved) | Integrated |
@@ -46,7 +46,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-25 | Incident list, detail, resolve, CSV export | M | Resolve is broadcast; filters include every type | `frontend/src/components/incidents/` | FALL filter added 16 Oct; resolve broadcast covered by FR-13 | Coded |
 | FR-26 | Dashboard KPIs and charts reflect recorded data only | M | Every displayed number reconciles to the API; nothing fabricated | `DashboardStatsView`, `KpiStrip.jsx`, `DashboardCharts.jsx`, `WorkerStatusGrid.jsx` | `workers/tests.py` DashboardStatsTests (3); browser check 16 Oct | Integrated |
 | FR-27 | Incident and safety-performance reports in DOCX and PDF | M | Fixtures reconcile exactly; PDF produced; no unsupported percentages; period in the user's time zone | `report-service/lib/*`, `templates/*`, `backend/reports/` | `report-service/test` (12); `reports/tests.py` (6); e2e 16 Oct (both types, both formats via API → service; PDF inspected) | Integrated |
-| FR-28 | Mobile app: login, alerts, resolve, push | M | An Android build receives a push and resolves an incident | — | — | Missing |
+| FR-28 | Mobile app: login, alerts, resolve, worker status, push | M | Android build receives a push and resolves an incident visible on web | `mobile/` (Expo SDK 58) | `mobile/__tests__` (13); web build checked 16 Oct: sign-in, live alert arrival, detail, resolve, resolve from another session removed live, workers presence, sign-out | Integrated on web target (**device + push pending**) |
 | FR-29 | Alert evidence (snapshot, confidence, model version) | S | Each AI incident is traceable to its frame and model | `Alert.confidence`, `Alert.snapshot` field | — | Coded (confidence only) |
 
 ## Non-functional requirements
@@ -161,4 +161,29 @@ Known defects / limitations:
 Human inputs still needed: print badges and record a physical QR test (distance and lighting);
   supervisor sign-off on replacing the compliance % with the defined metrics
 Next independent task: Stage 4 part 2 — mobile app (React Native) — or Stage 3 dataset work
+```
+
+```text
+Phase / task IDs: Stage 4 part 2 (React Native mobile app)
+Status: tested; web target integration-checked against a throwaway backend; not yet run on a
+  physical phone; push not verified (needs Firebase project and an Android development build)
+Requirement IDs covered: FR-28, FR-16 (client side)
+Commit / working-tree reference: uncommitted, branch stage-0-1-security-events, 16 Oct 2026
+Files changed:
+  mobile/: Expo SDK 58 tabs template; template LICENSE, plugin-enabling .claude/settings.json,
+  sample screens and unused font removed; AGENTS.md/CLAUDE.md kept (Expo's agent guidance)
+  lib/api.ts (JWT + single-flight refresh, sign-out on failure), lib/storage.ts (SecureStore,
+  localStorage on web), context/Live.tsx (socket, 4401 renewal, backoff, resync, background
+  close), lib/push.ts (Android FCM token registration, channel, tap-to-open), screens:
+  login, alerts (open/all, live), alert detail + resolve (role-gated), workers, settings
+  backend: websocket allows clients without an Origin header (native apps; JWT still
+  required); FCM messages use the high-importance Android channel
+Tests run (16 Oct 2026): mobile jest 13 OK, eslint clean, tsc clean; backend 135 OK
+Known defects / limitations:
+  - iOS gets no remote push (backend sends FCM only); web/iOS rely on the live socket.
+  - The server address is entered by hand; no discovery.
+  - Reports, zones and worker editing remain web-only by design.
+Human inputs still needed: Firebase project (google-services.json + service account),
+  an Android phone for a development build, and a recorded push/resolve test
+Next independent task: Stage 4 part 3 (smart vest firmware) or Stage 3 (dataset/retraining)
 ```

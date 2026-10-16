@@ -8,6 +8,8 @@ from accounts.models import FCMToken
 
 logger = logging.getLogger(__name__)
 
+ANDROID_CHANNEL_ID = "safety-alerts"
+
 
 def _init_firebase():
     try:
@@ -41,6 +43,12 @@ def send_push_notification(user_ids, title, body, data=None):
         tokens=tokens,
         notification=messaging.Notification(title=title, body=body),
         data={k: str(v) for k, v in (data or {}).items()},
+        # Matches the channel the mobile app creates, so safety alerts use
+        # the high-importance channel and arrive while the phone is idle.
+        android=messaging.AndroidConfig(
+            priority="high",
+            notification=messaging.AndroidNotification(channel_id=ANDROID_CHANNEL_ID, sound="default"),
+        ),
     )
     response = messaging.send_each_for_multicast(message)
     for i, send_response in enumerate(response.responses):

@@ -301,6 +301,28 @@ python scripts/inference_webcam.py --weights runs/train/ppe_yolov10n/weights/bes
 
 ---
 
+## 5. Mobile app (`mobile/`)
+
+The mobile app is for site supervisors, built with React Native (Expo SDK 58). Supervisors sign in, see open and all alerts live, open an alert, resolve it if their role allows, and check worker presence. The app renews expired sessions automatically and reloads after reconnecting.
+
+```bash
+cd mobile
+npm ci
+npx expo start            # scan the QR with Expo Go on a phone on the same Wi-Fi
+npm test && npm run lint && npm run typecheck
+```
+
+At sign-in, enter the backend computer's LAN address (for example `192.168.1.20:8000`). Run the backend on `0.0.0.0` and add that address to `ALLOWED_HOSTS`. The app needs no CORS entry and connects to the live socket without an Origin header, but still authenticates with its JWT.
+
+**Push notifications** go through Firebase Cloud Messaging, the same path the backend already uses. Setup:
+
+1. Create a Firebase project and add an Android app with package `com.sitesafe.mobile`.
+2. Put its `google-services.json` in `mobile/`. The file is git-ignored, and `app.config.js` picks it up.
+3. Point the backend's `FIREBASE_CREDENTIALS_PATH` at the project's service-account JSON.
+4. Make a development build. Expo Go cannot receive remote pushes. Use `npx expo run:android` with a phone connected over USB, or `npx eas-cli@latest build --profile development --platform android`.
+
+The app registers the phone after sign-in and unregisters it on sign-out. Tapping a notification opens that alert. iOS and the web build receive alerts live only while open, because the backend does not send to APNs.
+
 ## Running the full stack
 
 Open three terminals:

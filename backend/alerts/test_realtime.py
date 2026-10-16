@@ -101,6 +101,21 @@ class WebsocketAuthTests(TransactionTestCase):
         expired.set_exp(lifetime=-timedelta(minutes=1))
         self.assertEqual(self._close_code(f"?token={expired}"), (True, 4401))
 
+    def test_native_client_without_origin_needs_token(self):
+        async def go(query):
+            comm = WebsocketCommunicator(self.app, f"/ws/dashboard/{query}")
+            connected, _ = await comm.connect()
+            out = await comm.receive_output(timeout=1)
+            await comm.disconnect()
+            return connected, out
+
+        connected, out = async_to_sync(go)("")
+        self.assertEqual(out.get("code"), 4401)
+        token = str(AccessToken.for_user(self.user))
+        connected, out = async_to_sync(go)(f"?token={token}")
+        self.assertTrue(connected)
+        self.assertIn("connection_established", out.get("text", ""))
+
     def test_rejects_foreign_origin(self):
         token = str(AccessToken.for_user(self.user))
         accepted, _ = self._close_code(f"?token={token}", origin=b"http://evil.example")
