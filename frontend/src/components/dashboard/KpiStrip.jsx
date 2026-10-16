@@ -1,41 +1,55 @@
 import StatCard from '../ui/StatCard.jsx'
-import { deriveComplianceRate, sparklineFromValue } from '../../lib/utils.js'
+import { formatMinutes } from '../../lib/utils.js'
 
+/** Every figure here comes from /dashboard/stats/; nothing is estimated. */
 export default function KpiStrip({ stats, loading }) {
-  const compliance = deriveComplianceRate(stats)
+  const daily = stats?.daily_7d ?? []
+  const today = stats?.total_alerts_today
+  const yesterday = stats?.alerts_yesterday
+  let todayDelta = null
+  if (stats) {
+    const diff = today - yesterday
+    todayDelta = {
+      text: diff === 0 ? 'same as yesterday' : `${diff > 0 ? '+' : ''}${diff} vs yesterday`,
+      tone: diff > 0 ? 'bad' : diff < 0 ? 'good' : 'neutral',
+    }
+  }
+  const untracked = stats ? stats.active_workers - stats.workers_with_vest : 0
 
   const cards = [
     {
-      label: 'Active Workers',
-      value: stats?.active_workers,
-      delta: stats ? 2 : null,
+      label: 'Workers On Site',
+      value: stats?.workers_on_site,
+      hint: stats
+        ? `of ${stats.active_workers} active · ${untracked} without a vest (not tracked)`
+        : null,
       borderColor: 'border-l-emerald-500',
-      sparkline: sparklineFromValue(stats?.active_workers),
-      sparklineTrend: 'positive',
     },
     {
       label: 'Open Alerts',
       value: stats?.unresolved_alerts,
-      delta: stats ? -5 : null,
+      hint: stats ? `${stats.critical_alerts} critical` : null,
       borderColor: 'border-l-red-500',
-      sparkline: sparklineFromValue(stats?.unresolved_alerts),
-      sparklineTrend: 'negative',
     },
     {
-      label: 'Violations Today',
-      value: stats?.total_alerts_today,
-      delta: stats ? 8 : null,
+      label: 'Alerts Today',
+      value: today,
+      deltaText: todayDelta?.text,
+      deltaTone: todayDelta?.tone,
+      hint: stats?.simulated_alerts_today ? `incl. ${stats.simulated_alerts_today} simulated` : null,
       borderColor: 'border-l-amber-500',
-      sparkline: sparklineFromValue(stats?.total_alerts_today),
+      sparkline: daily.map((d) => ({ v: d.total })),
       sparklineTrend: 'negative',
     },
     {
-      label: 'Compliance Rate',
-      value: compliance !== null ? `${compliance}%` : null,
-      delta: stats ? 3 : null,
+      label: 'Mean Time To Resolve',
+      value: stats ? (formatMinutes(stats.mean_resolution_minutes_7d) ?? '—') : null,
+      hint: stats
+        ? stats.resolved_7d
+          ? `${stats.resolved_7d} alerts resolved in the last 7 days`
+          : 'No alerts resolved in the last 7 days'
+        : null,
       borderColor: 'border-l-blue-500',
-      sparkline: sparklineFromValue(compliance),
-      sparklineTrend: 'positive',
     },
   ]
 
@@ -46,7 +60,9 @@ export default function KpiStrip({ stats, loading }) {
           key={card.label}
           label={card.label}
           value={card.value}
-          delta={card.delta}
+          hint={card.hint}
+          deltaText={card.deltaText}
+          deltaTone={card.deltaTone}
           borderColor={card.borderColor}
           sparklineData={card.sparkline}
           sparklineTrend={card.sparklineTrend}

@@ -176,7 +176,7 @@ class DetectionIngestTests(APITestCase):
 class VestIngestTests(APITestCase):
     def setUp(self):
         _, self.key = ServiceToken.issue("gw", ServiceToken.Kind.VEST_GATEWAY)
-        self.worker = Worker.objects.create(name="Ali", vest_id="V-1")
+        self.worker = Worker.objects.create(name="Ali")
         self.vest = SmartVest.objects.create(vest_id="V-1", worker=self.worker)
 
     def test_telemetry_requires_gateway_token(self):

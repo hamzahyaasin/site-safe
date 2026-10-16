@@ -139,7 +139,7 @@ class AlertIngestSerializer(serializers.Serializer):
         description = validated_data.pop("description", "")
         location = validated_data.pop("location", None)
         try:
-            worker = Worker.objects.get(vest_id=vest_id, is_active=True)
+            worker = Worker.objects.get(smart_vest__vest_id=vest_id, is_active=True)
         except Worker.DoesNotExist as exc:
             raise serializers.ValidationError(
                 {"vest_id": "No active worker found with this vest_id."}
@@ -231,7 +231,9 @@ class DetectionSerializer(serializers.ModelSerializer):
         worker = validated_data.get("worker")
         if vest_id and not worker:
             try:
-                validated_data["worker"] = Worker.objects.get(vest_id=vest_id, is_active=True)
+                validated_data["worker"] = Worker.objects.get(
+                    smart_vest__vest_id=vest_id, is_active=True
+                )
             except Worker.DoesNotExist:
                 pass
         return super().create(validated_data)

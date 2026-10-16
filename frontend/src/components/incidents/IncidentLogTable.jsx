@@ -14,7 +14,7 @@ import {
 } from '../../lib/utils.js'
 
 const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
-const TYPES = ['PPE_VIOLATION', 'SOS', 'ZONE_BREACH', 'INACTIVITY', 'VEHICLE_PROXIMITY']
+const TYPES = ['PPE_VIOLATION', 'FALL', 'SOS', 'ZONE_BREACH', 'INACTIVITY', 'VEHICLE_PROXIMITY']
 const PAGE_SIZES = [10, 25, 50]
 
 export default function IncidentLogTable({ alerts, loading, onResolve }) {
@@ -149,7 +149,7 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
       key: 'actions',
       header: 'Actions',
       render: (row) =>
-        !row.is_resolved ? (
+        !row.is_resolved && onResolve ? (
           <Button
             variant="ghost"
             size="sm"

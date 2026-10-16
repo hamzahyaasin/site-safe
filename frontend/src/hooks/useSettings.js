@@ -65,8 +65,12 @@ export function useSettings() {
   )
 
   useEffect(() => {
-    loadAlertConfigs()
-    loadProfile()
+    // Deferred so the initial load's state updates happen outside the effect body.
+    const t = window.setTimeout(() => {
+      loadAlertConfigs()
+      loadProfile()
+    }, 0)
+    return () => window.clearTimeout(t)
   }, [loadAlertConfigs, loadProfile])
 
   return {

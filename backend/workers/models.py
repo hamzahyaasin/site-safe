@@ -2,8 +2,11 @@ from django.db import models
 
 
 class Worker(models.Model):
+    """A site worker. Their vest, if any, is ``smart_vest`` (SmartVest.worker),
+    the single source of truth for which vest a worker wears; ``zone`` is the
+    zone they are assigned to work in, not where they currently are."""
+
     name = models.CharField(max_length=100)
-    vest_id = models.CharField(max_length=50, unique=True, db_index=True)
     zone = models.ForeignKey(
         "sitemap.Zone",
         on_delete=models.SET_NULL,
@@ -20,7 +23,12 @@ class Worker(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.name} ({self.vest_id})"
+        return self.name
+
+    @property
+    def vest_id(self):
+        vest = getattr(self, "smart_vest", None)
+        return vest.vest_id if vest else None
 
 
 class SmartVest(models.Model):
@@ -33,7 +41,11 @@ class SmartVest(models.Model):
         related_name="smart_vest",
     )
     firmware_version = models.CharField(max_length=20, blank=True, default="")
-    battery_level = models.IntegerField(default=100, help_text="0-100 percent")
+    battery_level = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="0-100 percent as last reported; null until the vest reports it",
+    )
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     sos_active = models.BooleanField(default=False)

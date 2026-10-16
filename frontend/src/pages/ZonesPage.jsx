@@ -4,7 +4,10 @@ import Button from '../components/ui/Button.jsx'
 import DataTable from '../components/ui/DataTable.jsx'
 import Drawer from '../components/ui/Drawer.jsx'
 import Input, { Select } from '../components/ui/Input.jsx'
+import SiteMap from '../components/map/SiteMap.jsx'
+import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card.jsx'
 import { useZones } from '../hooks/useZones.js'
+import { useVests } from '../hooks/useVests.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'RESTRICTED']
@@ -21,27 +24,14 @@ const emptyForm = {
   description: '',
   risk_level: 'MEDIUM',
   max_occupancy: 0,
-  boundaries: '[]',
+  boundaries: [],
   camera_ids: '',
   is_active: true,
 }
 
 function formatOccupancy(zone) {
-  const count = zone.worker_count ?? zone.current_occupancy ?? 0
-  if (!zone.max_occupancy) return `${count} / ∞`
-  return `${count} / ${zone.max_occupancy}`
-}
-
-function parseBoundaries(raw) {
-  try {
-    const parsed = JSON.parse(raw || '[]')
-    if (!Array.isArray(parsed)) {
-      throw new Error('Boundaries must be a JSON array')
-    }
-    return parsed
-  } catch (e) {
-    throw new Error(e.message || 'Invalid boundaries JSON', { cause: e })
-  }
+  const present = zone.current_occupancy ?? 0
+  return zone.max_occupancy ? `${present} / ${zone.max_occupancy}` : `${present} / ∞`
 }
 
 function parseCameraIds(raw) {
@@ -57,7 +47,7 @@ function zoneToForm(zone) {
     description: zone.description || '',
     risk_level: zone.risk_level || 'MEDIUM',
     max_occupancy: zone.max_occupancy ?? 0,
-    boundaries: JSON.stringify(zone.boundaries ?? [], null, 2),
+    boundaries: zone.boundaries ?? [],
     camera_ids: (zone.camera_ids ?? []).join(', '),
     is_active: zone.is_active ?? true,
   }
@@ -68,6 +58,7 @@ const textareaClass =
 
 export default function ZonesPage() {
   const { zones, loading, error, createZone, updateZone, deleteZone } = useZones()
+  const { vests } = useVests()
   // Zone edits are Admin-only server-side; hide the controls for everyone else.
   const { isAdmin } = useAuth()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -102,7 +93,10 @@ export default function ZonesPage() {
     setFormError('')
     setSaving(true)
     try {
-      const boundaries = parseBoundaries(form.boundaries)
+      const boundaries = form.boundaries
+      if (boundaries.length > 0 && boundaries.length < 3) {
+        throw new Error('A boundary needs at least three points (or none for a camera-only zone).')
+      }
       const payload = {
         name: form.name.trim(),
         description: form.description.trim(),
@@ -161,13 +155,20 @@ export default function ZonesPage() {
     },
     {
       key: 'workers',
-      header: 'Workers',
-      render: (row) => row.worker_count ?? row.current_occupancy ?? 0,
+      header: 'Assigned',
+      render: (row) => row.worker_count ?? 0,
     },
     {
       key: 'occupancy',
-      header: 'Max Occupancy',
-      render: (row) => formatOccupancy(row),
+      header: 'Present / Max',
+      render: (row) =>
+        row.boundaries?.length >= 3 ? (
+          formatOccupancy(row)
+        ) : (
+          <span className="text-zinc-600" title="Presence is measured from vest GPS inside the boundary">
+            no boundary
+          </span>
+        ),
     },
     {
       key: 'cameras',
@@ -226,6 +227,19 @@ export default function ZonesPage() {
           {error}
         </p>
       ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Site Map</CardTitle>
+          <CardDescription>
+            Zone boundaries by risk level and each vest&apos;s last reported position (green online, grey
+            offline, red SOS)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SiteMap zones={zones} vests={vests} height={380} />
+        </CardContent>
+      </Card>
 
       <DataTable
         columns={columns}
@@ -321,17 +335,47 @@ export default function ZonesPage() {
             </label>
           ) : null}
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-zinc-400">Boundaries (JSON polygon)</span>
-            <textarea
-              className={`${textareaClass} font-mono`}
-              rows={6}
-              value={form.boundaries}
-              onChange={(e) => setForm((f) => ({ ...f, boundaries: e.target.value }))}
-              placeholder='[{"lat": 33.6844, "lng": 73.0479}, ...]'
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-zinc-400">Boundary</span>
+            <SiteMap
+              zones={zones}
+              vests={vests}
+              excludeZoneId={editingZone?.id}
+              draft={form.boundaries}
+              onAddPoint={(p) => setForm((f) => ({ ...f, boundaries: [...f.boundaries, p] }))}
+              height={280}
             />
-            <span className="text-[11px] text-zinc-600">Array of {'{lat, lng}'} vertices (min 3 for geofencing)</span>
-          </label>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] text-zinc-500">
+                Click the map to add corners in order · {form.boundaries.length} point
+                {form.boundaries.length === 1 ? '' : 's'}
+                {form.boundaries.length > 0 && form.boundaries.length < 3 ? ' (need at least 3)' : ''}
+              </span>
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={form.boundaries.length === 0}
+                  onClick={() => setForm((f) => ({ ...f, boundaries: f.boundaries.slice(0, -1) }))}
+                >
+                  Undo point
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={form.boundaries.length === 0}
+                  onClick={() => setForm((f) => ({ ...f, boundaries: [] }))}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+            <span className="text-[11px] text-zinc-600">
+              Leave empty for a camera-only zone. GPS presence, restricted-entry and capacity alerts need a boundary.
+            </span>
+          </div>
         </form>
       </Drawer>
     </div>

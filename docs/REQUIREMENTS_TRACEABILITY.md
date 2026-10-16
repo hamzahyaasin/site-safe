@@ -21,7 +21,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 |---|---|---|---|---|---|---|
 | FR-01 | Users sign in with email and password; sessions renew without re-login | M | Valid login gets tokens. Expired access token renews silently. Revoked/invalid refresh token returns to login. | `accounts/`, `frontend/src/api/axios.js` | `accounts/tests.py`; browser check 16 Oct (corrupted token → refresh → retried requests 200) | Integrated |
 | FR-02 | Three roles (Admin, Safety Officer, Viewer) enforced by the API | M | Every forbidden role action returns 403; each permitted counterpart succeeds | `accounts/permissions.py` | `accounts/tests.py` (16) | Tested |
-| FR-03 | UI offers only actions the user's role permits | S | Viewer sees no resolve/edit/generate controls | `AuthContext.jsx` (Zones only) | — | Coded (partial) |
+| FR-03 | UI offers only actions the user's role permits | S | Viewer sees no resolve/edit/generate controls | `AuthContext.jsx` (`canOperate`, `isAdmin`) across Dashboard, Incidents, Workers, Vests, Zones, Settings, Reports | Browser check 16 Oct (officer: zones read-only; admin: zone editor) | Integrated (viewer path not browser-checked) |
 | FR-04 | Detect missing PPE (10 classes) from a camera | M | Event precision ≥90% and episode recall ≥85% per retained class, on a sealed target-camera set | `ai-module/inference.py`, `models/sitesafe_v5.pt` | Held-out mAP50 0.562 on a leaky split (not a valid claim) | Coded |
 | FR-05 | One alert per person per violation episode | M | Two people with the same violation give two alerts; a single-frame flicker gives none | — | — | Missing |
 | FR-06 | Detect falls from camera pose | M | Positive and hard-negative videos meet the AI event targets | `ai-module/fall_detection.py` | `alerts/test_fall.py` (21) | Tested |
@@ -36,15 +36,15 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-15 | Alert rules (enable, threshold, notify) change runtime behaviour | M | A disabled type stores nothing. Notify flags gate push/email. SOS cannot be disabled. | `alerts/rules.py`, `notify.py`, seed migration 0009 | `alerts/test_ingest.py` | Tested |
 | FR-16 | Push notifications to subscribed users | S | An installed client receives a test push; preferences are respected | `sitesafe/notifications.py`, `alerts/notify.py` | Mocked in tests | Coded (no client) |
 | FR-17 | Email notifications | S | Mail to opted-in users when the rule enables it | `alerts/notify.py` | `alerts/test_ingest.py` (locmem) | Tested |
-| FR-18 | Worker registry: create, edit, deactivate from the UI | M | All three operations work in the browser | API in `workers/` | — | Coded (API only) |
-| FR-19 | Zones with polygon boundaries and camera assignment | M | Invalid geometry/camera lists are rejected; map editor | `sitemap/` | `sitemap/tests.py` (7) | Tested (no map UI) |
-| FR-20 | Automatic restricted-zone breach and over-occupancy alerts | M | Entering a RESTRICTED polygon raises ZONE_BREACH | — | — | Missing |
+| FR-18 | Worker registry: create, edit, deactivate from the UI | M | All three operations work in the browser; one vest per worker | `pages/WorkersPage.jsx`, `WorkerSerializer` (vest assignment), migration workers 0004 | `workers/tests.py` (7); browser check 16 Oct (registered worker with VEST-003) | Integrated |
+| FR-19 | Zones with polygon boundaries and camera assignment | M | Invalid geometry/camera lists rejected; boundary drawn on a map | `sitemap/`, `components/map/SiteMap.jsx`, `ZonesPage.jsx` | `sitemap/tests.py` (7); browser check 16 Oct (3-click polygon saved) | Integrated |
+| FR-20 | Automatic restricted-zone breach and over-occupancy alerts | M | Entering a RESTRICTED polygon unassigned, or exceeding max occupancy, raises one ZONE_BREACH per entry | `workers/mqtt_handlers.raise_zone_breaches`, `sitemap/geofence.py` | `workers/tests.py` ZoneBreachTests (9); e2e 16 Oct (telemetry into Crane Pit → live breach) | Integrated (GPS simulated by HTTP, no hardware) |
 | FR-21 | Smart vest: GPS position, SOS button, LoRa link | M | Physical SOS reaches the dashboard; delay and packet loss measured | Server: `workers/`, `run_mqtt_consumer` | `alerts/test_ingest.py`, `test_realtime.py` (SOS broadcast) | Coded (server only, no hardware) |
 | FR-22 | Vest telemetry is validated | M | Out-of-range latitude/longitude, a lone coordinate, or battery outside 0–100 returns 400 | `VestTelemetrySerializer` | `alerts/test_ingest.py` | Tested |
-| FR-23 | Vest offline detection | S | No report within `VEST_OFFLINE_AFTER_SECONDS` shows the vest offline | setting only | — | Missing |
-| FR-24 | Worker activity history (check-in/out, idle, zone transitions) | M | Generated automatically and reconciled with annotated scenarios | `workers/` (manual logs, GPS zone logs) | — | Coded (partial) |
-| FR-25 | Incident list, detail, resolve, CSV export | M | Resolve is broadcast; the filters include every type | `frontend/src/components/incidents/` | — | Coded (FALL filter missing) |
-| FR-26 | Dashboard KPIs and charts reflect recorded data only | M | Every displayed number reconciles to the API; nothing is fabricated | `frontend/src/lib/utils.js`, `DashboardCharts.jsx` | — | **Fails** (fabricated vitals and charts) |
+| FR-23 | Vest offline detection | S | No report within `VEST_OFFLINE_AFTER_SECONDS` shows the vest offline | `workers/presence.py`, `run_presence_monitor` | `workers/tests.py` PresenceTests (4); browser check (occupancy dropped to 0 after timeout) | Integrated |
+| FR-24 | Worker activity history (check-in/out, idle, zone transitions) | M | Generated automatically and reconciled with annotated scenarios | `workers/` (GPS zone enter/exit automatic; check-in/out, idle manual) | `workers/tests.py` | Coded (partial) |
+| FR-25 | Incident list, detail, resolve, CSV export | M | Resolve is broadcast; filters include every type | `frontend/src/components/incidents/` | FALL filter added 16 Oct; resolve broadcast covered by FR-13 | Coded |
+| FR-26 | Dashboard KPIs and charts reflect recorded data only | M | Every displayed number reconciles to the API; nothing fabricated | `DashboardStatsView`, `KpiStrip.jsx`, `DashboardCharts.jsx`, `WorkerStatusGrid.jsx` | `workers/tests.py` DashboardStatsTests (3); browser check 16 Oct | Integrated |
 | FR-27 | Incident and compliance reports in DOCX and PDF | M | Fixtures reconcile exactly; PDF is produced | `report-service/`, `reports/` | — | Coded (DOCX only) |
 | FR-28 | Mobile app: login, alerts, resolve, push | M | An Android build receives a push and resolves an incident | — | — | Missing |
 | FR-29 | Alert evidence (snapshot, confidence, model version) | S | Each AI incident is traceable to its frame and model | `Alert.confidence`, `Alert.snapshot` field | — | Coded (confidence only) |
@@ -59,7 +59,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | — | Not measured |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | — | Not run |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend + AI tests pass; frontend build passes, lint clean | 98 + 22 pass; build OK; **lint: 7 pre-existing errors** | Partial |
+| NFR-07 | Code quality gate | Backend + AI tests pass; frontend build passes, lint clean | 120 + 22 pass; build OK; lint clean (16 Oct) | Met |
 
 ## Progress ledger
 
@@ -97,4 +97,38 @@ Known defects / limitations:
 Human inputs still needed: rotate the old admin password; agree acceptance targets and priorities
 Next independent task: Stage 2 — remove fabricated dashboard data, worker forms, map zone editor,
   automatic ZONE_BREACH, vest offline timeout, lint clean-up
+```
+
+```text
+Phase / task IDs: Stage 2 (honest dashboard, worker forms, map zone editor, ZONE_BREACH,
+  vest offline timeout, lint)
+Status: tested; browser-checked on a throwaway SQLite database; not run against PostgreSQL
+Requirement IDs covered: FR-03, FR-18, FR-19, FR-20, FR-23, FR-25, FR-26, NFR-07
+Commit / working-tree reference: uncommitted, branch stage-0-1-security-events, 16 Oct 2026
+Files changed and migration notes:
+  backend: workers (Worker.vest_id removed, SmartVest.worker is the only link; presence.py;
+  run_presence_monitor; zone breach logic; telemetry fields read-only in the registry),
+  sitemap (risk-ordered overlap, observed occupancy), alerts (DashboardStatsView rewritten)
+  migrations: workers 0004 (moves each Worker.vest_id into a SmartVest; a vest already
+  assigned to someone else keeps its assignment and the conflict is printed), 0005
+  (SmartVest.battery_level nullable, "unknown" until reported). Not applied to dev PostgreSQL.
+  API change: workers now take `vest` (SmartVest id) instead of a `vest_id` string; `vest_id`
+  stays as a read-only field. Zone `current_occupancy` now means observed by GPS;
+  `worker_count` means assigned.
+  frontend: fabricated vitals/last-seen/charts/sparklines/compliance %/site list removed;
+  KPIs and charts from /dashboard/stats/; Workers page drawer; Leaflet site map + boundary
+  editor (leaflet 1.9.4, react-leaflet 5.0.0; OpenStreetMap tiles need internet); role gating;
+  FALL filter and simulator button; lint fixes
+Tests run (16 Oct 2026):
+  backend → 120 OK; ai-module → 22 OK; frontend lint → clean; build → OK
+  browser: dashboard figures, worker registration, map render, zone drawn and saved,
+  automatic restricted-zone breach from telemetry, occupancy expiring with vest timeout
+Known defects / limitations:
+  - Map tiles come from tile.openstreetmap.org; offline demos show polygons on a blank map.
+  - Reversing workers 0004 fails if more than one worker exists (re-added unique column).
+  - Report service still uses the old compliance % (Stage 4 / FR-27).
+  - Camera alerts have no worker identity, so camera-only zones cannot raise ZONE_BREACH.
+Human inputs still needed: real site coordinates for zones; supervisor view on the
+  "mean time to resolve" KPI replacing the unsupported compliance %
+Next independent task: Stage 3 (dataset remediation / retraining) or Stage 4 (QR, PDF reports)
 ```

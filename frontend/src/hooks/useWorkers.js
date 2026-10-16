@@ -17,8 +17,14 @@ export function useWorkers() {
   }, [api])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data load on mount
-    void fetchWorkers()
+    const first = window.setTimeout(fetchWorkers, 0)
+    // Presence depends on how recently each vest reported, so refresh even
+    // when no event arrives.
+    const timer = window.setInterval(fetchWorkers, 60000)
+    return () => {
+      window.clearTimeout(first)
+      window.clearInterval(timer)
+    }
   }, [fetchWorkers])
 
   useEffect(() => {
@@ -45,7 +51,7 @@ export function useWorkers() {
 
   const createWorker = useCallback(
     async (body) => {
-      await api.post('workers/', { ...body, is_active: true })
+      await api.post('workers/', { is_active: true, ...body })
       await fetchWorkers()
     },
     [api, fetchWorkers],

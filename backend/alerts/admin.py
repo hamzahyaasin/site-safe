@@ -16,5 +16,5 @@ class AlertAdmin(admin.ModelAdmin):
         "resolved_at",
     )
     list_filter = ("alert_type", "severity", "source", "is_resolved")
-    search_fields = ("worker__name", "worker__vest_id", "description")
+    search_fields = ("worker__name", "worker__smart_vest__vest_id", "description")
     raw_id_fields = ("worker",)

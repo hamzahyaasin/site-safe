@@ -1,9 +1,8 @@
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -11,26 +10,7 @@ import {
 } from 'recharts'
 import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../ui/Card.jsx'
 import Skeleton from '../ui/Skeleton.jsx'
-
-const HOURLY_DATA = [
-  { hour: '06:00', count: 1 },
-  { hour: '08:00', count: 3 },
-  { hour: '10:00', count: 5 },
-  { hour: '12:00', count: 2 },
-  { hour: '14:00', count: 7 },
-  { hour: '16:00', count: 4 },
-  { hour: '18:00', count: 1 },
-]
-
-const COMPLIANCE_DATA = [
-  { day: 'Mon', rate: 92 },
-  { day: 'Tue', rate: 88 },
-  { day: 'Wed', rate: 91 },
-  { day: 'Thu', rate: 85 },
-  { day: 'Fri', rate: 90 },
-  { day: 'Sat', rate: 94 },
-  { day: 'Sun', rate: 96 },
-]
+import { shortDayLabel } from '../../lib/utils.js'
 
 const chartTooltipStyle = {
   background: '#1a1d27',
@@ -39,14 +19,12 @@ const chartTooltipStyle = {
   fontSize: 12,
 }
 
-export default function DashboardCharts({ stats, loading }) {
-  const hourlyData = stats?.total_alerts_today
-    ? HOURLY_DATA.map((d, i) => ({
-        ...d,
-        count: Math.max(0, Math.round(d.count * (stats.total_alerts_today / 23) + (i % 2))),
-      }))
-    : HOURLY_DATA
+const axisTick = { fill: '#71717a', fontSize: 11 }
 
+/** Incident charts drawn from stored alerts only (see /dashboard/stats/).
+ * Simulated alerts are shown as their own series so a demo is never
+ * mistaken for real observations. */
+export default function DashboardCharts({ stats, loading }) {
   if (loading) {
     return (
       <section className="col-span-12 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -56,36 +34,42 @@ export default function DashboardCharts({ stats, loading }) {
     )
   }
 
+  const hourly = (stats?.hourly_today ?? []).map((h) => ({
+    hour: `${String(h.hour).padStart(2, '0')}:00`,
+    observed: h.count - h.simulated,
+    simulated: h.simulated,
+  }))
+  const daily = (stats?.daily_7d ?? []).map((d) => ({
+    day: shortDayLabel(d.date),
+    resolved: d.resolved,
+    open: d.total - d.resolved,
+  }))
+  const hasToday = hourly.some((h) => h.observed + h.simulated > 0)
+  const hasWeek = daily.some((d) => d.resolved + d.open > 0)
+
   return (
     <section className="col-span-12 grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle>Hourly Violations</CardTitle>
-          <CardDescription>Frequency by hour — today</CardDescription>
+          <CardTitle>Alerts by Hour</CardTitle>
+          <CardDescription>Today, {stats?.timezone ?? 'local time'}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-64">
+          <div className="relative h-64">
+            {!hasToday ? <NoData text="No alerts recorded today" /> : null}
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hourlyData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <BarChart data={hourly} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                 <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
-                <XAxis
-                  dataKey="hour"
-                  tick={{ fill: '#71717a', fontSize: 11 }}
-                  axisLine={{ stroke: '#2a2f3d' }}
-                  tickLine={false}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fill: '#71717a', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
+                <XAxis dataKey="hour" tick={axisTick} axisLine={{ stroke: '#2a2f3d' }} tickLine={false} />
+                <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={chartTooltipStyle}
                   labelStyle={{ color: '#a1a1aa' }}
                   cursor={{ fill: 'rgba(245, 158, 11, 0.06)' }}
                 />
-                <Bar dataKey="count" fill="#f59e0b" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Legend wrapperStyle={{ fontSize: 11, color: '#a1a1aa' }} />
+                <Bar dataKey="observed" name="Observed" stackId="a" fill="#f59e0b" fillOpacity={0.85} maxBarSize={40} />
+                <Bar dataKey="simulated" name="Simulated" stackId="a" fill="#71717a" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -94,44 +78,38 @@ export default function DashboardCharts({ stats, loading }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Compliance Rate</CardTitle>
-          <CardDescription>7-day trend (%)</CardDescription>
+          <CardTitle>Alerts by Day</CardTitle>
+          <CardDescription>Last 7 days, by current resolution status</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-64">
+          <div className="relative h-64">
+            {!hasWeek ? <NoData text="No alerts recorded in the last 7 days" /> : null}
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={COMPLIANCE_DATA} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <BarChart data={daily} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                 <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tick={{ fill: '#71717a', fontSize: 11 }}
-                  axisLine={{ stroke: '#2a2f3d' }}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={[70, 100]}
-                  tick={{ fill: '#71717a', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
+                <XAxis dataKey="day" tick={axisTick} axisLine={{ stroke: '#2a2f3d' }} tickLine={false} />
+                <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={chartTooltipStyle}
                   labelStyle={{ color: '#a1a1aa' }}
-                  formatter={(v) => [`${v}%`, 'Compliance']}
+                  cursor={{ fill: 'rgba(34, 197, 94, 0.06)' }}
                 />
-                <Area
-                  type="monotone"
-                  dataKey="rate"
-                  stroke="#22c55e"
-                  fill="#22c55e"
-                  fillOpacity={0.12}
-                  strokeWidth={2}
-                />
-              </AreaChart>
+                <Legend wrapperStyle={{ fontSize: 11, color: '#a1a1aa' }} />
+                <Bar dataKey="resolved" name="Resolved" stackId="d" fill="#22c55e" fillOpacity={0.8} maxBarSize={40} />
+                <Bar dataKey="open" name="Open" stackId="d" fill="#ef4444" fillOpacity={0.8} radius={[4, 4, 0, 0]} maxBarSize={40} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
     </section>
+  )
+}
+
+function NoData({ text }) {
+  return (
+    <p className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-sm text-zinc-500">
+      {text}
+    </p>
   )
 }

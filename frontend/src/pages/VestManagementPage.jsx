@@ -4,10 +4,12 @@ import VestTable from '../components/vests/VestTable.jsx'
 import Button from '../components/ui/Button.jsx'
 import { useVests } from '../hooks/useVests.js'
 import { useWorkers } from '../hooks/useWorkers.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const emptyRegisterForm = { vest_id: '', firmware_version: '' }
 
 export default function VestManagementPage() {
+  const { canOperate } = useAuth()
   const { vests, loading, error, createVest, updateVest, fetchVests } = useVests()
   const { workers, loading: workersLoading } = useWorkers()
   const [selected, setSelected] = useState(null)
@@ -41,7 +43,8 @@ export default function VestManagementPage() {
       setSelected(updated)
       showToast(workerId ? 'Worker assigned to vest' : 'Vest unassigned')
     } catch (e) {
-      showToast(e.response?.data?.detail || 'Failed to update assignment')
+      const data = e.response?.data
+      showToast(data?.detail || data?.worker?.[0] || 'Failed to update assignment')
     } finally {
       setAssigning(false)
     }
@@ -76,9 +79,11 @@ export default function VestManagementPage() {
           <Button variant="ghost" size="sm" onClick={() => fetchVests()}>
             Refresh
           </Button>
-          <Button variant="primary" size="sm" onClick={startRegister}>
-            Register vest
-          </Button>
+          {canOperate ? (
+            <Button variant="primary" size="sm" onClick={startRegister}>
+              Register vest
+            </Button>
+          ) : null}
         </div>
       </header>
 
@@ -99,6 +104,7 @@ export default function VestManagementPage() {
             workersLoading={workersLoading}
             onAssignWorker={handleAssignWorker}
             assigning={assigning}
+            canEdit={canOperate}
             mode={mode}
             registerForm={registerForm}
             onRegisterChange={setRegisterForm}

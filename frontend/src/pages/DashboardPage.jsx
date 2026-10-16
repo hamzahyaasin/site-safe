@@ -11,7 +11,7 @@ import Button from '../components/ui/Button.jsx'
 import { Select } from '../components/ui/Input.jsx'
 
 export default function DashboardPage() {
-  const { api } = useAuth()
+  const { api, canOperate } = useAuth()
   const { stats, loading: statsLoading, fetchStats } = useDashboardStats()
   const { workers, loading: workersLoading, highlightIds } = useWorkers()
   const {
@@ -43,6 +43,7 @@ export default function DashboardPage() {
       inactivity: { alert_type: 'INACTIVITY', severity: 'MEDIUM', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
       sos: { alert_type: 'SOS', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
       vehicle_proximity: { alert_type: 'VEHICLE_PROXIMITY', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
+      fall: { alert_type: 'FALL', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
     }
     setLoadingSim(kind)
     try {
@@ -60,7 +61,7 @@ export default function DashboardPage() {
     <div className="grid grid-cols-12 gap-4">
       <header className="col-span-12 mb-2">
         <h1 className="text-2xl font-semibold text-zinc-100">Safety Dashboard</h1>
-        <p className="mt-1 text-sm text-zinc-500">Live site status — workers, compliance, and active incidents</p>
+        <p className="mt-1 text-sm text-zinc-500">Live site status — worker presence and open incidents</p>
       </header>
 
       <KpiStrip stats={stats} loading={statsLoading} />
@@ -69,25 +70,29 @@ export default function DashboardPage() {
         workers={workers}
         loading={workersLoading}
         highlightIds={highlightIds}
+        canAdd={canOperate}
       />
 
       <AlertFeed
         alerts={alerts}
         loading={alertsLoading}
-        onResolve={resolveAlert}
+        onResolve={canOperate ? resolveAlert : undefined}
         newAlertIds={newAlertIds}
       />
 
       <DashboardCharts stats={stats} loading={statsLoading} />
 
+      {canOperate ? (
       <section className="col-span-12 rounded-lg border border-zinc-800 bg-[#151821] p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-100">IoT Vest Simulator</h2>
-            <p className="text-xs text-zinc-500">Simulate smart vest events for testing</p>
+            <h2 className="text-sm font-semibold text-zinc-100">Event Simulator</h2>
+            <p className="text-xs text-zinc-500">
+              Creates test alerts marked SIMULATED; they are counted separately from real observations
+            </p>
           </div>
           <span className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-500">
-            Hardware offline
+            Test data
           </span>
         </div>
         <Select
@@ -114,6 +119,7 @@ export default function DashboardPage() {
             { id: 'inactivity', label: 'Inactivity', sev: 'MEDIUM' },
             { id: 'sos', label: 'SOS Pressed', sev: 'CRITICAL' },
             { id: 'vehicle_proximity', label: 'Vehicle Proximity', sev: 'CRITICAL' },
+            { id: 'fall', label: 'Fall', sev: 'CRITICAL' },
           ].map((sim) => (
             <Button
               key={sim.id}
@@ -128,6 +134,7 @@ export default function DashboardPage() {
           ))}
         </div>
       </section>
+      ) : null}
 
       {toast ? (
         <div

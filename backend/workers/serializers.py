@@ -25,6 +25,9 @@ class ActivityLogSerializer(serializers.ModelSerializer):
 
 class SmartVestSerializer(serializers.ModelSerializer):
     worker_name = serializers.SerializerMethodField()
+    # Computed from last_seen, so a vest that silently stopped reporting is
+    # never shown as online even before the presence sweep has run.
+    is_online = serializers.SerializerMethodField()
 
     class Meta:
         model = SmartVest
@@ -42,15 +45,53 @@ class SmartVestSerializer(serializers.ModelSerializer):
             "last_seen",
             "registered_at",
         )
-        read_only_fields = ("id", "worker_name", "registered_at")
+        # Telemetry fields are written only by the vest itself (gateway/MQTT),
+        # never typed in through the registry.
+        read_only_fields = (
+            "id",
+            "worker_name",
+            "battery_level",
+            "latitude",
+            "longitude",
+            "sos_active",
+            "last_seen",
+            "registered_at",
+        )
 
     def get_worker_name(self, obj):
         return obj.worker.name if obj.worker_id else None
 
+    def validate_worker(self, worker):
+        if worker is None:
+            return worker
+        if not worker.is_active:
+            raise serializers.ValidationError("Cannot assign a vest to a deactivated worker.")
+        current = getattr(worker, "smart_vest", None)
+        if current is not None and (self.instance is None or current.pk != self.instance.pk):
+            raise serializers.ValidationError(
+                f"{worker.name} already wears vest {current.vest_id}; unassign it first."
+            )
+        return worker
+
+    def get_is_online(self, obj):
+        from .presence import is_vest_online
+
+        return is_vest_online(obj)
+
 
 class WorkerSerializer(serializers.ModelSerializer):
+    """Worker with their vest. Assign a vest by writing its id to ``vest``
+    (null to unassign); ``vest_id`` and ``smart_vest`` are read-only views."""
+
     zone_name = serializers.SerializerMethodField()
     smart_vest = SmartVestSerializer(read_only=True)
+    vest_id = serializers.SerializerMethodField()
+    vest = serializers.PrimaryKeyRelatedField(
+        queryset=SmartVest.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
 
     class Meta:
         model = Worker
@@ -58,6 +99,7 @@ class WorkerSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "vest_id",
+            "vest",
             "zone",
             "zone_name",
             "role",
@@ -70,6 +112,56 @@ class WorkerSerializer(serializers.ModelSerializer):
 
     def get_zone_name(self, obj):
         return obj.zone.name if obj.zone_id else None
+
+    def get_vest_id(self, obj):
+        return obj.vest_id
+
+    def validate_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Name is required.")
+        return value
+
+    def validate_vest(self, vest):
+        if vest is None:
+            return vest
+        if vest.worker_id and (self.instance is None or vest.worker_id != self.instance.pk):
+            raise serializers.ValidationError(
+                f"Vest {vest.vest_id} is already assigned to {vest.worker.name}."
+            )
+        return vest
+
+    def _assign_vest(self, worker, vest):
+        from django.db import transaction
+
+        with transaction.atomic():
+            for old in SmartVest.objects.filter(worker=worker).exclude(pk=getattr(vest, "pk", None)):
+                old.worker = None
+                old.save(update_fields=["worker"])
+            if vest is not None and vest.worker_id != worker.pk:
+                vest.worker = worker
+                vest.save(update_fields=["worker"])
+        # Drop the cached reverse relation so the response shows the new vest.
+        worker._state.fields_cache.pop("smart_vest", None)
+
+    def create(self, validated_data):
+        assign = "vest" in validated_data
+        vest = validated_data.pop("vest", None)
+        worker = super().create(validated_data)
+        if assign:
+            self._assign_vest(worker, vest)
+        return worker
+
+    def update(self, instance, validated_data):
+        assign = "vest" in validated_data
+        vest = validated_data.pop("vest", None)
+        worker = super().update(instance, validated_data)
+        if assign:
+            self._assign_vest(worker, vest)
+        # A deactivated worker no longer wears a vest.
+        if not worker.is_active:
+            self._assign_vest(worker, None)
+        return worker
 
 
 class VestTelemetrySerializer(serializers.Serializer):

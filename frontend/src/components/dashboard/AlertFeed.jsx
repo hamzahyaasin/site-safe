@@ -40,7 +40,7 @@ export default function AlertFeed({ alerts, loading, onResolve, newAlertIds }) {
               <AlertItem
                 key={alert.id}
                 alert={alert}
-                onResolve={handleResolve}
+                onResolve={onResolve ? handleResolve : undefined}
                 resolving={resolvingId === alert.id}
                 isNew={newAlertIds?.has(alert.id)}
               />

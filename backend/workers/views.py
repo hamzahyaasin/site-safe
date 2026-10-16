@@ -82,7 +82,7 @@ def compute_activity_summary(worker_id, day):
 
 
 class WorkerViewSet(viewsets.ModelViewSet):
-    queryset = Worker.objects.select_related("zone").all()
+    queryset = Worker.objects.select_related("zone", "smart_vest").all()
     serializer_class = WorkerSerializer
     permission_classes = [ReadOnlyOrSafetyOfficer]
 

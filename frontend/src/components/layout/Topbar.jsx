@@ -2,33 +2,21 @@ import { Link } from 'react-router-dom'
 import { initials } from '../../lib/utils.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useWebSocket } from '../../hooks/useWebSocket.js'
-import { Select } from '../ui/Input.jsx'
 
-const SITES = [
-  { id: 'site-a', name: 'Tower Block A — Main Site' },
-  { id: 'site-b', name: 'Highway Extension — Zone 3' },
-]
+const ROLE_LABEL = { ADMIN: 'Admin', SAFETY_OFFICER: 'Safety Officer', VIEWER: 'Viewer' }
 
-export default function Topbar({ siteId, onSiteChange }) {
-  const { userEmail } = useAuth()
+// Single-site deployment: the API has no site model, so no site switcher
+// is offered. Set VITE_SITE_NAME to label the site.
+const SITE_NAME = import.meta.env.VITE_SITE_NAME || 'Site-Safe'
+
+export default function Topbar() {
+  const { userEmail, role } = useAuth()
   const { unreadAlerts, bellPulse, clearUnread } = useWebSocket()
 
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-zinc-800 bg-[#0f1117]/95 px-6 backdrop-blur-sm">
       <div className="flex min-w-0 items-center gap-4">
-        <Select
-          label={null}
-          value={siteId}
-          onChange={(e) => onSiteChange(e.target.value)}
-          selectClassName="h-8 min-w-[220px] text-xs"
-          aria-label="Select site"
-        >
-          {SITES.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </Select>
+        <p className="truncate text-sm font-medium text-zinc-300">{SITE_NAME}</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -56,7 +44,7 @@ export default function Topbar({ siteId, onSiteChange }) {
             <p className="max-w-[140px] truncate text-xs font-medium text-zinc-200">
               {userEmail?.split('@')[0] || 'User'}
             </p>
-            <p className="text-[10px] text-zinc-500">Safety Officer</p>
+            <p className="text-[10px] text-zinc-500">{ROLE_LABEL[role] ?? '…'}</p>
           </div>
         </div>
       </div>

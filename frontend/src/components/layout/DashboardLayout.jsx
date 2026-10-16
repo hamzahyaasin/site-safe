@@ -8,7 +8,6 @@ import ConnectionToast from './ConnectionToast.jsx'
 
 export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(false)
-  const [siteId, setSiteId] = useState('site-a')
   const { stats } = useDashboardStats()
 
   return (
@@ -24,10 +23,10 @@ export default function DashboardLayout() {
           collapsed ? 'ml-16' : 'ml-60',
         )}
       >
-        <Topbar siteId={siteId} onSiteChange={setSiteId} />
+        <Topbar />
         <main className="flex-1 p-6">
           <div className="mx-auto max-w-[1600px]">
-            <Outlet context={{ siteId }} />
+            <Outlet />
           </div>
         </main>
       </div>

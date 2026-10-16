@@ -9,6 +9,7 @@ export default function VestDrawer({
   workersLoading,
   onAssignWorker,
   assigning,
+  canEdit = false,
   onClose,
   registerForm,
   onRegisterChange,
@@ -108,7 +109,9 @@ export default function VestDrawer({
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="text-xs tabular-nums text-zinc-400">{pct}%</span>
+                  <span className="text-xs tabular-nums text-zinc-400">
+                    {vest.battery_level == null ? 'not reported' : `${pct}%`}
+                  </span>
                 </dd>
               </div>
               <div className="flex items-center justify-between">
@@ -134,18 +137,20 @@ export default function VestDrawer({
               label="Assign worker"
               className="mt-2"
               value={vest.worker ?? ''}
-              disabled={assigning || workersLoading}
+              disabled={!canEdit || assigning || workersLoading}
               onChange={(e) => {
                 const val = e.target.value
                 onAssignWorker(val ? Number(val) : null)
               }}
             >
               <option value="">Unassigned</option>
-              {workers.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
+              {workers
+                .filter((w) => w.is_active && (!w.smart_vest || w.smart_vest.id === vest.id))
+                .map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
             </Select>
             {vest.worker_name ? (
               <p className="mt-1.5 text-xs text-zinc-500">Currently assigned to {vest.worker_name}</p>

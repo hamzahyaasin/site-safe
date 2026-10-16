@@ -113,6 +113,23 @@ python manage.py run_mqtt_consumer
 
 Run it alongside the ASGI server. When they are separate processes, set `REDIS_URL` so live updates from vests reach dashboard websockets.
 
+### Vest presence monitor
+
+```bash
+python manage.py run_presence_monitor
+```
+
+A vest counts as online only while it keeps reporting. If it is silent for longer than `VEST_OFFLINE_AFTER_SECONDS` (default 120), the API shows it as offline even without this process. The monitor records the change and pushes it to open dashboards every 30 seconds.
+
+### Zones and automatic breaches
+
+Draw zone boundaries on the map on the **Zones** page (Admin only). Vest GPS positions then produce zone entry/exit history and automatic **ZONE_BREACH** alerts in two cases:
+
+- A worker enters a RESTRICTED zone that is not their assigned zone.
+- An entry takes a zone above its maximum occupancy.
+
+Where zones overlap, the highest-risk zone wins. Occupancy counts only workers whose vests are online. Camera-only zones have no boundary, so they have no GPS presence.
+
 ### Backend environment variables
 
 Copy `backend/.env.example` to `backend/.env`:

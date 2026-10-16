@@ -5,6 +5,7 @@ import DataTable from '../components/ui/DataTable.jsx'
 import Input from '../components/ui/Input.jsx'
 import { cn } from '../lib/utils.js'
 import { useReports } from '../hooks/useReports.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const REPORT_TYPES = [
   { id: 'INCIDENT', label: 'Incident Report', description: 'All alerts and incidents in the selected period' },
@@ -35,6 +36,23 @@ function formatDate(iso) {
 }
 
 export default function ReportsPage() {
+  const { canOperate, role } = useAuth()
+  if (role && !canOperate) {
+    return (
+      <div className="space-y-6">
+        <header>
+          <h1 className="text-2xl font-semibold text-zinc-100">Reports</h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            Generating and downloading reports requires the Safety Officer or Admin role.
+          </p>
+        </header>
+      </div>
+    )
+  }
+  return <ReportsWorkspace />
+}
+
+function ReportsWorkspace() {
   const { reports, loading, generating, error, generateReport, downloadReport } = useReports()
   const [reportType, setReportType] = useState('INCIDENT')
   const [{ date_from, date_to }, setDateRange] = useState(defaultDateRange)

@@ -25,36 +25,126 @@ from .serializers import (
 )
 
 
+def _request_timezone(request):
+    """IANA zone from ?tz= (the browser's), else the server's TIME_ZONE."""
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    name = request.query_params.get("tz")
+    if name:
+        try:
+            return ZoneInfo(name)
+        except (ZoneInfoNotFoundError, ValueError):
+            pass
+    return timezone.get_default_timezone()
+
+
 class DashboardStatsView(APIView):
+    """Dashboard figures computed only from stored records.
+
+    Day and hour buckets use the caller's ``tz``. "On site" counts active
+    workers whose vest is currently reporting; it is unknown for workers
+    without vests. Simulated alerts are counted separately so a demo can
+    be distinguished from real observations.
+    """
+
     permission_classes = [IsViewer]
 
     def get(self, request, *args, **kwargs):
+        from datetime import timedelta
+
+        from django.db.models import Avg, DurationField, ExpressionWrapper, F, Q
+        from django.db.models.functions import TruncDate, TruncHour
+
+        from workers.presence import offline_after
+
+        tz = _request_timezone(request)
         now = timezone.now()
-        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        local_now = now.astimezone(tz)
+        start_of_day = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        start_of_yesterday = start_of_day - timedelta(days=1)
+        week_start = start_of_day - timedelta(days=6)
 
-        total_workers = Worker.objects.count()
-        active_workers = Worker.objects.filter(is_active=True).count()
+        workers = Worker.objects.all()
+        active = workers.filter(is_active=True)
+        with_vest = active.filter(smart_vest__isnull=False)
+        on_site = with_vest.filter(smart_vest__last_seen__gte=now - offline_after())
+
         unresolved = Alert.objects.filter(is_resolved=False)
-        unresolved_alerts = unresolved.count()
-        critical_alerts = unresolved.filter(severity=Severity.CRITICAL).count()
-        total_alerts_today = Alert.objects.filter(timestamp__gte=start_of_day).count()
+        today = Alert.objects.filter(timestamp__gte=start_of_day)
+        simulated = Q(source=AlertSource.SIMULATED)
 
-        counts_qs = (
-            Alert.objects.filter(is_resolved=False)
-            .values("alert_type")
-            .annotate(c=Count("id"))
-        )
-        counts_map = {row["alert_type"]: row["c"] for row in counts_qs}
-        alerts_by_type = {choice.value: counts_map.get(choice.value, 0) for choice in AlertType}
+        def by_type(qs):
+            counts = dict(qs.values_list("alert_type").annotate(c=Count("id")))
+            return {t.value: counts.get(t.value, 0) for t in AlertType}
+
+        hourly_counts = {
+            row["hour"].astimezone(tz).hour: row
+            for row in today.annotate(hour=TruncHour("timestamp", tzinfo=tz))
+            .values("hour")
+            .annotate(count=Count("id"), simulated=Count("id", filter=simulated))
+        }
+        hourly = [
+            {
+                "hour": h,
+                "count": hourly_counts.get(h, {}).get("count", 0),
+                "simulated": hourly_counts.get(h, {}).get("simulated", 0),
+            }
+            for h in range(local_now.hour + 1)
+        ]
+
+        week = Alert.objects.filter(timestamp__gte=week_start)
+        daily_counts = {
+            row["day"]: row
+            for row in week.annotate(day=TruncDate("timestamp", tzinfo=tz))
+            .values("day")
+            .annotate(
+                total=Count("id"),
+                resolved=Count("id", filter=Q(is_resolved=True)),
+                simulated=Count("id", filter=simulated),
+            )
+        }
+        daily = []
+        for i in range(7):
+            day = (week_start + timedelta(days=i)).date()
+            row = daily_counts.get(day, {})
+            daily.append(
+                {
+                    "date": day.isoformat(),
+                    "total": row.get("total", 0),
+                    "resolved": row.get("resolved", 0),
+                    "simulated": row.get("simulated", 0),
+                }
+            )
+
+        resolved_week = week.filter(is_resolved=True, resolved_at__isnull=False)
+        mean_resolution = resolved_week.aggregate(
+            avg=Avg(
+                ExpressionWrapper(F("resolved_at") - F("timestamp"), output_field=DurationField())
+            )
+        )["avg"]
 
         return Response(
             {
-                "total_workers": total_workers,
-                "active_workers": active_workers,
-                "total_alerts_today": total_alerts_today,
-                "unresolved_alerts": unresolved_alerts,
-                "critical_alerts": critical_alerts,
-                "alerts_by_type": alerts_by_type,
+                "timezone": str(tz),
+                "total_workers": workers.count(),
+                "active_workers": active.count(),
+                "workers_with_vest": with_vest.count(),
+                "workers_on_site": on_site.count(),
+                "total_alerts_today": today.count(),
+                "simulated_alerts_today": today.filter(simulated).count(),
+                "alerts_yesterday": Alert.objects.filter(
+                    timestamp__gte=start_of_yesterday, timestamp__lt=start_of_day
+                ).count(),
+                "unresolved_alerts": unresolved.count(),
+                "critical_alerts": unresolved.filter(severity=Severity.CRITICAL).count(),
+                "alerts_by_type": by_type(unresolved),
+                "today_by_type": by_type(today),
+                "hourly_today": hourly,
+                "daily_7d": daily,
+                "resolved_7d": resolved_week.count(),
+                "mean_resolution_minutes_7d": (
+                    round(mean_resolution.total_seconds() / 60, 1) if mean_resolution else None
+                ),
             }
         )
 
@@ -131,7 +221,7 @@ class AlertIngestView(APIView):
         serializer = AlertIngestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         worker = Worker.objects.filter(
-            vest_id=serializer.validated_data["vest_id"], is_active=True
+            smart_vest__vest_id=serializer.validated_data["vest_id"], is_active=True
         ).select_related("zone").first()
         rule = rule_for(serializer.validated_data["alert_type"], worker.zone if worker else None)
         if not rule.is_enabled:

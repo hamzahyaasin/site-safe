@@ -6,6 +6,7 @@ import Drawer from '../components/ui/Drawer.jsx'
 import Input from '../components/ui/Input.jsx'
 import { cn, formatAlertType } from '../lib/utils.js'
 import { useSettings } from '../hooks/useSettings.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const TABS = [
   { id: 'alerts', label: 'Alert Configuration' },
@@ -37,6 +38,8 @@ function Toggle({ checked, onChange, disabled }) {
 }
 
 export default function SettingsPage() {
+  // Alert rules are site configuration: Admin-only on the server.
+  const { isAdmin } = useAuth()
   const {
     alertConfigs,
     profile,
@@ -152,18 +155,29 @@ export default function SettingsPage() {
     {
       key: 'enabled',
       header: 'Enabled',
-      render: (row) => <Toggle checked={row.is_enabled} onChange={() => handleToggleEnabled(row)} />,
+      render: (row) =>
+        isAdmin && !(row.alert_type === 'SOS' && row.is_enabled) ? (
+          <Toggle checked={row.is_enabled} onChange={() => handleToggleEnabled(row)} />
+        ) : (
+          <span className="text-xs text-zinc-400" title={row.alert_type === 'SOS' ? 'SOS alerts cannot be disabled' : undefined}>
+            {row.is_enabled ? 'On' : 'Off'}
+          </span>
+        ),
     },
     { key: 'threshold', header: 'Threshold (sec)', render: (row) => row.threshold_seconds },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <Button variant="ghost" size="sm" onClick={() => openEditModal(row)}>
-          Edit
-        </Button>
-      ),
-    },
+    ...(isAdmin
+      ? [
+          {
+            key: 'actions',
+            header: 'Actions',
+            render: (row) => (
+              <Button variant="ghost" size="sm" onClick={() => openEditModal(row)}>
+                Edit
+              </Button>
+            ),
+          },
+        ]
+      : []),
   ]
 
   return (

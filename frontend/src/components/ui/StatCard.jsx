@@ -21,6 +21,9 @@ export default function StatCard({
   borderColor = 'border-l-amber-500',
   sparklineData = [],
   sparklineTrend = 'positive',
+  hint,
+  deltaText,
+  deltaTone = 'neutral',
   loading,
 }) {
   const gradientId = `spark-${label.replace(/\s+/g, '-').toLowerCase()}`
@@ -51,7 +54,18 @@ export default function StatCard({
         <span className="text-2xl font-semibold tabular-nums text-zinc-100">
           {value ?? '—'}
         </span>
-        {delta !== undefined && delta !== null ? (
+        {deltaText ? (
+          <span
+            className={cn(
+              'text-xs font-medium tabular-nums',
+              deltaTone === 'good' && 'text-emerald-400',
+              deltaTone === 'bad' && 'text-red-400',
+              deltaTone === 'neutral' && 'text-zinc-500',
+            )}
+          >
+            {deltaText}
+          </span>
+        ) : delta !== undefined && delta !== null ? (
           <span
             className={cn(
               'text-xs font-medium tabular-nums',
@@ -63,6 +77,7 @@ export default function StatCard({
           </span>
         ) : null}
       </div>
+      {hint ? <p className="mt-1 text-[11px] text-zinc-500">{hint}</p> : null}
       {sparklineData.length > 0 ? (
         <div className="mt-auto h-[40%] min-h-[52px] w-full pt-3">
           <ResponsiveContainer width="100%" height="100%">

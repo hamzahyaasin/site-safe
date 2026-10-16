@@ -70,7 +70,7 @@ export function useReports() {
         } else if (e.response?.data?.detail) {
           message = e.response.data.detail
         }
-        throw new Error(message)
+        throw new Error(message, { cause: e })
       } finally {
         setGenerating(false)
       }
@@ -93,7 +93,11 @@ export function useReports() {
   )
 
   useEffect(() => {
-    loadReports()
+    // Deferred so the initial load's state updates happen outside the effect body.
+    const t = window.setTimeout(() => {
+      loadReports()
+    }, 0)
+    return () => window.clearTimeout(t)
   }, [loadReports])
 
   return {

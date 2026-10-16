@@ -56,7 +56,11 @@ export function useVests(options = {}) {
   )
 
   useEffect(() => {
-    fetchVests()
+    // Deferred so the initial load's state updates happen outside the effect body.
+    const t = window.setTimeout(() => {
+      fetchVests()
+    }, 0)
+    return () => window.clearTimeout(t)
   }, [fetchVests])
 
   useEffect(() => {

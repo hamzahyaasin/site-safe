@@ -52,7 +52,11 @@ export function useZones() {
   )
 
   useEffect(() => {
-    loadZones()
+    // Deferred so the initial load's state updates happen outside the effect body.
+    const t = window.setTimeout(() => {
+      loadZones()
+    }, 0)
+    return () => window.clearTimeout(t)
   }, [loadZones])
 
   return {

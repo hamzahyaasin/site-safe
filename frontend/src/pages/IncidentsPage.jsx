@@ -1,7 +1,9 @@
+import { useAuth } from '../context/AuthContext.jsx'
 import { useAlerts } from '../hooks/useAlerts.js'
 import IncidentLogTable from '../components/incidents/IncidentLogTable.jsx'
 
 export default function IncidentsPage() {
+  const { canOperate } = useAuth()
   const { alerts, loading, resolveAlert } = useAlerts({ ordering: '-timestamp' })
 
   return (
@@ -12,7 +14,7 @@ export default function IncidentsPage() {
           Full audit trail of safety incidents from cameras, vests, and simulations
         </p>
       </header>
-      <IncidentLogTable alerts={alerts} loading={loading} onResolve={resolveAlert} />
+      <IncidentLogTable alerts={alerts} loading={loading} onResolve={canOperate ? resolveAlert : undefined} />
     </div>
   )
 }

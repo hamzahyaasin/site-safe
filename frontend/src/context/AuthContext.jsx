@@ -7,7 +7,10 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(() => localStorage.getItem(storageKeys.access))
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem(storageKeys.email))
-  const [role, setRole] = useState(null)
+  // Role is remembered per user, so it survives token refreshes but never
+  // carries over to a different account after logout.
+  const [profileRole, setProfileRole] = useState({ email: null, role: null })
+  const role = accessToken && profileRole.email === userEmail ? profileRole.role : null
 
   const isAuthenticated = Boolean(accessToken)
 
@@ -22,23 +25,20 @@ export function AuthProvider({ children }) {
   // controls are offered. The API refuses a disallowed write regardless of
   // what the interface shows.
   useEffect(() => {
-    if (!accessToken) {
-      setRole(null)
-      return
-    }
+    if (!accessToken) return undefined
     let cancelled = false
     api
       .get('v1/profile/')
       .then(({ data }) => {
-        if (!cancelled) setRole(data.role ?? null)
+        if (!cancelled) setProfileRole({ email: data.email ?? userEmail, role: data.role ?? null })
       })
       .catch(() => {
-        if (!cancelled) setRole(null)
+        if (!cancelled) setProfileRole({ email: userEmail, role: null })
       })
     return () => {
       cancelled = true
     }
-  }, [accessToken])
+  }, [accessToken, userEmail])
 
   const login = useCallback(async (email, password) => {
     const { data } = await axios.post(`${API_BASE_URL}token/`, { email, password })
@@ -73,6 +73,7 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook co-located with its provider
 export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) {

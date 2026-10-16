@@ -38,7 +38,7 @@ class BroadcastOnCommitTests(TestCase):
         self.assertTrue(send.call_args_list[1].args[1]["is_resolved"])
 
     def test_vest_sos_broadcasts_alert_and_vest(self):
-        worker = Worker.objects.create(name="Ali", vest_id="V-1")
+        worker = Worker.objects.create(name="Ali")
         SmartVest.objects.create(vest_id="V-1", worker=worker)
         _, key = ServiceToken.issue("gw", ServiceToken.Kind.VEST_GATEWAY)
         self.client.credentials(HTTP_AUTHORIZATION=f"Device {key}")

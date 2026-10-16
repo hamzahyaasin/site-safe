@@ -4,21 +4,17 @@ import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import EmptyState from '../ui/EmptyState.jsx'
 import Skeleton from '../ui/Skeleton.jsx'
 import Tooltip from '../ui/Tooltip.jsx'
-import {
-  cn,
-  deriveLastSeen,
-  deriveWorkerVitals,
-  formatTimestamp,
-  getWorkerPresenceStatus,
-  initials,
-} from '../../lib/utils.js'
+import { cn, formatTimestamp, getWorkerPresence, initials } from '../../lib/utils.js'
 
-export default function WorkerStatusGrid({ workers, loading, highlightIds }) {
+/** Worker cards. Presence and battery come only from the worker's vest
+ * telemetry; ``onEdit`` (Workers page) adds an edit action per card and
+ * ``canAdd`` shows the register tile. */
+export default function WorkerStatusGrid({ workers, loading, highlightIds, onEdit, onAdd, canAdd = false }) {
   return (
     <Card className="col-span-12 xl:col-span-8">
       <CardHeader>
         <CardTitle>Worker Status</CardTitle>
-        <CardDescription>Live personnel on site with vest telemetry</CardDescription>
+        <CardDescription>Presence from vest telemetry; workers without a vest are not tracked</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -30,16 +26,14 @@ export default function WorkerStatusGrid({ workers, loading, highlightIds }) {
         ) : workers.length === 0 ? (
           <EmptyState
             title="No workers registered"
-            description="Add workers in Vest Management to monitor site personnel."
+            description="Register workers on the Workers page and assign them a vest to track presence."
           />
         ) : (
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
             {workers.map((worker) => {
-              const lastSeen = deriveLastSeen(worker)
-              const status = getWorkerPresenceStatus(worker, lastSeen)
-              const vitals = deriveWorkerVitals(worker)
+              const presence = getWorkerPresence(worker)
+              const vest = worker.smart_vest
               const highlighted = highlightIds?.has(worker.id)
-              const showVitals = worker.is_active && status.label === 'ACTIVE'
 
               return (
                 <article
@@ -47,6 +41,7 @@ export default function WorkerStatusGrid({ workers, loading, highlightIds }) {
                   className={cn(
                     'rounded-lg border border-zinc-800 bg-zinc-900/30 p-3 transition-colors',
                     highlighted && 'animate-highlight animate-card-pulse',
+                    !worker.is_active && 'opacity-60',
                   )}
                 >
                   <div className="flex items-start gap-3">
@@ -59,40 +54,63 @@ export default function WorkerStatusGrid({ workers, loading, highlightIds }) {
                           <Tooltip content={worker.name}>
                             <p className="text-sm font-medium leading-snug text-zinc-100">{worker.name}</p>
                           </Tooltip>
-                          <p className="mt-0.5 font-mono text-xs text-zinc-500">{worker.vest_id}</p>
+                          <p className="mt-0.5 font-mono text-xs text-zinc-500">
+                            {worker.vest_id || 'No vest assigned'}
+                          </p>
                         </div>
-                        <Badge variant={status.variant} className="shrink-0">
-                          {status.label}
+                        <Badge variant={presence.variant} className="shrink-0">
+                          {presence.label}
                         </Badge>
                       </div>
                       <p className="mt-2 text-[11px] text-zinc-600">
-                        Last seen {formatTimestamp(lastSeen)}
+                        {presence.lastSeen
+                          ? `Last report ${formatTimestamp(presence.lastSeen)}`
+                          : vest
+                            ? 'Vest has not reported yet'
+                            : 'Presence not tracked'}
                       </p>
-                      {worker.zone ? (
-                        <p className="mt-0.5 text-[11px] text-zinc-500">{worker.zone}</p>
-                      ) : null}
+                      <p className="mt-0.5 text-[11px] text-zinc-500">
+                        Assigned zone: {worker.zone_name || 'none'}
+                        {worker.role ? ` · ${worker.role}` : ''}
+                      </p>
                     </div>
                   </div>
-                  {showVitals ? (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      <VitalChip label="Temp" value={`${vitals.temp}°C`} />
-                      <VitalChip label="HR" value={`${vitals.heartRate} bpm`} />
-                      <VitalChip label="Gas" value={`${vitals.gasPpm} ppm`} warn={vitals.gasPpm > 8} />
-                    </div>
-                  ) : null}
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    {vest ? (
+                      <Chip
+                        label="Battery"
+                        value={vest.battery_level === null ? 'unknown' : `${vest.battery_level}%`}
+                        warn={vest.battery_level !== null && vest.battery_level < 20}
+                      />
+                    ) : null}
+                    {vest?.latitude !== null && vest?.latitude !== undefined ? (
+                      <Chip label="GPS" value={`${vest.latitude.toFixed(5)}, ${vest.longitude.toFixed(5)}`} />
+                    ) : null}
+                    {onEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => onEdit(worker)}
+                        className="ml-auto rounded px-2 py-0.5 text-[11px] text-amber-400 hover:bg-amber-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
+                      >
+                        Edit
+                      </button>
+                    ) : null}
+                  </div>
                 </article>
               )
             })}
 
-            <Link
-              to="/vests"
-              className="flex min-h-[136px] flex-col items-center justify-center rounded-lg border border-dashed border-zinc-700 bg-zinc-900/20 p-4 text-zinc-500 transition-colors hover:border-amber-500/40 hover:bg-zinc-900/40 hover:text-amber-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
-            >
-              <span className="mb-2 flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 text-lg">
-                +
-              </span>
-              <span className="text-sm font-medium">Register new worker</span>
-            </Link>
+            {canAdd ? (
+              onAdd ? (
+                <button type="button" onClick={onAdd} className={ADD_TILE}>
+                  <AddTileContent />
+                </button>
+              ) : (
+                <Link to="/workers?new=1" className={ADD_TILE}>
+                  <AddTileContent />
+                </Link>
+              )
+            ) : null}
           </div>
         )}
       </CardContent>
@@ -100,7 +118,19 @@ export default function WorkerStatusGrid({ workers, loading, highlightIds }) {
   )
 }
 
-function VitalChip({ label, value, warn }) {
+const ADD_TILE =
+  'flex min-h-[136px] flex-col items-center justify-center rounded-lg border border-dashed border-zinc-700 bg-zinc-900/20 p-4 text-zinc-500 transition-colors hover:border-amber-500/40 hover:bg-zinc-900/40 hover:text-amber-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500'
+
+function AddTileContent() {
+  return (
+    <>
+      <span className="mb-2 flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 text-lg">+</span>
+      <span className="text-sm font-medium">Register new worker</span>
+    </>
+  )
+}
+
+function Chip({ label, value, warn }) {
   return (
     <span
       className={cn(

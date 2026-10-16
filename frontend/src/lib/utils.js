@@ -26,24 +26,9 @@ export function sourceLabel(source) {
   }
 }
 
-export function cameraIdFromSource(source) {
-  switch (source) {
-    case 'AI_CAMERA':
-      return 'CAM-01'
-    case 'SMART_VEST':
-      return 'VEST-LINK'
-    case 'SIMULATED':
-      return 'SIM'
-    default:
-      return '—'
-  }
-}
-
-/** Prefer the alert's real camera_id (set by ai-module for a named camera
- * source) and only fall back to the generic source-derived placeholder
- * when one isn't attached. */
+/** The camera that raised an alert, if any. Vest and simulated alerts have none. */
 export function displayCameraId(alert) {
-  return alert?.camera_id || cameraIdFromSource(alert?.source)
+  return alert?.camera_id || '—'
 }
 
 /** e.g. "2 min ago · 14:32 PKT" */
@@ -117,50 +102,39 @@ export function normalizeList(data) {
   return Array.isArray(data) ? data : data?.results || []
 }
 
-/** Demo-friendly last-seen: active workers appear recently online for FYP demos. */
-export function deriveLastSeen(worker) {
-  if (!worker.is_active) {
-    const daysAgo = 2 + (worker.id % 5)
-    return new Date(Date.now() - daysAgo * 86400000).toISOString()
+/** Presence from the worker's vest telemetry; there is no presence signal
+ * for a worker without a vest, so that is reported as untracked rather
+ * than guessed. */
+export function getWorkerPresence(worker) {
+  if (!worker.is_active) return { label: 'INACTIVE', variant: 'offline', lastSeen: null }
+  const vest = worker.smart_vest
+  if (!vest) return { label: 'NO VEST', variant: 'neutral', lastSeen: null }
+  if (!vest.last_seen) return { label: 'NEVER REPORTED', variant: 'offline', lastSeen: null }
+  if (vest.sos_active) return { label: 'SOS', variant: 'critical', lastSeen: vest.last_seen }
+  if (vest.is_online) return { label: 'ON SITE', variant: 'active', lastSeen: vest.last_seen }
+  return { label: 'OFFLINE', variant: 'offline', lastSeen: vest.last_seen }
+}
+
+/** Short local label for an ISO date, e.g. "Thu 16". */
+export function shortDayLabel(isoDate) {
+  const [y, m, d] = isoDate.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })
+}
+
+export function formatMinutes(mins) {
+  if (mins === null || mins === undefined) return null
+  if (mins < 60) return `${Math.round(mins)} min`
+  const h = Math.floor(mins / 60)
+  const m = Math.round(mins % 60)
+  return m ? `${h} h ${m} min` : `${h} h`
+}
+
+export function browserTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone
+  } catch {
+    return undefined
   }
-  const minutesAgo = 1 + ((worker.id * 3) % 4)
-  return new Date(Date.now() - minutesAgo * 60000).toISOString()
-}
-
-export function getWorkerPresenceStatus(worker, lastSeenIso) {
-  if (!worker.is_active) {
-    return { label: 'OFFLINE', variant: 'offline' }
-  }
-  const diffMs = Date.now() - new Date(lastSeenIso).getTime()
-  const mins = diffMs / 60000
-  if (mins <= 5) return { label: 'ACTIVE', variant: 'active' }
-  if (mins <= 60) return { label: 'WARNING', variant: 'atRisk' }
-  return { label: 'OFFLINE', variant: 'offline' }
-}
-
-/** Deterministic pseudo-vitals from worker id (UI placeholder until IoT API exists). */
-export function deriveWorkerVitals(worker) {
-  const seed = worker.id * 17 + (worker.vest_id?.length || 0) * 3
-  return {
-    temp: (36.2 + (seed % 15) / 10).toFixed(1),
-    heartRate: 68 + (seed % 28),
-    gasPpm: seed % 12,
-  }
-}
-
-export function deriveComplianceRate(stats) {
-  if (!stats) return null
-  const active = stats.active_workers || 0
-  const open = stats.unresolved_alerts || 0
-  if (active === 0) return 100
-  return Math.max(0, Math.min(100, Math.round(((active - open) / active) * 100)))
-}
-
-export function sparklineFromValue(value, points = 8) {
-  const base = Number(value) || 0
-  return Array.from({ length: points }, (_, i) => ({
-    v: Math.max(0, base + Math.sin(i * 1.2 + base) * (base * 0.08 + 1)),
-  }))
 }
 
 export function exportCsv(filename, headers, rows) {

@@ -34,6 +34,10 @@ class ZoneSerializer(serializers.ModelSerializer):
 
 
 class ZoneDetailSerializer(ZoneSerializer):
+    """Adds ``worker_count`` (active workers *assigned* to the zone) and
+    ``current_occupancy`` (workers *observed* inside it by an online vest's
+    GPS). Camera-only zones have no observed occupancy."""
+
     worker_count = serializers.SerializerMethodField()
     current_occupancy = serializers.SerializerMethodField()
 
@@ -41,13 +45,13 @@ class ZoneDetailSerializer(ZoneSerializer):
         fields = ZoneSerializer.Meta.fields + ("worker_count", "current_occupancy")
 
     def get_worker_count(self, obj):
-        workers = getattr(obj, "workers", None)
-        if workers is not None:
-            return workers.count()
-        return obj.workers.count()
+        return sum(1 for w in obj.workers.all() if w.is_active)
 
     def get_current_occupancy(self, obj):
-        workers = getattr(obj, "workers", None)
-        if workers is not None:
-            return workers.filter(is_active=True).count()
-        return obj.workers.filter(is_active=True).count()
+        observed = self.context.get("observed_zone_ids")
+        if observed is None:
+            from workers.presence import observed_zone_ids
+
+            observed = observed_zone_ids()
+            self.context["observed_zone_ids"] = observed
+        return sum(1 for z in observed.values() if z == obj.pk)
