@@ -244,7 +244,7 @@ class AlertIngestView(APIView):
         rule = rule_for(serializer.validated_data["alert_type"], worker.zone if worker else None)
         if not rule.is_enabled:
             return _suppressed(rule)
-        alert = serializer.save()
+        alert = serializer.save(simulated=request.auth.is_simulator)
         return Response(
             AlertSerializer(alert, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
@@ -283,7 +283,7 @@ class CameraEventView(APIView):
         alert = Alert(
             alert_type=data["alert_type"],
             severity=data["severity"],
-            source=AlertSource.AI_CAMERA,
+            source=AlertSource.SIMULATED if request.auth.is_simulator else AlertSource.AI_CAMERA,
             description=description,
             camera_id=data["camera_id"],
             confidence=data["confidence"],

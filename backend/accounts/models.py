@@ -116,12 +116,16 @@ class ServiceToken(models.Model):
         blank=True,
         help_text="Camera tokens only: camera_ids this token may report for. Empty = any.",
     )
+    is_simulator = models.BooleanField(
+        default=False,
+        help_text="Data from this token is test data: its alerts are marked SIMULATED.",
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.name} ({self.kind})"
+        return f"{self.name} ({self.kind}{', simulator' if self.is_simulator else ''})"
 
     @staticmethod
     def hash_key(key: str) -> str:
@@ -130,7 +134,7 @@ class ServiceToken(models.Model):
         return hashlib.sha256(key.encode()).hexdigest()
 
     @classmethod
-    def issue(cls, name: str, kind: str, camera_ids=None):
+    def issue(cls, name: str, kind: str, camera_ids=None, is_simulator=False):
         """Create a token and return (instance, plaintext_key)."""
         import secrets
 
@@ -141,6 +145,7 @@ class ServiceToken(models.Model):
             key_prefix=key[:12],
             key_hash=cls.hash_key(key),
             camera_ids=list(camera_ids or []),
+            is_simulator=is_simulator,
         )
         return token, key
 

@@ -154,7 +154,7 @@ class VestTelemetryView(APIView):
         vest_id = data.pop("vest_id", None)
         if not vest_id:
             return Response({"vest_id": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
-        vest = apply_vest_telemetry(vest_id, data)
+        vest = apply_vest_telemetry(vest_id, data, simulated=request.auth.is_simulator)
         if not vest:
             return Response({"error": "Unknown vest"}, status=status.HTTP_404_NOT_FOUND)
         return Response({"status": "ok"})

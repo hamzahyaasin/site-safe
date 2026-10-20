@@ -11,7 +11,7 @@ from .models import ActivityLog, SmartVest
 logger = logging.getLogger(__name__)
 
 
-def log_zone_change(worker, new_zone, lat, lng):
+def log_zone_change(worker, new_zone, lat, lng, simulated=False):
     """Record zone exit/entry when the worker's observed zone changes.
 
     Returns True when ``new_zone`` was just entered.
@@ -34,6 +34,8 @@ def log_zone_change(worker, new_zone, lat, lng):
         return False
 
     metadata = {"lat": lat, "lng": lng}
+    if simulated:
+        metadata["simulated"] = True
     if current_zone:
         ActivityLog.objects.create(
             worker=worker,
@@ -51,7 +53,7 @@ def log_zone_change(worker, new_zone, lat, lng):
     return new_zone is not None
 
 
-def raise_zone_breaches(worker, zone, lat, lng):
+def raise_zone_breaches(worker, zone, lat, lng, source=AlertSource.SMART_VEST):
     """Alert when a worker enters a restricted zone they are not assigned to,
     or when their entry takes a zone over its maximum occupancy."""
     from alerts.rules import rule_for
@@ -69,7 +71,7 @@ def raise_zone_breaches(worker, zone, lat, lng):
                 worker=worker,
                 alert_type=AlertType.ZONE_BREACH,
                 severity=Severity.HIGH,
-                source=AlertSource.SMART_VEST,
+                source=source,
                 description=f"Entered restricted zone {zone.name} without assignment",
                 location=location,
             )
@@ -82,7 +84,7 @@ def raise_zone_breaches(worker, zone, lat, lng):
                     worker=worker,
                     alert_type=AlertType.ZONE_BREACH,
                     severity=Severity.MEDIUM,
-                    source=AlertSource.SMART_VEST,
+                    source=source,
                     description=(
                         f"{zone.name} over capacity: {occupancy} present, limit {zone.max_occupancy}"
                     ),
@@ -105,19 +107,23 @@ def validated_payload(payload):
     return data
 
 
-def apply_vest_telemetry(vest_id, payload):
+def apply_vest_telemetry(vest_id, payload, simulated=False):
     """
     Update vest state from an already-validated telemetry payload.
     Returns the updated SmartVest, or None if vest_id is unknown.
 
     Saving the vest and any SOS alert fires model signals that broadcast the
     change to dashboards after the transaction commits.
+
+    ``simulated`` marks data from a simulator token: alerts get the
+    SIMULATED source and zone logs a ``simulated`` flag, so they are
+    labelled in the UI and excluded from report figures.
     """
     with transaction.atomic():
-        return _apply(vest_id, payload)
+        return _apply(vest_id, payload, AlertSource.SIMULATED if simulated else AlertSource.SMART_VEST)
 
 
-def _apply(vest_id, payload):
+def _apply(vest_id, payload, source):
     vest = (
         SmartVest.objects.select_for_update()
         .filter(vest_id=vest_id)
@@ -147,7 +153,7 @@ def _apply(vest_id, payload):
             worker=vest.worker,
             alert_type=AlertType.SOS,
             severity=Severity.CRITICAL,
-            source=AlertSource.SMART_VEST,
+            source=source,
             description=f"SOS activated at ({vest.latitude}, {vest.longitude})",
             location={"lat": vest.latitude, "lng": vest.longitude},
         )
@@ -155,8 +161,9 @@ def _apply(vest_id, payload):
     # Only a fresh position can move a worker between zones.
     if vest.worker and "latitude" in payload:
         zone = check_worker_zone(vest.worker, vest.latitude, vest.longitude)
-        if log_zone_change(vest.worker, zone, vest.latitude, vest.longitude):
-            raise_zone_breaches(vest.worker, zone, vest.latitude, vest.longitude)
+        simulated = source == AlertSource.SIMULATED
+        if log_zone_change(vest.worker, zone, vest.latitude, vest.longitude, simulated):
+            raise_zone_breaches(vest.worker, zone, vest.latitude, vest.longitude, source)
 
     return vest
 

@@ -34,8 +34,8 @@ class UserAdmin(BaseUserAdmin):
 class ServiceTokenAdmin(admin.ModelAdmin):
     """Tokens are issued with ``manage.py create_service_token``; admin is for review and revocation."""
 
-    list_display = ("name", "kind", "key_prefix", "is_active", "last_used_at", "created_at")
-    list_filter = ("kind", "is_active")
+    list_display = ("name", "kind", "is_simulator", "key_prefix", "is_active", "last_used_at", "created_at")
+    list_filter = ("kind", "is_simulator", "is_active")
     readonly_fields = ("key_prefix", "key_hash", "created_at", "last_used_at")
 
     def has_add_permission(self, request):

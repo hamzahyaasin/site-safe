@@ -149,6 +149,7 @@ class AlertIngestSerializer(serializers.Serializer):
         return validate_location(value)
 
     def create(self, validated_data):
+        simulated = validated_data.pop("simulated", False)
         vest_id = validated_data.pop("vest_id")
         description = validated_data.pop("description", "")
         location = validated_data.pop("location", None)
@@ -162,7 +163,7 @@ class AlertIngestSerializer(serializers.Serializer):
             worker=worker,
             description=description,
             location=location,
-            source=AlertSource.SMART_VEST,
+            source=AlertSource.SIMULATED if simulated else AlertSource.SMART_VEST,
             **validated_data,
         )
 

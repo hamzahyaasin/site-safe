@@ -1,0 +1,19 @@
+{
+  "description": "Matches the default map centre (33.6844, 73.0479). Draw a RESTRICTED zone around 33.6849, 73.0485 and a site zone around the centre to see entry, breach, SOS and offline detection. Register vests VEST-001 and VEST-002 and assign them to workers first.",
+  "interval_seconds": 5,
+  "hold_seconds": 20,
+  "vests": [
+    {
+      "vest_id": "VEST-001",
+      "speed_mps": 1.4,
+      "waypoints": [[33.6838, 73.0472], [33.6842, 73.0479], [33.6846, 73.0476], [33.6840, 73.0470]]
+    },
+    {
+      "vest_id": "VEST-002",
+      "speed_mps": 1.2,
+      "sos_at": 3,
+      "stop_at": 4,
+      "waypoints": [[33.6840, 73.0482], [33.6844, 73.0484], [33.6849, 73.0485], [33.6850, 73.0487], [33.6850, 73.0488]]
+    }
+  ]
+}

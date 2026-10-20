@@ -121,6 +121,17 @@ python manage.py run_presence_monitor
 
 A vest counts as online only while it keeps reporting. If it is silent for longer than `VEST_OFFLINE_AFTER_SECONDS` (default 120), the API shows it as offline even without this process. The monitor records the change and pushes it to open dashboards every 30 seconds.
 
+### Vest simulator (no hardware)
+
+The physical Smart Vest is proposed future work (see `docs/SCOPE_CHANGE_SMART_VEST.md`). To demonstrate the vest features, the simulator sends the same telemetry a vest gateway would:
+
+```bash
+python manage.py create_service_token vest-sim --kind VEST_GATEWAY --simulator
+SITESAFE_DEVICE_KEY=ss_... python tools/vest_simulator.py tools/vest_scenarios/demo.json --speedup 5
+```
+
+Register the scenario's vests and assign them to workers first. Each vest walks its waypoints. A vest can press SOS on reaching a given waypoint (`sos_at`) or go silent after one (`stop_at`) to show offline detection. Everything sent with a `--simulator` token is marked SIMULATED: it is labelled in the dashboard and app and excluded from report figures. `--dry-run` prints the messages without sending them.
+
 ### Zones and automatic breaches
 
 Draw zone boundaries on the map on the **Zones** page (Admin only). Vest GPS positions then produce zone entry/exit history and automatic **ZONE_BREACH** alerts in two cases:

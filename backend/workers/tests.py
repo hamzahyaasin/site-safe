@@ -312,3 +312,33 @@ class CameraBadgeIdentityTests(APITestCase):
         r = self.post("")
         self.assertIsNone(r.data["worker"])
         self.assertNotIn("badge", r.data["description"])
+
+
+class SimulatorLabellingTests(APITestCase):
+    def setUp(self):
+        _, self.sim = ServiceToken.issue("sim", ServiceToken.Kind.VEST_GATEWAY, is_simulator=True)
+        _, self.real = ServiceToken.issue("gw", ServiceToken.Kind.VEST_GATEWAY)
+        Zone.objects.create(name="Crane", boundaries=INNER, risk_level="RESTRICTED")
+        self.w = Worker.objects.create(name="Ali")
+        SmartVest.objects.create(vest_id="V-1", worker=self.w)
+
+    def send(self, key, body):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Device {key}")
+        return self.client.post("/api/v1/vests/telemetry/", {"vest_id": "V-1", **body}, format="json")
+
+    def test_simulator_alerts_and_logs_are_marked(self):
+        self.send(self.sim, {"latitude": 0.5, "longitude": 0.5, "sos_active": True})
+        sources = set(Alert.objects.values_list("source", flat=True))
+        self.assertEqual(sources, {"SIMULATED"})
+        self.assertEqual(Alert.objects.count(), 2)  # SOS + restricted-zone breach
+        self.assertTrue(ActivityLog.objects.get().metadata["simulated"])
+
+    def test_real_gateway_alerts_are_vest_alerts(self):
+        self.send(self.real, {"latitude": 0.5, "longitude": 0.5, "sos_active": True})
+        self.assertEqual(set(Alert.objects.values_list("source", flat=True)), {"SMART_VEST"})
+        self.assertNotIn("simulated", ActivityLog.objects.get().metadata)
+
+    def test_simulator_alert_ingest_is_marked(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Device {self.sim}")
+        r = self.client.post("/api/alerts/ingest/", {"vest_id": "V-1", "alert_type": "SOS", "severity": "CRITICAL"}, format="json")
+        self.assertEqual(r.data["source"], "SIMULATED")
