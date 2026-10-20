@@ -39,3 +39,6 @@ backend/media/
 
 # Local database backups
 backups/
+
+# Docker compose secrets
+.env.docker

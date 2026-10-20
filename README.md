@@ -336,6 +336,29 @@ The app registers the phone after sign-in and unregisters it on sign-out. Tappin
 
 ## Running the full stack
 
+### With Docker (demo machine)
+
+```bash
+cp .env.docker.example .env.docker      # set SECRET_KEY and DB_PASSWORD
+docker compose --env-file .env.docker up --build
+docker compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py create_service_token CAM-01 --kind CAMERA --camera-id CAM-01
+```
+
+This starts PostgreSQL, Redis, Mosquitto, the API, the MQTT consumer, the presence monitor, the report service and the dashboard. The dashboard is at http://localhost:8080 and the API at http://localhost:8000. The camera pipeline runs natively on the host, because it needs webcam access, and points `SITESAFE_API_BASE` at the API. The admin site's styling is not served when `DEBUG=False`.
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and pull request:
+
+- backend tests on PostgreSQL and SQLite, with a migration completeness check;
+- the AI, simulator and report-service tests;
+- frontend lint and build;
+- mobile lint, typecheck and tests.
+
+### Manually, in terminals
+
+
 Open three terminals:
 
 | Terminal | Directory | Command |
