@@ -56,7 +56,7 @@ jobs:
       # CPU-only torch keeps the install small; inference.py imports ultralytics.
       - run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
       - run: pip install -r requirements-vision.txt opencv-python-headless
-      - run: python -m unittest test_activity_events test_fire_detection test_identity test_inference_config test_dataset_audit test_prepare_dataset_v2 test_event_outbox
+      - run: python -m unittest test_activity_events test_fire_detection test_identity test_inference_config test_dataset_audit test_prepare_dataset_v2 test_event_outbox test_ppe_episodes
       - run: python -m unittest test_prepare_fire_dataset
         working-directory: ai-module/fire
 

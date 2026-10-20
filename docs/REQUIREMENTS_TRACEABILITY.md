@@ -23,7 +23,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-02 | Three roles (Admin, Safety Officer, Viewer) enforced by the API | M | Every forbidden role action returns 403; each permitted counterpart succeeds | `accounts/permissions.py` | `accounts/tests.py` (16) | Tested |
 | FR-03 | UI offers only actions the user's role permits | S | Viewer sees no resolve/edit/generate controls | `AuthContext.jsx` (`canOperate`, `isAdmin`) across Dashboard, Incidents, Workers, Vests, Zones, Settings, Reports | Browser check 16 Oct (officer: zones read-only; admin: zone editor) | Integrated (viewer path not browser-checked) |
 | FR-04 | Detect missing PPE (10 classes) from a camera | M | Event precision ≥90% and episode recall ≥85% per retained class, on a sealed target-camera set | `ai-module/inference.py`, `models/sitesafe_v5.pt` | Held-out mAP50 0.562 on a leaky split (not a valid claim) | Coded |
-| FR-05 | One alert per person per violation episode | M | Two people with the same violation give two alerts; a single-frame flicker gives none | — | — | Missing |
+| FR-05 | One alert per person per violation episode | M | Two people with the same violation give two alerts; a single-frame flicker gives none | `ai-module/ppe_episodes.py`, `badged_violations` + episode loop in `inference.py`, `--ppe-persistence`, `--ppe-clear-seconds` | `test_ppe_episodes.py` (15); headless pipeline run 20 Oct on a still-image clip: 3 people missing helmets + 1 missing goggles → 4 alerts, no repeats over 40 frames | Tested (**no annotated video scored yet**) |
 | FR-06 | Detect falls from camera pose | M | Positive and hard-negative videos meet the AI event targets | `ai-module/fall_detection.py` | `alerts/test_fall.py` (21) | Tested |
 | FR-07 | Warn when a worker is too close to a vehicle | M | Calibrated distance threshold; video evaluation | `ai-module/proximity.py` | `alerts/test_proximity.py` (9) | Tested |
 | FR-08 | Detect prolonged inactivity; timeout configurable from the dashboard | M | Changing the INACTIVITY rule changes the camera timeout within 60 s | `ai-module/inactivity.py`, `CameraRules` | `alerts/test_inactivity.py` (10), `test_inference_config.py` | Tested |
@@ -59,7 +59,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. Fire model not yet included | **Met on mps** (re-measure once fire weights exist) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | 134 + 35 + 12 pass; build OK; lint clean (16 Oct) | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 164, ai-module 65, report-service 13, mobile 13, tools 16 pass (20 Oct); build OK; lint clean | Met |
 
 ## Progress ledger
 
@@ -257,4 +257,20 @@ Human inputs still needed: supervisor sign-off on the vest scope change; verify 
   and the Labour Force Survey figure; title-page date; approval/declaration/Turnitin pages
 Next independent task: open V8 in Microsoft Word to confirm pagination there; add the department's
   approval, declaration and Turnitin pages
+```
+
+```text
+Phase / task IDs: FR-05 — per-person PPE violation episodes
+Status: tested; full pipeline exercised headless on a synthetic clip; not scored on annotated video
+Requirement IDs covered: FR-05
+Changes: ai-module/ppe_episodes.py (EpisodeTracker: per-class box tracks matched by centre distance
+  relative to box size, or by QR badge; confirmed after 1 s and >= 3 frames with gaps <= 0.5 s; one alert
+  per episode; closed after 10 s unseen); inference.py: group_violations (merged unidentified people per
+  class) replaced by badged_violations, the 15 s PPE cooldown replaced by the tracker, new CLI flags
+  --ppe-persistence and --ppe-clear-seconds; COOLDOWN_SECONDS now applies to VEHICLE_PROXIMITY only;
+  CI runs test_ppe_episodes; report V8 text and Tables 5.1, 5.2 and 6.1 updated (275 tests)
+Tests (20 Oct 2026): ai-module 65 OK (was 50); backend 164 OK
+Known limitations: episodes are camera-local; an unidentified person who leaves and returns after
+  clear_seconds raises a new alert; very fast motion (> one box size per frame) splits an episode
+Human inputs still needed: an annotated clip with known episodes to measure duplicate and missed alerts
 ```

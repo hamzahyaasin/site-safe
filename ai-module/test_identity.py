@@ -96,8 +96,8 @@ class TrackerTests(unittest.TestCase):
         self.assertEqual(t.identify((50.0, 200.0)), ALI)
 
 
-class GroupViolationTests(unittest.TestCase):
-    def test_identified_people_alert_separately(self):
+class BadgedViolationTests(unittest.TestCase):
+    def test_each_box_gets_its_wearers_badge(self):
         t = identity.IdentityTracker()
         t.update([TrackerTests.A, TrackerTests.B], [(ALI, (50.0, 40.0)), (SARA, (250.0, 40.0))], now=0)
         dets = [
@@ -105,15 +105,18 @@ class GroupViolationTests(unittest.TestCase):
             ("no-helmet", 0.8, (230.0, 10.0, 270.0, 50.0)),
             ("no-helmet", 0.5, (500.0, 10.0, 540.0, 50.0)),
         ]
-        grouped = inference.group_violations(dets, t)
         self.assertEqual(
-            grouped,
-            {("no-helmet", ALI): 0.6, ("no-helmet", SARA): 0.8, ("no-helmet", None): 0.5},
+            [badge for *_, badge in inference.badged_violations(dets, t)],
+            [ALI, SARA, None],
         )
 
-    def test_without_tracker_one_entry_per_class(self):
+    def test_unidentified_boxes_stay_separate(self):
+        # Two unidentified people must reach the episode tracker as two boxes.
         dets = [("no-vest", 0.4, (0, 0, 1, 1)), ("no-vest", 0.7, (5, 5, 6, 6))]
-        self.assertEqual(inference.group_violations(dets, None), {("no-vest", None): 0.7})
+        self.assertEqual(
+            inference.badged_violations(dets, None),
+            [("no-vest", 0.4, (0, 0, 1, 1), None), ("no-vest", 0.7, (5, 5, 6, 6), None)],
+        )
 
     def test_payload_carries_badge(self):
         self.assertEqual(inference.ppe_payload("no-helmet", 0.9, "CAM-01", ALI)["badge_code"], ALI)

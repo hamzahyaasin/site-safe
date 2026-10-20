@@ -26,6 +26,7 @@ import fire_detection
 import identity
 from event_outbox import EventOutbox
 import inactivity
+import ppe_episodes
 import proximity
 
 # ============== CONFIG ==============
@@ -52,6 +53,8 @@ API_BASE = os.environ.get("SITESAFE_API_BASE", "http://127.0.0.1:8000/api")
 DEVICE_KEY_ENV = "SITESAFE_DEVICE_KEY"
 OUTBOX_DIR = os.environ.get("SITESAFE_OUTBOX_DIR", "outbox")
 RULES_REFRESH_SECONDS = 60
+# Minimum gap between VEHICLE_PROXIMITY alerts. PPE alerts use per-person
+# episodes instead (ppe_episodes.py).
 COOLDOWN_SECONDS = 15
 # Temporary global PPE candidate threshold.  It is exposed through the CLI so
 # Phase 4 can calibrate it without editing source; the clean validation work
@@ -182,22 +185,16 @@ def violation_boxes(names, boxes_xyxy, confs, clss) -> list[tuple[str, float, tu
     return out
 
 
-def group_violations(
+def badged_violations(
     detections: list[tuple[str, float, tuple]],
     tracker: identity.IdentityTracker | None,
-) -> dict[tuple[str, str | None], float]:
-    """Collapse detections to one entry per (class, badge), keeping max confidence.
+) -> list[tuple[str, float, tuple, str | None]]:
+    """Attach the wearer's QR badge (or None) to each violation box.
 
-    Identified people are kept apart so two workers missing a helmet raise
-    two alerts; all unidentified detections of a class share one entry, as
-    before identification existed.
+    Boxes are kept apart, not merged per class, so that the episode tracker
+    can tell two unidentified people with the same violation apart.
     """
-    grouped: dict[tuple[str, str | None], float] = {}
-    for name, conf, box in detections:
-        badge = tracker.identify_box(box) if tracker else None
-        key = (name, badge)
-        grouped[key] = max(conf, grouped.get(key, 0.0))
-    return grouped
+    return [(name, conf, box, tracker.identify_box(box) if tracker else None) for name, conf, box in detections]
 
 
 def is_violation_class(name: str) -> bool:
@@ -599,6 +596,20 @@ def parse_args() -> argparse.Namespace:
         "single-frame detection noise.",
     )
     parser.add_argument(
+        "--ppe-persistence",
+        type=float,
+        default=ppe_episodes.DEFAULT_PERSISTENCE_SECONDS,
+        help="Seconds a missing-PPE detection must persist on one person before "
+        f"it raises an alert (default {ppe_episodes.DEFAULT_PERSISTENCE_SECONDS:g}).",
+    )
+    parser.add_argument(
+        "--ppe-clear-seconds",
+        type=float,
+        default=ppe_episodes.DEFAULT_CLEAR_SECONDS,
+        help="Seconds a person's violation must be unseen before the episode "
+        f"closes and a new one can alert (default {ppe_episodes.DEFAULT_CLEAR_SECONDS:g}).",
+    )
+    parser.add_argument(
         "--no-inactivity",
         action="store_true",
         help="Disable person inactivity detection. The feature is enabled by "
@@ -666,6 +677,10 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if not 0.0 <= args.ppe_conf <= 1.0:
         parser.error("--ppe-conf must be between zero and one")
+    if args.ppe_persistence < 0:
+        parser.error("--ppe-persistence must be zero or greater")
+    if args.ppe_clear_seconds <= 0:
+        parser.error("--ppe-clear-seconds must be greater than zero")
     if args.inactivity_timeout <= 0:
         parser.error("--inactivity-timeout must be greater than zero")
     if args.inactivity_movement_threshold < 0:
@@ -821,6 +836,9 @@ def main() -> None:
 
     window_title = f"Site-Safe Inference [{camera_id}]"
     last_alert_time: dict[str, float] = {}
+    ppe_episodes_tracker = ppe_episodes.EpisodeTracker(
+        persistence_seconds=args.ppe_persistence, clear_seconds=args.ppe_clear_seconds
+    )
     paused = False
     total_frames = 0
     alerts_sent = 0
@@ -1013,17 +1031,15 @@ def main() -> None:
             # Confirmed events go to the durable outbox; a background thread
             # delivers them, so a slow or offline API never stalls capture
             # and an outage does not lose the event.
-            # Cooldown is per (violation, badge) so identified workers are
-            # alerted independently of each other and of unidentified people.
-            for (vname, badge), vconf in group_violations(violation_dets, identity_tracker).items():
-                key = f"{vname}|{badge or ''}"
-                last_t = last_alert_time.get(key, 0.0)
-                if time.time() - last_t >= COOLDOWN_SECONDS:
-                    last_alert_time[key] = time.time()
-                    if queue_event(outbox, rules, ppe_payload(vname, vconf, camera_id, badge)):
-                        alerts_sent += 1
-                        who = f" [{badge}]" if badge else ""
-                        print(f"[ALERT] {vname}{who} detected ({vconf:.2f}) → queued")
+            # One alert per person per violation episode (FR-05): each
+            # violation box is tracked, confirmed after it persists and
+            # re-alerted only after it has cleared.
+            for episode in ppe_episodes_tracker.update(badged_violations(violation_dets, identity_tracker), now=t_now):
+                vname, vconf, badge = episode["class"], episode["confidence"], episode["badge"]
+                if queue_event(outbox, rules, ppe_payload(vname, vconf, camera_id, badge)):
+                    alerts_sent += 1
+                    who = f" [{badge}]" if badge else ""
+                    print(f"[ALERT] {vname}{who} detected ({vconf:.2f}, episode {episode['track_id']}) → queued")
 
             if confirmed_proximity is not None:
                 last_t = last_alert_time.get("VEHICLE_PROXIMITY", 0.0)
