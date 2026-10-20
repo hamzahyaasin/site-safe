@@ -239,3 +239,22 @@ Human inputs still needed: run soak.py for 2 h on the demo setup; repeat fps.py 
 Note: earlier result files record "uncommitted changes"; for the c79cc95 runs the only
   modified tracked file was the local .claude/launch.json. Results now list modified files.
 ```
+
+```text
+Phase / task IDs: Stage 6 — report V8 (corrections to Chapters 1–3, design diagrams, Chapters 4–6 rebuilt)
+Status: V8 .docx built from V7 (V7 unchanged); rendered with LibreOffice 26.8 (69 pages), measured page
+  numbers written (120 contents/list entries checked against the render, 0 mismatches), pages checked visually;
+  .docx validates against the OOXML schema
+Requirement IDs covered: report deliverable (M15); Chapter 5 cites FR-01..FR-29 and NFR-01..NFR-05 from this matrix
+Files: docs/build_report_v8.py, docs/report_v8_content.py, docs/figures/make_figures.py (component,
+  deployment, ERD, camera classes, two sequences, training pipeline; names checked against the code),
+  docs/figures/screenshots/, docs/REPORT_V8_CHANGES.md (change list and items the team must check)
+Counts used in the report (re-run 20 Oct 2026): backend 164, ai-module 50, fire prep 4, report-service 13,
+  mobile 13, tools 16 = 260, all passing; audit_dataset.py: 573 cross-split source groups,
+  30 cross-split exact duplicates, 69 conflicting duplicate groups (strict FAIL)
+Body length: 10,093 words (guideline 8,500–10,500); tables add 2,426
+Human inputs still needed: supervisor sign-off on the vest scope change; verify the Chapter 2 citations
+  and the Labour Force Survey figure; title-page date; approval/declaration/Turnitin pages
+Next independent task: open V8 in Microsoft Word to confirm pagination there; add the department's
+  approval, declaration and Turnitin pages
+```
