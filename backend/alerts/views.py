@@ -20,6 +20,7 @@ from .serializers import (
     AlertIngestSerializer,
     AlertSerializer,
     AlertSimulateSerializer,
+    CameraActivitySerializer,
     CameraEventSerializer,
     DetectionSerializer,
 )
@@ -307,6 +308,36 @@ class CameraEventView(APIView):
                 raise
             return Response(AlertSerializer(existing).data, status=status.HTTP_200_OK)
         return Response(AlertSerializer(alert).data, status=status.HTTP_201_CREATED)
+
+
+class CameraActivityView(APIView):
+    """POST a sighting or idle start/end for a badge-identified person.
+
+    Unknown or revoked badges are accepted and ignored (202), so a camera
+    never retries them forever; simulator tokens are ignored too, so test
+    data never enters attendance records.
+    """
+
+    permission_classes = [IsCameraService]
+
+    def post(self, request, *args, **kwargs):
+        from workers import activity
+
+        serializer = CameraActivitySerializer(data=request.data, context={"service_token": request.auth})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        worker = Worker.from_badge(data["badge_code"])
+        if worker is None or request.auth.is_simulator:
+            return Response({"status": "ignored"}, status=status.HTTP_202_ACCEPTED)
+        source = f"camera {data['camera_id']}"
+        when = data["occurred_at"]
+        if data["kind"] == "IDLE_START":
+            activity.idle_start(worker, when, source)
+        elif data["kind"] == "IDLE_END":
+            activity.idle_end(worker, when, source)
+        else:
+            activity.record_seen(worker, when, source)
+        return Response({"status": "recorded", "worker": worker.pk}, status=status.HTTP_200_OK)
 
 
 class CameraConfigView(APIView):

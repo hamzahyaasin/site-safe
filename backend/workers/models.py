@@ -1,6 +1,7 @@
 import secrets
 
 from django.db import models
+from django.utils import timezone
 
 # Printed on worker QR badges as "SSW1:<code>". The code is random and
 # carries no personal data; reissuing a badge replaces it, which revokes
@@ -35,6 +36,12 @@ class Worker(models.Model):
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last time a vest report or QR sighting placed this worker on site",
+    )
+    last_seen_source = models.CharField(max_length=80, blank=True, default="")
 
     class Meta:
         ordering = ["-created_at"]
@@ -114,11 +121,13 @@ class ActivityLog(models.Model):
         null=True,
         blank=True,
     )
-    timestamp = models.DateTimeField(auto_now_add=True)
+    # When it happened, not when it was stored: camera events can arrive late
+    # through the outbox, and check-outs are dated to the last sighting.
+    timestamp = models.DateTimeField(default=timezone.now, db_index=True)
     metadata = models.JSONField(null=True, blank=True)
 
     class Meta:
-        ordering = ["-timestamp"]
+        ordering = ["-timestamp", "-id"]
 
     def __str__(self):
         return f"{self.worker} — {self.action} @ {self.timestamp}"

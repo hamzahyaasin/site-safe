@@ -28,9 +28,18 @@ test('both report types render to DOCX and PDF', async () => {
 
 test('compliance report states its method and has no compliance percentage', () => {
   const model = buildComplianceReport({ ...f, ...period })
-  const text = JSON.stringify(model)
-  assert.ok(text.includes(METHOD[2]))
-  assert.ok(!/Compliance %|\d+%/.test(text))
+  assert.ok(JSON.stringify(model).includes(METHOD[2]))
+  // The only percentage is idle share, whose denominator (time on site) is measured.
+  const zones = model.sections.find((s) => s.heading === 'Zones')
+  assert.ok(!/%/.test(JSON.stringify(zones.blocks[0].rows)))
+  assert.ok(!/Compliance %/.test(JSON.stringify(model)))
+})
+
+test('daily attendance rows show carried-over and open sessions honestly', () => {
+  const model = buildComplianceReport({ ...f, ...period })
+  const daily = model.sections.find((s) => s.heading === 'Daily Attendance').blocks[0].rows
+  const sara = daily.find((r) => r[1] === 'Sara Khan')
+  assert.equal(sara[3], 'still on site')
 })
 
 test('long incident logs paginate and disclose truncation', async () => {

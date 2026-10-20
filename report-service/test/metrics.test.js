@@ -48,11 +48,15 @@ test('compliance metrics attribute zones and count violation-free days', () => {
     m.byWorker.map((w) => [w.worker, w.incidents, w.ppeViolations]),
     [['Ali Raza', 2, 1], ['Sara Khan', 2, 0]],
   )
-  assert.equal(m.activity.find((a) => a.worker === 'Ali Raza').zoneEntries, 1)
+  const ali = m.attendance.find((a) => a.worker === 'Ali Raza')
+  assert.deepEqual([ali.days, ali.onSiteMinutes, ali.idleMinutes], [2, 840, 90])
+  assert.equal(Math.round(ali.idleShare * 100), 11)
+  assert.equal(ali.medianFirstCheckIn, 8 * 60 + 30) // 08:00 and 09:00 PKT
 })
 
 test('empty period gives zeros, not optimistic percentages', () => {
-  const m = computeComplianceMetrics({ alerts: [], zones: f.zones, workers: [], activityLogs: [], ...period })
+  const m = computeComplianceMetrics({ alerts: [], zones: f.zones, workers: [], dailyActivity: [], ...period })
+  assert.deepEqual(m.attendance, [])
   assert.equal(m.total, 0)
   assert.equal(m.resolution.medianMinutes, null)
   assert.deepEqual(m.byZone.map((z) => z.zone), ['Main Site', 'Crane Pit'])

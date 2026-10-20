@@ -174,7 +174,8 @@ class ZoneBreachTests(TestCase):
     def test_battery_only_report_does_not_move_worker(self):
         apply_vest_telemetry("V-1", {"latitude": 0.5, "longitude": 0.5})
         apply_vest_telemetry("V-1", {"battery_level": 50})
-        self.assertEqual(ActivityLog.objects.count(), 1)
+        zone_logs = ActivityLog.objects.filter(action__in=["ZONE_ENTER", "ZONE_EXIT"])
+        self.assertEqual(zone_logs.count(), 1)
 
     def test_stale_vest_not_counted_in_occupancy(self):
         apply_vest_telemetry("V-1", {"latitude": 0.1, "longitude": 0.1})
@@ -331,12 +332,13 @@ class SimulatorLabellingTests(APITestCase):
         sources = set(Alert.objects.values_list("source", flat=True))
         self.assertEqual(sources, {"SIMULATED"})
         self.assertEqual(Alert.objects.count(), 2)  # SOS + restricted-zone breach
-        self.assertTrue(ActivityLog.objects.get().metadata["simulated"])
+        self.assertTrue(ActivityLog.objects.get().metadata["simulated"])  # zone log only: no check-in
 
     def test_real_gateway_alerts_are_vest_alerts(self):
         self.send(self.real, {"latitude": 0.5, "longitude": 0.5, "sos_active": True})
         self.assertEqual(set(Alert.objects.values_list("source", flat=True)), {"SMART_VEST"})
-        self.assertNotIn("simulated", ActivityLog.objects.get().metadata)
+        self.assertNotIn("simulated", ActivityLog.objects.get(action="ZONE_ENTER").metadata)
+        self.assertTrue(ActivityLog.objects.filter(action="CHECK_IN").exists())
 
     def test_simulator_alert_ingest_is_marked(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Device {self.sim}")

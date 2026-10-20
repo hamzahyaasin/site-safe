@@ -132,6 +132,9 @@ class InactivityTracker:
         self._tracks: dict[int, _Track] = {}
         self._next_track_id = 1
         self._last_update_time: float | None = None
+        # Tracks that had raised an inactivity event and then moved again,
+        # from the latest update: {track_id, centroid, person_box, resumed_at}.
+        self.resumed: list[dict] = []
 
     @property
     def active_track_count(self) -> int:
@@ -141,6 +144,7 @@ class InactivityTracker:
         """Forget all camera-local tracks, for example after a paused stream."""
         self._tracks.clear()
         self._last_update_time = None
+        self.resumed = []
 
     def _new_track(self, box: Box, centre: Point, now: float) -> None:
         track_id = self._next_track_id
@@ -196,6 +200,7 @@ class InactivityTracker:
         matches = self._associations(centres)
         matched_detection_indexes = set(matches.values())
         events: list[dict] = []
+        self.resumed = []
 
         for track_id, track in list(self._tracks.items()):
             detection_index = matches.get(track_id)
@@ -211,6 +216,10 @@ class InactivityTracker:
 
             displacement = centroid_distance(track.anchor_centroid, centre)
             if displacement > self.movement_threshold:
+                if not track.armed:
+                    self.resumed.append(
+                        {"track_id": track.track_id, "centroid": centre, "person_box": box, "resumed_at": timestamp}
+                    )
                 # A new stationary period starts at the latest observed point.
                 track.anchor_centroid = centre
                 track.stationary_since = timestamp

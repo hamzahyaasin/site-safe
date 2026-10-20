@@ -9,8 +9,9 @@ const METHOD = [
   'Time to resolve runs from when an incident was raised to when it was marked resolved in the dashboard.',
 ]
 
-function buildComplianceReport({ alerts, zones, workers, activityLogs, dateFrom, dateTo, tz, generatedAt = new Date() }) {
-  const m = computeComplianceMetrics({ alerts, zones, workers, activityLogs, dateFrom, dateTo, tz })
+function buildComplianceReport({ alerts, zones, workers, dailyActivity = [], dateFrom, dateTo, tz, generatedAt = new Date() }) {
+  const m = computeComplianceMetrics({ alerts, zones, workers, dailyActivity, dateFrom, dateTo, tz })
+  const clock = (mins) => (mins === null ? '—' : `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(Math.round(mins % 60)).padStart(2, '0')}`)
 
   return {
     title: 'Site-Safe Safety Performance Report',
@@ -87,19 +88,47 @@ function buildComplianceReport({ alerts, zones, workers, activityLogs, dateFrom,
         ],
       },
       {
-        heading: 'Worker Activity',
+        heading: 'Worker Attendance and Idle Time',
         blocks: [
           {
             type: 'p',
-            text: `${plural(m.activityLogCount, 'activity record')} in the period. Zone entries come from vest GPS; check-ins and idle periods appear only where they were recorded.`,
+            text: 'Sessions start on the first vest report or QR badge sighting of a worker, and end automatically once the worker has not been seen for a set interval, dated to the last sighting. Idle time is time an identified worker stayed still in camera view beyond the inactivity timeout. Workers with neither a vest nor a readable badge have no attendance evidence and do not appear here; this is not absence.',
           },
           {
             type: 'table',
-            headers: ['Worker', 'Check-ins', 'Check-outs', 'Zone entries', 'Idle periods'],
-            widths: [2, 1, 1, 1, 1],
-            rows: m.activity.length
-              ? m.activity.map((r) => [r.worker, String(r.checkIns), String(r.checkOuts), String(r.zoneEntries), String(r.idlePeriods)])
-              : [['No activity recorded', '—', '—', '—', '—']],
+            headers: ['Worker', 'Days with evidence', 'Time on site', 'Idle time', 'Idle share', 'Median first check-in'],
+            widths: [2, 1, 1.2, 1.2, 1, 1.3],
+            rows: m.attendance.length
+              ? m.attendance.map((a) => [
+                  a.worker,
+                  String(a.days),
+                  formatDuration(a.onSiteMinutes),
+                  formatDuration(a.idleMinutes),
+                  a.idleShare === null ? '—' : `${Math.round(a.idleShare * 100)}%`,
+                  clock(a.medianFirstCheckIn),
+                ])
+              : [['No attendance evidence in this period', '—', '—', '—', '—', '—']],
+          },
+        ],
+      },
+      {
+        heading: 'Daily Attendance',
+        level: 2,
+        blocks: [
+          {
+            type: 'table',
+            headers: ['Date', 'Worker', 'First in', 'Last out', 'On site', 'Idle'],
+            widths: [1.1, 1.8, 1, 1, 1, 1],
+            rows: m.dailyActivity.length
+              ? m.dailyActivity.map((d) => [
+                  d.date,
+                  d.worker_name,
+                  d.first_check_in ? formatDate(d.first_check_in, tz).split(', ').pop() : 'carried over',
+                  d.still_open ? 'still on site' : d.last_check_out ? formatDate(d.last_check_out, tz).split(', ').pop() : '—',
+                  formatDuration(d.on_site_minutes),
+                  formatDuration(d.idle_minutes),
+                ])
+              : [['—', 'No attendance evidence', '—', '—', '—', '—']],
           },
         ],
       },

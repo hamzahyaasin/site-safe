@@ -304,3 +304,36 @@ class AlertConfigSerializer(serializers.ModelSerializer):
                 {"alert_type": "A rule for this alert type and zone already exists."}
             )
         return attrs
+
+
+class CameraActivitySerializer(serializers.Serializer):
+    """Worker activity seen by a camera for an identified (badge-read) person.
+
+    ``occurred_at`` is the camera's time of the observation, because outbox
+    delivery can be delayed; it must be within the last 24 hours and not in
+    the future (allowing a minute of clock skew).
+    """
+
+    KINDS = ("SIGHTING", "IDLE_START", "IDLE_END")
+
+    event_id = serializers.UUIDField()
+    camera_id = serializers.CharField(max_length=64)
+    badge_code = serializers.CharField(max_length=64)
+    kind = serializers.ChoiceField(choices=[(k, k) for k in KINDS])
+    occurred_at = serializers.DateTimeField()
+
+    def validate_camera_id(self, value):
+        token = self.context.get("service_token")
+        if token is not None and not token.allows_camera(value):
+            raise serializers.ValidationError("This device token may not report for this camera.")
+        return value
+
+    def validate_occurred_at(self, value):
+        from datetime import timedelta
+
+        now = timezone.now()
+        if value > now + timedelta(minutes=1):
+            raise serializers.ValidationError("occurred_at is in the future; check the camera clock.")
+        if value < now - timedelta(hours=24):
+            raise serializers.ValidationError("occurred_at is more than 24 hours old.")
+        return value

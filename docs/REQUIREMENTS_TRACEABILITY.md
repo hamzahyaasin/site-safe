@@ -42,7 +42,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-21 | Smart vest: GPS position, SOS button, LoRa link | M→deferred* | Physical SOS reaches the dashboard; delay and packet loss measured | Server: `workers/`, `run_mqtt_consumer`; `tools/vest_simulator.py` | `workers/tests.py` (incl. SimulatorLabelling 3), `tools/test_vest_simulator.py` (8); e2e 16 Oct: demo scenario → simulated breach + SOS, offline after silence | Software path integrated with simulator; **hardware deferred pending supervisor approval** (`docs/SCOPE_CHANGE_SMART_VEST.md`) |
 | FR-22 | Vest telemetry is validated | M | Out-of-range latitude/longitude, a lone coordinate, or battery outside 0–100 returns 400 | `VestTelemetrySerializer` | `alerts/test_ingest.py` | Tested |
 | FR-23 | Vest offline detection | S | No report within `VEST_OFFLINE_AFTER_SECONDS` shows the vest offline | `workers/presence.py`, `run_presence_monitor` | `workers/tests.py` PresenceTests (4); browser check (occupancy dropped to 0 after timeout) | Integrated |
-| FR-24 | Worker activity history (check-in/out, idle, zone transitions) | M | Generated automatically and reconciled with annotated scenarios | `workers/` (GPS zone enter/exit automatic; check-in/out, idle manual) | `workers/tests.py` | Coded (partial) |
+| FR-24 | Worker activity history (check-in/out, idle, zone transitions) | M | Generated automatically and reconciled with annotated scenarios | `workers/activity.py`, `workers/timeline.py`, camera `SightingThrottle` + idle events, `WorkerTimeline.jsx`, report attendance tables | `workers/test_activity.py` (18), `test_activity_events.py` (5), report-service attendance tests; e2e 20 Oct: camera sightings + idle → 60 min on site, 20 min idle, auto check-out at last sighting; vest session open; timeline and PDF agree | Integrated (**no annotated real-camera scenario yet**) |
 | FR-25 | Incident list, detail, resolve, CSV export | M | Resolve is broadcast; filters include every type | `frontend/src/components/incidents/` | FALL filter added 16 Oct; resolve broadcast covered by FR-13 | Coded |
 | FR-26 | Dashboard KPIs and charts reflect recorded data only | M | Every displayed number reconciles to the API; nothing fabricated | `DashboardStatsView`, `KpiStrip.jsx`, `DashboardCharts.jsx`, `WorkerStatusGrid.jsx` | `workers/tests.py` DashboardStatsTests (3); browser check 16 Oct | Integrated |
 | FR-27 | Incident and safety-performance reports in DOCX and PDF | M | Fixtures reconcile exactly; PDF produced; no unsupported percentages; period in the user's time zone | `report-service/lib/*`, `templates/*`, `backend/reports/` | `report-service/test` (12); `reports/tests.py` (6); e2e 16 Oct (both types, both formats via API → service; PDF inspected) | Integrated |
@@ -206,4 +206,22 @@ Known defects / limitations:
 Human inputs still needed: choose and licence-check a fire/smoke dataset, run the notebook,
   install Docker Desktop to try the compose stack, push the branch to run CI
 Next independent task: workforce activity automation (FR-24), then measurement tooling (NFR-01..05)
+```
+
+```text
+Phase / task IDs: workforce activity automation (FR-24)
+Status: tested on PostgreSQL and SQLite; e2e on throwaway database; dev database backed up
+  and migrated (workers 0007)
+Changes: Worker.last_seen_at/source; ActivityLog.timestamp now settable (event time);
+  check-in on first evidence, automatic check-out dated to last sighting, late-event
+  merging, isolated late sightings as their own closed session; idle start/end from camera
+  inactivity for identified people; timeline/daily APIs; summary endpoint rebuilt on them;
+  web timeline drawer; report attendance per worker and per day; zero durations shown as 0
+Tests (20 Oct 2026): backend 164 OK (PostgreSQL and SQLite); ai-module 48 OK; report-service
+  13 OK; frontend lint clean, build OK
+Known limitations: timelines look back 2 days for open intervals; vest GPS is not used to
+  detect idleness; track identity can swap when identified people cross
+Human inputs still needed: record a short annotated scenario (badge visible, idle, leave)
+  to validate against the timeline
+Next independent task: measurement tooling for Chapter 5 (NFR-01..05)
 ```

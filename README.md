@@ -141,6 +141,17 @@ Draw zone boundaries on the map on the **Zones** page (Admin only). Vest GPS pos
 
 Where zones overlap, the highest-risk zone wins. Occupancy counts only workers whose vests are online. Camera-only zones have no boundary, so they have no GPS presence.
 
+### Worker attendance and idle time
+
+Attendance is recorded automatically from evidence that a worker is on site:
+
+- their vest reporting;
+- a camera reading their QR badge. Cameras send at most one sighting per badge per minute.
+
+The first evidence opens a session. The session closes once the worker has not been seen for `CHECKOUT_AFTER_MINUTES` (default 30), at the time they were last seen. That close is done by `run_presence_monitor`. Idle time is recorded when an identified worker stays still in camera view past the inactivity timeout, and ends when they move again. This happens even if INACTIVITY alerts are switched off.
+
+Camera events carry the time they happened, so the outbox can deliver them late without distorting the records. Simulator data never enters attendance. The Workers page shows each worker's day as a timeline, and the safety-performance report lists attendance per worker and per day. Workers with no vest and no readable badge have no attendance evidence; they are shown as unknown, never as absent.
+
 ### Fire and smoke detection, hot-work permits
 
 The camera pipeline runs a fire/smoke detector when `ai-module/models/fire_smoke.pt` exists. Train it with `ai-module/fire/train_fire_smoke_colab.ipynb` on a dataset you are licensed to use. Prepare the dataset with `ai-module/fire/prepare_fire_dataset.py`, which remaps classes, keeps clip frames in one split, keeps negatives, and leaves out images with broken labels. An alert needs fire or smoke to persist for 2 s (`--fire-persistence`). Afterwards the camera stays quiet until the scene has been clear for 30 s.
@@ -400,6 +411,9 @@ Then open **http://localhost:5173**, sign in, and use the Dashboard, Alerts, and
 | `GET/POST` | `/api/workers/{id}/badge/` | Safety Officer | Badge payload to print / reissue (revokes the old one) |
 | `POST` | `/api/v1/reports/generate/` | Safety Officer | `report_type`, `date_from`, `date_to`, `file_format` (DOCX/PDF), `tz` |
 | `GET` | `/api/v1/camera-config/?camera_id=` | Camera token | Effective alert rules for a camera |
+| `POST` | `/api/v1/camera-activity/` | Camera token | Badge sighting / idle start / idle end with `occurred_at` |
+| `GET` | `/api/v1/activity/timeline/?worker_id=&date=&tz=` | JWT | One worker's day: sessions, idle, zone visits, totals |
+| `GET` | `/api/v1/activity/daily/?start_date=&end_date=&tz=` | JWT | Per-worker daily attendance (max 31 days) |
 | `WS` | `/ws/dashboard/?token=<access>` | JWT | Live `alert_created/updated/resolved`, `vest_updated`, `worker_status_update` |
 | `GET/POST/…` | `/api/workers/` | JWT | Worker CRUD |
 | — | `/admin/` | Staff | Django admin |

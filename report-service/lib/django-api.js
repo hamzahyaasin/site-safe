@@ -48,7 +48,18 @@ const fetchAlerts = (apiToken, dateFrom, dateTo, tz) =>
   fetchAll('alerts/', apiToken, period(dateFrom, dateTo, tz))
 const fetchZones = (apiToken) => fetchAll('v1/zones/', apiToken)
 const fetchWorkers = (apiToken) => fetchAll('workers/', apiToken)
-const fetchActivityLogs = (apiToken, dateFrom, dateTo, tz) =>
-  fetchAll('v1/activity/', apiToken, period(dateFrom, dateTo, tz))
+/** Per-worker daily attendance, requested in 31-day chunks (the API's limit). */
+async function fetchDailyActivity(apiToken, dateFrom, dateTo, tz) {
+  const rows = []
+  let start = new Date(`${dateFrom}T00:00:00Z`)
+  const end = new Date(`${dateTo}T00:00:00Z`)
+  while (start <= end) {
+    const chunkEnd = new Date(Math.min(end.getTime(), start.getTime() + 30 * 86400000))
+    const iso = (d) => d.toISOString().slice(0, 10)
+    rows.push(...(await fetchAll('v1/activity/daily/', apiToken, period(iso(start), iso(chunkEnd), tz))))
+    start = new Date(chunkEnd.getTime() + 86400000)
+  }
+  return rows
+}
 
-module.exports = { fetchAlerts, fetchZones, fetchWorkers, fetchActivityLogs }
+module.exports = { fetchAlerts, fetchZones, fetchWorkers, fetchDailyActivity }

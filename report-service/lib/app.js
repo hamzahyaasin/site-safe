@@ -1,6 +1,6 @@
 const express = require('express')
 
-const { fetchActivityLogs, fetchAlerts, fetchWorkers, fetchZones } = require('./django-api')
+const { fetchAlerts, fetchDailyActivity, fetchWorkers, fetchZones } = require('./django-api')
 const { renderDocx } = require('./render-docx')
 const { renderPdf } = require('./render-pdf')
 const { buildComplianceReport } = require('../templates/compliance-report')
@@ -46,15 +46,15 @@ async function buildModel({ report_type, date_from, date_to, api_token, tz }, ap
   if (report_type === 'INCIDENT') {
     return buildIncidentReport({ alerts, dateFrom: date_from, dateTo: date_to, tz })
   }
-  const [zones, workers, activityLogs] = await Promise.all([
+  const [zones, workers, dailyActivity] = await Promise.all([
     api.fetchZones(api_token),
     api.fetchWorkers(api_token),
-    api.fetchActivityLogs(api_token, date_from, date_to, tz),
+    api.fetchDailyActivity(api_token, date_from, date_to, tz),
   ])
-  return buildComplianceReport({ alerts, zones, workers, activityLogs, dateFrom: date_from, dateTo: date_to, tz })
+  return buildComplianceReport({ alerts, zones, workers, dailyActivity, dateFrom: date_from, dateTo: date_to, tz })
 }
 
-function createApp(api = { fetchActivityLogs, fetchAlerts, fetchWorkers, fetchZones }) {
+function createApp(api = { fetchAlerts, fetchDailyActivity, fetchWorkers, fetchZones }) {
   const app = express()
   // Called only by the Django backend, never by browsers, so no CORS.
   app.use(express.json())

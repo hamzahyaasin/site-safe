@@ -31,6 +31,14 @@ function daysInPeriod(dateFrom, dateTo) {
   return days
 }
 
+/** Minutes after local midnight for an ISO time in ``tz``. */
+function minutesOfDay(iso, tz) {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: tz || 'UTC', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(new Date(iso))
+  const get = (type) => Number(parts.find((p) => p.type === type).value)
+  return get('hour') * 60 + get('minute')
+}
+
 function resolutionMinutes(alert) {
   if (!alert.is_resolved || !alert.resolved_at || !alert.timestamp) return null
   const mins = (new Date(alert.resolved_at) - new Date(alert.timestamp)) / 60000
@@ -101,7 +109,7 @@ function computeIncidentMetrics({ alerts, tz }) {
   }
 }
 
-function computeComplianceMetrics({ alerts, zones, workers, activityLogs, dateFrom, dateTo, tz }) {
+function computeComplianceMetrics({ alerts, zones, workers, dailyActivity = [], dateFrom, dateTo, tz }) {
   const { observed, simulated } = splitSimulated(alerts)
   const zoneOf = zoneResolver(workers)
   const days = daysInPeriod(dateFrom, dateTo)
@@ -154,16 +162,33 @@ function computeComplianceMetrics({ alerts, zones, workers, activityLogs, dateFr
   }
   const byWorker = [...byWorkerMap.values()].sort((a, b) => b.incidents - a.incidents)
 
-  const activity = new Map()
-  for (const log of activityLogs) {
-    const name = log.worker_name ?? `Worker #${log.worker}`
-    const row = activity.get(name) ?? { worker: name, checkIns: 0, checkOuts: 0, zoneEntries: 0, idlePeriods: 0 }
-    if (log.action === 'CHECK_IN') row.checkIns += 1
-    if (log.action === 'CHECK_OUT') row.checkOuts += 1
-    if (log.action === 'ZONE_ENTER') row.zoneEntries += 1
-    if (log.action === 'IDLE_START') row.idlePeriods += 1
-    activity.set(name, row)
+  // Attendance from the API's daily timelines (one row per worker-day with
+  // evidence). Workers with no vest or badge evidence have no rows at all.
+  const attendanceMap = new Map()
+  for (const row of dailyActivity) {
+    const a = attendanceMap.get(row.worker) ?? {
+      worker: row.worker_name,
+      days: 0,
+      onSiteMinutes: 0,
+      idleMinutes: 0,
+      firstCheckIns: [],
+    }
+    a.days += 1
+    a.onSiteMinutes += row.on_site_minutes
+    a.idleMinutes += row.idle_minutes
+    if (row.first_check_in) a.firstCheckIns.push(minutesOfDay(row.first_check_in, tz))
+    attendanceMap.set(row.worker, a)
   }
+  const attendance = [...attendanceMap.values()]
+    .map((a) => ({
+      worker: a.worker,
+      days: a.days,
+      onSiteMinutes: a.onSiteMinutes,
+      idleMinutes: a.idleMinutes,
+      idleShare: a.onSiteMinutes > 0 ? a.idleMinutes / a.onSiteMinutes : null,
+      medianFirstCheckIn: percentile(a.firstCheckIns, 0.5),
+    }))
+    .sort((x, y) => x.worker.localeCompare(y.worker))
 
   return {
     periodDays: days.length,
@@ -175,8 +200,8 @@ function computeComplianceMetrics({ alerts, zones, workers, activityLogs, dateFr
     byZone,
     byType,
     byWorker,
-    activity: [...activity.values()].sort((a, b) => a.worker.localeCompare(b.worker)),
-    activityLogCount: activityLogs.length,
+    attendance,
+    dailyActivity,
     tz,
   }
 }
@@ -188,6 +213,7 @@ module.exports = {
   computeComplianceMetrics,
   computeIncidentMetrics,
   dayKey,
+  minutesOfDay,
   daysInPeriod,
   percentile,
   resolutionMinutes,

@@ -22,6 +22,7 @@ function formatLabel(value) {
 
 function formatDuration(minutes) {
   if (minutes === null || minutes === undefined) return '—'
+  if (minutes === 0) return '0 min'
   if (minutes < 1) return '< 1 min'
   if (minutes < 60) return `${Math.round(minutes)} min`
   const h = Math.floor(minutes / 60)

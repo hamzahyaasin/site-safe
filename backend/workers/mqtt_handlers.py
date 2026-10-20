@@ -149,6 +149,11 @@ def _apply(vest_id, payload, source):
     vest.is_online = True
     vest.last_seen = timezone.now()
     vest.save()
+    # Simulated vests drive alerts and the map but never attendance records.
+    if vest.worker and source != AlertSource.SIMULATED:
+        from .activity import record_seen
+
+        record_seen(vest.worker, vest.last_seen, f"vest {vest.vest_id}")
 
     if vest.sos_active and not was_sos_active and vest.worker:
         Alert.objects.create(

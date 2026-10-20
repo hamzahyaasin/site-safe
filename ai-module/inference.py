@@ -201,14 +201,53 @@ def build_api_session(device_key: str | None) -> requests.Session:
 
 
 def make_sender(session: requests.Session):
-    """Outbox sender: POST one camera event, return the HTTP status code."""
+    """Outbox sender: POST one queued item, return the HTTP status code.
 
-    url = api_url("v1", "camera-events", "")
+    Alerts go to /v1/camera-events/; items carrying ``_endpoint`` (worker
+    activity) go to that endpoint instead.
+    """
 
     def send(payload: dict) -> int:
-        return session.post(url, json=payload, timeout=5).status_code
+        body = dict(payload)
+        endpoint = body.pop("_endpoint", "camera-events")
+        return session.post(api_url("v1", endpoint, ""), json=body, timeout=5).status_code
 
     return send
+
+
+SIGHTING_INTERVAL_SECONDS = 60
+
+
+def wall_clock(perf_time: float) -> float:
+    """Convert a perf_counter() timestamp from this run to Unix time."""
+    return time.time() - (time.perf_counter() - perf_time)
+
+
+def activity_payload(kind: str, badge: str, camera_id: str, unix_time: float) -> dict:
+    """Worker activity for an identified person; the outbox adds event_id."""
+    from datetime import datetime, timezone
+
+    return {
+        "_endpoint": "camera-activity",
+        "kind": kind,
+        "badge_code": badge,
+        "camera_id": camera_id,
+        "occurred_at": datetime.fromtimestamp(unix_time, tz=timezone.utc).isoformat(),
+    }
+
+
+class SightingThrottle:
+    """Send at most one SIGHTING per badge per interval; check-in/out needs no more."""
+
+    def __init__(self, interval: float = SIGHTING_INTERVAL_SECONDS):
+        self.interval = interval
+        self.last: dict[str, float] = {}
+
+    def due(self, badge: str, now: float) -> bool:
+        if now - self.last.get(badge, float("-inf")) >= self.interval:
+            self.last[badge] = now
+            return True
+        return False
 
 
 def open_outbox(camera_id: str, session: requests.Session) -> EventOutbox:
@@ -731,10 +770,12 @@ def main() -> None:
 
     qr_decoder = None
     identity_tracker = None
+    sightings = None
     if not args.no_qr:
         if coco_model is not None:
             qr_decoder = identity.QrDecoder()
             identity_tracker = identity.IdentityTracker()
+            sightings = SightingThrottle()
             print(f"[{camera_id}] QR badge identification enabled")
         else:
             print(
@@ -894,6 +935,17 @@ def main() -> None:
                     )
                 if identity_tracker is not None:
                     identity_tracker.update(last_persons, qr_decoder.decode(raw_frame), now=t_now)
+                    # Attendance evidence: identified people currently in view.
+                    for track in identity_tracker.tracks:
+                        if track.badge and track.last_seen == t_now and sightings.due(track.badge, t_now):
+                            outbox.enqueue(activity_payload("SIGHTING", track.badge, camera_id, wall_clock(t_now)))
+                    if inactivity_tracker is not None:
+                        for moved in inactivity_tracker.resumed:
+                            badge = identity_tracker.identify_box(moved["person_box"])
+                            if badge:
+                                outbox.enqueue(
+                                    activity_payload("IDLE_END", badge, camera_id, wall_clock(moved["resumed_at"]))
+                                )
 
             # The pose model is an independent forward pass with its own
             # sampling interval — it does not share the COCO detector above.
@@ -962,6 +1014,11 @@ def main() -> None:
             # legitimate simultaneous events from different people.
             for event in confirmed_inactivity:
                 badge = identity_tracker.identify_box(event["person_box"]) if identity_tracker else None
+                if badge:
+                    # Idle time is recorded even if INACTIVITY alerts are switched off.
+                    outbox.enqueue(
+                        activity_payload("IDLE_START", badge, camera_id, wall_clock(event["stationary_since"]))
+                    )
                 if queue_event(outbox, rules, with_badge(inactivity.alert_payload(event, camera_id), badge)):
                     alerts_sent += 1
                     inactivity_alerts_sent += 1

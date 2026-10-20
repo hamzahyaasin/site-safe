@@ -9,6 +9,7 @@ from alerts.urls import detection_urlpatterns
 from alerts.views import (
     AlertIngestView,
     AlertViewSet,
+    CameraActivityView,
     CameraConfigView,
     CameraEventView,
     DashboardStatsView,
@@ -29,6 +30,7 @@ urlpatterns = [
     path("api/alerts/ingest/", AlertIngestView.as_view(), name="alert-ingest"),
     path("api/v1/camera-events/", CameraEventView.as_view(), name="camera-events"),
     path("api/v1/camera-config/", CameraConfigView.as_view(), name="camera-config"),
+    path("api/v1/camera-activity/", CameraActivityView.as_view(), name="camera-activity"),
     path("api/workers/", include("workers.urls")),
     path("api/v1/vests/", include((vest_urlpatterns, "workers"), namespace="vests")),
     path("api/v1/activity/", include((activity_urlpatterns, "workers"), namespace="activity")),

@@ -9,7 +9,7 @@ import { cn, formatTimestamp, getWorkerPresence, initials } from '../../lib/util
 /** Worker cards. Presence and battery come only from the worker's vest
  * telemetry; ``onEdit`` (Workers page) adds an edit action per card and
  * ``canAdd`` shows the register tile. */
-export default function WorkerStatusGrid({ workers, loading, highlightIds, onEdit, onAdd, canAdd = false }) {
+export default function WorkerStatusGrid({ workers, loading, highlightIds, onEdit, onAdd, onTimeline, canAdd = false }) {
   return (
     <Card className="col-span-12 xl:col-span-8">
       <CardHeader>
@@ -86,11 +86,20 @@ export default function WorkerStatusGrid({ workers, loading, highlightIds, onEdi
                     {vest?.latitude !== null && vest?.latitude !== undefined ? (
                       <Chip label="GPS" value={`${vest.latitude.toFixed(5)}, ${vest.longitude.toFixed(5)}`} />
                     ) : null}
+                    {onTimeline ? (
+                      <button
+                        type="button"
+                        onClick={() => onTimeline(worker)}
+                        className="ml-auto rounded px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
+                      >
+                        Timeline
+                      </button>
+                    ) : null}
                     {onEdit ? (
                       <button
                         type="button"
                         onClick={() => onEdit(worker)}
-                        className="ml-auto rounded px-2 py-0.5 text-[11px] text-amber-400 hover:bg-amber-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
+                        className={`${onTimeline ? '' : 'ml-auto '}rounded px-2 py-0.5 text-[11px] text-amber-400 hover:bg-amber-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500`}
                       >
                         Edit
                       </button>

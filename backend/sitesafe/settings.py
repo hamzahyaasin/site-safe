@@ -179,6 +179,10 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "sitesafe@localhost")
 # A vest that has not reported for this long is shown as offline.
 VEST_OFFLINE_AFTER_SECONDS = int(os.environ.get("VEST_OFFLINE_AFTER_SECONDS", "120"))
 
+# A worker's check-in session closes after this long without a vest report
+# or QR sighting, dated to when they were last seen.
+CHECKOUT_AFTER_MINUTES = int(os.environ.get("CHECKOUT_AFTER_MINUTES", "30"))
+
 REPORT_SERVICE_URL = os.environ.get(
     "REPORT_SERVICE_URL",
     "http://localhost:3001/generate",

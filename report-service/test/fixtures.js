@@ -23,9 +23,10 @@ const alerts = [
   // Simulated: excluded from figures.
   { id: 5, alert_type: 'PPE_VIOLATION', severity: 'HIGH', source: 'SIMULATED', camera_id: '', zone_name: null, worker: 11, worker_name: 'Sara Khan', is_resolved: false, timestamp: t('2026-10-15T11:00:00Z'), resolved_at: null },
 ]
-const activityLogs = [
-  { worker: 10, worker_name: 'Ali Raza', action: 'ZONE_ENTER', timestamp: t('2026-10-15T07:00:00Z') },
-  { worker: 10, worker_name: 'Ali Raza', action: 'ZONE_EXIT', timestamp: t('2026-10-15T07:30:00Z') },
-  { worker: 11, worker_name: 'Sara Khan', action: 'CHECK_IN', timestamp: t('2026-10-15T06:00:00Z') },
+// As returned by /api/v1/activity/daily/ (times in UTC; tz Asia/Karachi is +5).
+const dailyActivity = [
+  { worker: 10, worker_name: 'Ali Raza', date: '2026-10-14', first_check_in: t('2026-10-14T03:00:00Z'), last_check_out: t('2026-10-14T11:00:00Z'), on_site_minutes: 480, idle_minutes: 30, zone_minutes: {}, sessions: 1, still_open: false },
+  { worker: 10, worker_name: 'Ali Raza', date: '2026-10-15', first_check_in: t('2026-10-15T04:00:00Z'), last_check_out: t('2026-10-15T10:00:00Z'), on_site_minutes: 360, idle_minutes: 60, zone_minutes: {}, sessions: 1, still_open: false },
+  { worker: 11, worker_name: 'Sara Khan', date: '2026-10-15', first_check_in: t('2026-10-15T06:00:00Z'), last_check_out: null, on_site_minutes: 120, idle_minutes: 0, zone_minutes: {}, sessions: 1, still_open: true },
 ]
-module.exports = { zones, workers, alerts, activityLogs }
+module.exports = { zones, workers, alerts, dailyActivity }

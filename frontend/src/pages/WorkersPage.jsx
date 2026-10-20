@@ -9,6 +9,7 @@ import Button from '../components/ui/Button.jsx'
 import Drawer from '../components/ui/Drawer.jsx'
 import Input, { Select } from '../components/ui/Input.jsx'
 import { printBadge } from '../lib/badge.js'
+import WorkerTimeline from '../components/workers/WorkerTimeline.jsx'
 
 const EMPTY = { name: '', role: '', phone: '', zone: '', vest: '', is_active: true }
 
@@ -33,6 +34,7 @@ export default function WorkersPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showInactive, setShowInactive] = useState(false)
+  const [timelineFor, setTimelineFor] = useState(null)
 
   // /workers?new=1 (from the dashboard tile) opens the registration form.
   useEffect(() => {
@@ -149,9 +151,12 @@ export default function WorkersPage() {
         loading={loading}
         highlightIds={highlightIds}
         onEdit={canOperate ? openEdit : undefined}
+        onTimeline={setTimelineFor}
         onAdd={openNew}
         canAdd={canOperate}
       />
+
+      <WorkerTimeline worker={timelineFor} onClose={() => setTimelineFor(null)} />
 
       <Drawer
         open={editing !== null}

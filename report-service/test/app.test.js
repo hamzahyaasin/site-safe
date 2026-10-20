@@ -35,7 +35,7 @@ test('generates a PDF and passes the period and time zone to the API', async () 
     fetchAlerts: async (...a) => (calls.push(a), f.alerts),
     fetchZones: async () => f.zones,
     fetchWorkers: async () => f.workers,
-    fetchActivityLogs: async () => f.activityLogs,
+    fetchDailyActivity: async () => f.dailyActivity,
   }
   await withServer(api, async (base) => {
     const r = await fetch(`${base}/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
