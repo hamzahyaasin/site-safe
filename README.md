@@ -395,6 +395,24 @@ Then open **http://localhost:5173**, sign in, and use the Dashboard, Alerts, and
 
 ---
 
+## Measuring performance (Chapter 5)
+
+`tools/measure/` holds four scripts. Each saves a JSON result recording the machine, the commit, the settings and the sample sizes. `make_tables.py` turns the latest results into report tables with pass/fail against the proposed targets.
+
+```bash
+pip install -r tools/measure/requirements.txt
+python manage.py create_service_token measure-cam --kind CAMERA --simulator   # alerts it creates are marked SIMULATED
+export SITESAFE_API_BASE=http://127.0.0.1:8000/api SITESAFE_DEVICE_KEY=ss_... SITESAFE_EMAIL=... SITESAFE_PASSWORD=...
+
+python tools/measure/latency.py --count 100 --resolve                 # event → dashboard socket
+python tools/measure/recovery.py --events 100 --outage 300 --resolve  # API outage + camera restart
+python tools/measure/fps.py --images ai-module/ppe_dataset/test/images --device mps   # all detectors
+python tools/measure/soak.py --hours 2                                # run with the full stack up
+python tools/measure/make_tables.py --out docs/evidence/CHAPTER5_MEASUREMENTS.md
+```
+
+Run them on the demo machine with the configuration you will present. Prefer a separate database: measurement traffic is labelled SIMULATED, but it still creates alerts and notifications. The recovery test simulates the outage with a local proxy, so the API keeps running. The FPS figure covers detection only; the camera's real frame rate is at most that.
+
 ## API overview
 
 | Method | Endpoint | Auth | Description |

@@ -124,6 +124,24 @@ def resolve_fall_model_path() -> Path:
     return module_root() / p
 
 
+def pick_device(requested: str) -> str:
+    """'auto' picks the fastest available: CUDA GPU, Apple GPU (mps), else CPU.
+
+    Ultralytics' own default is the CPU even when an Apple GPU is present,
+    which measured 9.8 FPS against 13.4 FPS on mps for the full pipeline
+    (tools/measure/fps.py, Apple M4).
+    """
+    if requested != "auto":
+        return requested
+    import torch
+
+    if torch.cuda.is_available():
+        return "0"
+    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def resolve_camera_source(raw: str) -> int | str:
     """A plain integer string means a local device index; anything else
     (an rtsp://, http://, or file path) is passed straight to OpenCV as a
@@ -602,6 +620,11 @@ def parse_args() -> argparse.Namespace:
         "Calibrate this per camera resolution and view.",
     )
     parser.add_argument(
+        "--device",
+        default=os.environ.get("SITESAFE_INFERENCE_DEVICE", "auto"),
+        help="Inference device: auto (default), cpu, mps or a CUDA index such as 0.",
+    )
+    parser.add_argument(
         "--no-qr",
         action="store_true",
         help="Disable QR badge identification. When enabled (the default) it "
@@ -668,6 +691,8 @@ def main() -> None:
         print(f"Model not found: {model_path}", file=sys.stderr)
         sys.exit(1)
 
+    device = pick_device(args.device)
+    print(f"[{camera_id}] inference device: {device}")
     device_key = os.environ.get(DEVICE_KEY_ENV, "").strip()
     session = build_api_session(device_key)
     if not device_key:
@@ -896,7 +921,7 @@ def main() -> None:
             # only ``display_frame`` is annotated for the operator.
             raw_frame, display_frame = frame_views(frame)
 
-            results = model.predict(raw_frame, verbose=False, conf=args.ppe_conf)
+            results = model.predict(raw_frame, verbose=False, conf=args.ppe_conf, device=device)
             result = results[0]
             names = result.names
             violations: list[tuple[str, float]] = []
@@ -915,7 +940,7 @@ def main() -> None:
             confirmed_inactivity: list[dict] = []
             if coco_model is not None and total_frames % PROXIMITY_FRAME_INTERVAL == 0:
                 p_result = coco_model.predict(
-                    raw_frame, verbose=False, conf=PROXIMITY_CONF
+                    raw_frame, verbose=False, conf=PROXIMITY_CONF, device=device
                 )[0]
                 if p_result.boxes is not None and len(p_result.boxes) > 0:
                     p_xyxy = p_result.boxes.xyxy.cpu().numpy()
@@ -951,7 +976,7 @@ def main() -> None:
             # sampling interval — it does not share the COCO detector above.
             confirmed_fall: list[dict] = []
             if pose_model is not None and total_frames % FALL_FRAME_INTERVAL == 0:
-                f_result = pose_model.predict(raw_frame, verbose=False, conf=FALL_CONF)[0]
+                f_result = pose_model.predict(raw_frame, verbose=False, conf=FALL_CONF, device=device)[0]
                 last_poses = []
                 if f_result.keypoints is not None and len(f_result.keypoints) > 0:
                     xy_all = f_result.keypoints.xy.cpu().numpy()
@@ -965,7 +990,7 @@ def main() -> None:
 
             confirmed_fire: list[dict] = []
             if fire_model is not None and total_frames % FIRE_FRAME_INTERVAL == 0:
-                fr = fire_model.predict(raw_frame, verbose=False, conf=args.fire_conf)[0]
+                fr = fire_model.predict(raw_frame, verbose=False, conf=args.fire_conf, device=device)[0]
                 last_fire = (
                     fire_detections(fr.names, fr.boxes.xyxy.cpu().numpy(), fr.boxes.conf.cpu().numpy(), fr.boxes.cls.cpu().numpy().astype(int))
                     if fr.boxes is not None and len(fr.boxes) > 0

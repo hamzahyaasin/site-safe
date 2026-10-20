@@ -73,5 +73,20 @@ class CameraRulesTests(unittest.TestCase):
         self.assertNotIn("Authorization", inference.build_api_session("").headers)
 
 
+class DeviceTests(unittest.TestCase):
+    def test_explicit_device_kept(self):
+        self.assertEqual(inference.pick_device("cpu"), "cpu")
+
+    def test_auto_prefers_accelerator(self):
+        import torch
+
+        with patch.object(torch.cuda, "is_available", return_value=False), \
+             patch.object(torch.backends.mps, "is_available", return_value=True):
+            self.assertEqual(inference.pick_device("auto"), "mps")
+        with patch.object(torch.cuda, "is_available", return_value=False), \
+             patch.object(torch.backends.mps, "is_available", return_value=False):
+            self.assertEqual(inference.pick_device("auto"), "cpu")
+
+
 if __name__ == "__main__":
     unittest.main()

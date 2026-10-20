@@ -28,6 +28,11 @@ import uuid
 from collections.abc import Callable
 from pathlib import Path
 
+# Retry ceiling. A 5-minute outage test with a 60 s ceiling recovered in
+# 60.3 s, just over the 60 s target; 30 s bounds the wait after the API
+# returns while keeping retries to two a minute.
+DEFAULT_MAX_BACKOFF = 30.0
+
 DELIVERED = frozenset({200, 201, 202})
 AUTH_FAILURE = frozenset({401, 403})
 RETRYABLE_4XX = frozenset({408, 429})
@@ -45,7 +50,7 @@ class EventOutbox:
         *,
         max_pending: int = 10_000,
         base_backoff: float = 1.0,
-        max_backoff: float = 60.0,
+        max_backoff: float = DEFAULT_MAX_BACKOFF,
         clock: Callable[[], float] = time.time,
     ) -> None:
         self.path = str(path)

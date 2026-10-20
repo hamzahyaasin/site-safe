@@ -42,3 +42,6 @@ backups/
 
 # Docker compose secrets
 .env.docker
+
+# Raw measurement runs (copy chosen results into docs/evidence/)
+tools/measure/results/
