@@ -44,6 +44,7 @@ export default function DashboardPage() {
       sos: { alert_type: 'SOS', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
       vehicle_proximity: { alert_type: 'VEHICLE_PROXIMITY', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
       fall: { alert_type: 'FALL', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
+      fire: { alert_type: 'FIRE', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
     }
     setLoadingSim(kind)
     try {
@@ -120,6 +121,7 @@ export default function DashboardPage() {
             { id: 'sos', label: 'SOS Pressed', sev: 'CRITICAL' },
             { id: 'vehicle_proximity', label: 'Vehicle Proximity', sev: 'CRITICAL' },
             { id: 'fall', label: 'Fall', sev: 'CRITICAL' },
+            { id: 'fire', label: 'Fire', sev: 'CRITICAL' },
           ].map((sim) => (
             <Button
               key={sim.id}

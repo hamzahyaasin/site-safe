@@ -2,15 +2,17 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
-from accounts.permissions import ReadOnlyOrAdmin
+from django.utils import timezone
+
+from accounts.permissions import IsSafetyOfficer, ReadOnlyOrAdmin, ReadOnlyOrSafetyOfficer
 from rest_framework.response import Response
 
 from workers.models import Worker
 from workers.serializers import WorkerSerializer
 
 from .geofence import point_in_polygon
-from .models import Zone
-from .serializers import ZoneDetailSerializer, ZoneSerializer
+from .models import HotWorkPermit, Zone
+from .serializers import HotWorkPermitSerializer, ZoneDetailSerializer, ZoneSerializer
 
 
 class ZoneViewSet(viewsets.ModelViewSet):
@@ -71,3 +73,44 @@ class ZoneViewSet(viewsets.ModelViewSet):
                 "inside": inside,
             }
         )
+
+
+class HotWorkPermitViewSet(viewsets.ModelViewSet):
+    """Hot-work permits. Safety Officers issue and revoke; everyone can read.
+
+    Permits are revoked rather than deleted so the alert history keeps the
+    permit each downgraded fire/smoke alert relied on.
+    """
+
+    serializer_class = HotWorkPermitSerializer
+    permission_classes = [ReadOnlyOrSafetyOfficer]
+    http_method_names = ["get", "post", "patch", "head", "options"]
+
+    def get_queryset(self):
+        qs = HotWorkPermit.objects.select_related("zone", "issued_by")
+        state = self.request.query_params.get("state")
+        now = timezone.now()
+        if state == "active":
+            qs = qs.active_at(now)
+        elif state == "current":  # active or still to come
+            qs = qs.filter(revoked_at__isnull=True, ends_at__gt=now)
+        zone = self.request.query_params.get("zone")
+        if zone:
+            qs = qs.filter(zone_id=zone)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(issued_by=self.request.user)
+
+    def partial_update(self, request, *args, **kwargs):
+        if self.get_object().revoked_at:
+            return Response({"detail": "A revoked permit cannot be changed."}, status=status.HTTP_400_BAD_REQUEST)
+        return super().partial_update(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsSafetyOfficer])
+    def revoke(self, request, pk=None):
+        permit = self.get_object()
+        if permit.revoked_at is None:
+            permit.revoked_at = timezone.now()
+            permit.save(update_fields=["revoked_at"])
+        return Response(HotWorkPermitSerializer(permit).data)

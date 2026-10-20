@@ -141,6 +141,19 @@ Draw zone boundaries on the map on the **Zones** page (Admin only). Vest GPS pos
 
 Where zones overlap, the highest-risk zone wins. Occupancy counts only workers whose vests are online. Camera-only zones have no boundary, so they have no GPS presence.
 
+### Fire and smoke detection, hot-work permits
+
+The camera pipeline runs a fire/smoke detector when `ai-module/models/fire_smoke.pt` exists. Train it with `ai-module/fire/train_fire_smoke_colab.ipynb` on a dataset you are licensed to use. Prepare the dataset with `ai-module/fire/prepare_fire_dataset.py`, which remaps classes, keeps clip frames in one split, keeps negatives, and leaves out images with broken labels. An alert needs fire or smoke to persist for 2 s (`--fire-persistence`). Afterwards the camera stays quiet until the scene has been clear for 30 s.
+
+The server sets the severity:
+
+| Situation | FIRE | SMOKE |
+|---|---|---|
+| No active hot-work permit for the camera's zone | Critical | High |
+| Active permit (Zones page) | Medium, linked to the permit | Low, linked to the permit |
+
+A permit never hides fire, and FIRE alerts cannot be disabled in Settings. Safety Officers issue permits for up to 12 hours and can revoke them early. Set `TIME_ZONE` (for example `Asia/Karachi`) so permit times written into alerts use local time.
+
 ### QR worker badges
 
 On the **Workers** page, edit a worker and choose **Print badge**. The QR code encodes only a random code (`SSW1:…`), never a name or phone number. Print it at 100% scale (60 mm) and wear it on the helmet front or chest. **Reissue badge** revokes every earlier printout.

@@ -87,7 +87,7 @@ export default function DashboardCharts({ stats, loading }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={daily} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                 <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="day" tick={axisTick} axisLine={{ stroke: '#2a2f3d' }} tickLine={false} />
+                <XAxis dataKey="day" tick={axisTick} axisLine={{ stroke: '#2a2f3d' }} tickLine={false} interval={0} />
                 <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={chartTooltipStyle}

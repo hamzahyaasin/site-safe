@@ -6,7 +6,7 @@
 // give counts, resolution times and violation-free days instead, and state
 // how each is defined.
 
-const ALERT_TYPES = ['PPE_VIOLATION', 'FALL', 'SOS', 'ZONE_BREACH', 'INACTIVITY', 'VEHICLE_PROXIMITY']
+const ALERT_TYPES = ['PPE_VIOLATION', 'FALL', 'FIRE', 'SMOKE', 'SOS', 'ZONE_BREACH', 'INACTIVITY', 'VEHICLE_PROXIMITY']
 const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
 const UNATTRIBUTED = 'Unattributed'
 
@@ -89,6 +89,8 @@ function computeIncidentMetrics({ alerts, tz }) {
     resolved,
     critical: observed.filter((a) => a.severity === 'CRITICAL').length,
     identified: observed.filter((a) => a.worker).length,
+    // Fire/smoke seen while a hot-work permit covered the zone (reduced severity).
+    underHotWorkPermit: observed.filter((a) => a.hot_work_permit).length,
     byType: countBy(observed, 'alert_type', ALERT_TYPES),
     bySeverity: countBy(observed, 'severity', SEVERITIES),
     bySource: countBy(observed, 'source'),

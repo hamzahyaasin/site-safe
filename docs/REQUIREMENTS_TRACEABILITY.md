@@ -27,7 +27,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-06 | Detect falls from camera pose | M | Positive and hard-negative videos meet the AI event targets | `ai-module/fall_detection.py` | `alerts/test_fall.py` (21) | Tested |
 | FR-07 | Warn when a worker is too close to a vehicle | M | Calibrated distance threshold; video evaluation | `ai-module/proximity.py` | `alerts/test_proximity.py` (9) | Tested |
 | FR-08 | Detect prolonged inactivity; timeout configurable from the dashboard | M | Changing the INACTIVITY rule changes the camera timeout within 60 s | `ai-module/inactivity.py`, `CameraRules` | `alerts/test_inactivity.py` (10), `test_inference_config.py` | Tested |
-| FR-09 | Fire/smoke detection with hot-work permit suppression | M | Licensed fixture videos pass; a permitted hot-work fire is downgraded, not dropped | — | — | Missing |
+| FR-09 | Fire/smoke detection with hot-work permit suppression | M | Licensed fixture videos pass; a permitted hot-work fire is downgraded, not dropped | `ai-module/fire_detection.py`, `ai-module/fire/` (prep script, Colab notebook), `alerts/fire_policy.py`, `sitemap.HotWorkPermit`, `components/zones/HotWorkPermits.jsx` | `test_fire_detection.py` (8), `fire/test_prepare_fire_dataset.py` (4), `sitemap/tests.py` permit + policy (8); e2e 20 Oct: permit issued in UI → fire in permitted zone MEDIUM + linked, elsewhere CRITICAL | Integrated (**model not yet trained; no video evaluation**) |
 | FR-10 | QR worker identification linking camera events to a worker | M | Correct-association, unknown and wrong-person rates measured at a stated size, distance, angle and lighting | `ai-module/identity.py`, `group_violations` in `inference.py`, `Worker.badge_code`, `/workers/{id}/badge/`, `frontend/src/lib/badge.js` | `test_identity.py` (14, including real OpenCV QR encode→decode); `workers/tests.py` Badge/CameraBadgeIdentity (7); e2e 16 Oct (synthetic frame: badge decoded → alert attributed to Ali; second person unidentified) | Integrated (synthetic frames only; **physical camera test pending**) |
 | FR-11 | Camera events reach the API reliably | M | 100 events queued in a 5-minute outage arrive exactly once after recovery | `ai-module/event_outbox.py`, `CameraEventView` | `test_event_outbox.py` (8), `alerts/test_ingest.py`; e2e 16 Oct (3 queued while API down → 2 stored, 1 dead-lettered for wrong camera) | Integrated (small fixture) |
 | FR-12 | Only authorised devices can submit data | M | Anonymous, revoked, wrong-kind or wrong-camera tokens are rejected | `accounts/service_auth.py` | `alerts/test_ingest.py` | Tested |
@@ -186,4 +186,24 @@ Known defects / limitations:
 Human inputs still needed: Firebase project (google-services.json + service account),
   an Android phone for a development build, and a recorded push/resolve test
 Next independent task: Stage 4 part 3 (smart vest firmware) or Stage 3 (dataset/retraining)
+```
+
+```text
+Phase / task IDs: Stage 5 part 1 (PostgreSQL verification, Docker, CI) and fire/smoke (FR-09)
+Status: tested on PostgreSQL 18 and SQLite; dev database backed up (backups/) and migrated;
+  docker-compose and CI written but not run (Docker not installed; CI not pushed)
+Requirement IDs covered: FR-09; NFR-06 (setup) partially
+Commit / working-tree reference: branch stage-0-1-security-events, 20 Oct 2026
+Fixes found by PostgreSQL: vest row lock across a nullable join failed on every telemetry
+  message; inline notification test reset the connection; migration left 100% battery on
+  vests that never reported
+Tests run (20 Oct 2026): backend 146 OK on PostgreSQL and SQLite; ai-module 43 OK;
+  fire prep 4 OK; report-service 12 OK; frontend lint clean, build OK
+Known defects / limitations:
+  - No trained fire/smoke weights yet; image-level metrics from the notebook are not alert
+    quality — evaluate on recorded licensed clips including hard negatives.
+  - Camera-only zones need camera_ids for permits to apply; an unzoned camera is never covered.
+Human inputs still needed: choose and licence-check a fire/smoke dataset, run the notebook,
+  install Docker Desktop to try the compose stack, push the branch to run CI
+Next independent task: workforce activity automation (FR-24), then measurement tooling (NFR-01..05)
 ```

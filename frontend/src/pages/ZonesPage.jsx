@@ -5,6 +5,8 @@ import DataTable from '../components/ui/DataTable.jsx'
 import Drawer from '../components/ui/Drawer.jsx'
 import Input, { Select } from '../components/ui/Input.jsx'
 import SiteMap from '../components/map/SiteMap.jsx'
+import HotWorkPermits from '../components/zones/HotWorkPermits.jsx'
+import { useHotWorkPermits } from '../hooks/useHotWorkPermits.js'
 import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card.jsx'
 import { useZones } from '../hooks/useZones.js'
 import { useVests } from '../hooks/useVests.js'
@@ -60,7 +62,9 @@ export default function ZonesPage() {
   const { zones, loading, error, createZone, updateZone, deleteZone } = useZones()
   const { vests } = useVests()
   // Zone edits are Admin-only server-side; hide the controls for everyone else.
-  const { isAdmin } = useAuth()
+  const { isAdmin, canOperate } = useAuth()
+  const permitState = useHotWorkPermits()
+  const activePermitZones = new Set(permitState.permits.filter((p) => p.is_active).map((p) => p.zone))
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingZone, setEditingZone] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -151,7 +155,12 @@ export default function ZonesPage() {
     {
       key: 'risk_level',
       header: 'Risk Level',
-      render: (row) => <Badge variant={RISK_BADGE[row.risk_level] || 'neutral'}>{row.risk_level}</Badge>,
+      render: (row) => (
+        <div className="flex flex-wrap gap-1">
+          <Badge variant={RISK_BADGE[row.risk_level] || 'neutral'}>{row.risk_level}</Badge>
+          {activePermitZones.has(row.id) ? <Badge variant="high">HOT WORK</Badge> : null}
+        </div>
+      ),
     },
     {
       key: 'workers',
@@ -248,6 +257,16 @@ export default function ZonesPage() {
         emptyTitle="No zones yet"
         emptyDescription="Add one with the button above."
         rowKey={(row) => row.id}
+      />
+
+      <HotWorkPermits
+        zones={zones}
+        permits={permitState.permits}
+        loading={permitState.loading}
+        error={permitState.error}
+        canIssue={canOperate}
+        onIssue={permitState.issue}
+        onRevoke={permitState.revoke}
       />
 
       <Drawer

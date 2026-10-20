@@ -293,6 +293,11 @@ class CameraEventView(APIView):
         rule = rule_for_alert(alert)
         if not rule.is_enabled:
             return _suppressed(rule)
+        from sitemap.models import Zone
+
+        from . import fire_policy
+
+        fire_policy.apply(alert, Zone.objects.for_camera(alert.camera_id).first())
         try:
             with transaction.atomic():
                 alert.save()

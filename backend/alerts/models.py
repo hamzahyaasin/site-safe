@@ -8,6 +8,8 @@ class AlertType(models.TextChoices):
     INACTIVITY = "INACTIVITY", "Inactivity"
     VEHICLE_PROXIMITY = "VEHICLE_PROXIMITY", "Vehicle proximity"
     FALL = "FALL", "Fall"
+    FIRE = "FIRE", "Fire"
+    SMOKE = "SMOKE", "Smoke"
 
 
 class Severity(models.TextChoices):
@@ -67,6 +69,14 @@ class Alert(models.Model):
         blank=True,
         unique=True,
         help_text="Producer-assigned idempotency key; a retried event is stored once",
+    )
+    hot_work_permit = models.ForeignKey(
+        "sitemap.HotWorkPermit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="alerts",
+        help_text="Active hot-work permit covering this fire/smoke alert, if any",
     )
     is_resolved = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)

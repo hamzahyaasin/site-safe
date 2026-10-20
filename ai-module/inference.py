@@ -22,6 +22,7 @@ import requests
 from ultralytics import YOLO
 
 import fall_detection
+import fire_detection
 import identity
 from event_outbox import EventOutbox
 import inactivity
@@ -37,6 +38,12 @@ PROXIMITY_MODEL_PATH = "yolo11n.pt"
 # emit, so it uses a third, independent model: the COCO-pretrained YOLO11
 # nano *pose* weights.
 FALL_MODEL_PATH = "yolo11n-pose.pt"
+# Fire/smoke is a separate detector trained with fire/train_fire_smoke_colab.ipynb.
+# Without these weights the rest of the pipeline runs and fire is disabled.
+FIRE_MODEL_PATH = "models/fire_smoke.pt"
+# Fire grows over seconds, so sampling every fifth frame keeps its cost low
+# without delaying confirmation meaningfully.
+FIRE_FRAME_INTERVAL = 5
 API_BASE = os.environ.get("SITESAFE_API_BASE", "http://127.0.0.1:8000/api")
 # Camera device token issued with
 #   python manage.py create_service_token CAM-01 --kind CAMERA --camera-id CAM-01
@@ -89,6 +96,25 @@ def resolve_proximity_model_path() -> Path:
     if p.is_absolute():
         return p
     return module_root() / p
+
+
+def resolve_fire_model_path() -> Path:
+    p = Path(FIRE_MODEL_PATH)
+    return p if p.is_absolute() else module_root() / p
+
+
+def fire_detections(names, boxes_xyxy, confs, clss) -> list[tuple[str, float, tuple]]:
+    return [
+        (class_name(names, int(clss[i])), float(confs[i]), tuple(float(v) for v in boxes_xyxy[i].tolist()))
+        for i in range(len(clss))
+    ]
+
+
+def draw_fire(frame: np.ndarray, detections: list[tuple[str, float, tuple]]) -> None:
+    for name, conf, box in detections:
+        x1, y1, x2, y2 = map(int, box)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 128, 255), 2)
+        cv2.putText(frame, f"{name} {conf:.2f}", (x1, max(y1 - 6, 16)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 128, 255), 1, cv2.LINE_AA)
 
 
 def resolve_fall_model_path() -> Path:
@@ -544,6 +570,24 @@ def parse_args() -> argparse.Namespace:
         "--no-proximity and --no-inactivity.",
     )
     parser.add_argument(
+        "--no-fire",
+        action="store_true",
+        help="Disable fire/smoke detection (it is also off when models/fire_smoke.pt is missing).",
+    )
+    parser.add_argument(
+        "--fire-conf",
+        type=float,
+        default=fire_detection.DEFAULT_CONF,
+        help=f"Fire/smoke detector confidence threshold (default {fire_detection.DEFAULT_CONF}).",
+    )
+    parser.add_argument(
+        "--fire-persistence",
+        type=float,
+        default=fire_detection.DEFAULT_PERSISTENCE_SECONDS,
+        help="Seconds fire or smoke must keep appearing before an alert "
+        f"(default {fire_detection.DEFAULT_PERSISTENCE_SECONDS:g}).",
+    )
+    parser.add_argument(
         "--no-fall",
         action="store_true",
         help="Disable fall detection. Uses its own pose model independent of "
@@ -566,6 +610,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--inactivity-movement-threshold must be zero or greater")
     if args.fall_persistence <= 0:
         parser.error("--fall-persistence must be greater than zero")
+    if not 0.0 <= args.fire_conf <= 1.0:
+        parser.error("--fire-conf must be between zero and one")
+    if args.fire_persistence <= 0:
+        parser.error("--fire-persistence must be greater than zero")
     return args
 
 
@@ -667,6 +715,20 @@ def main() -> None:
                 file=sys.stderr,
             )
 
+    fire_model = None
+    fire_tracker = None
+    if not args.no_fire:
+        fire_model_path = resolve_fire_model_path()
+        if fire_model_path.is_file():
+            fire_model = YOLO(str(fire_model_path))
+            fire_tracker = fire_detection.FireTracker(persistence_seconds=args.fire_persistence)
+            print(f"[{camera_id}] fire/smoke detection enabled (confirm after {args.fire_persistence:g}s)")
+        else:
+            print(
+                f"[{camera_id}] fire/smoke model not found at {fire_model_path}; fire detection disabled",
+                file=sys.stderr,
+            )
+
     qr_decoder = None
     identity_tracker = None
     if not args.no_qr:
@@ -706,6 +768,7 @@ def main() -> None:
     last_vehicles: list = []
     last_proximity_event: dict | None = None
     last_poses: list = []
+    last_fire: list = []
     t_start = time.perf_counter()
     fps_smooth = 0.0
     t_prev = time.perf_counter()
@@ -753,6 +816,8 @@ def main() -> None:
                     fall_tracker.reset()
                 if identity_tracker is not None:
                     identity_tracker.reset()
+                if fire_tracker is not None:
+                    fire_tracker.reset()
                 print(f"[{'PAUSED' if paused else 'RESUME'}] detection")
             if key == ord("s"):
                 forced = {
@@ -846,6 +911,19 @@ def main() -> None:
                 if fall_tracker is not None:
                     confirmed_fall = fall_tracker.update(last_poses, now=t_now)
 
+            confirmed_fire: list[dict] = []
+            if fire_model is not None and total_frames % FIRE_FRAME_INTERVAL == 0:
+                fr = fire_model.predict(raw_frame, verbose=False, conf=args.fire_conf)[0]
+                last_fire = (
+                    fire_detections(fr.names, fr.boxes.xyxy.cpu().numpy(), fr.boxes.conf.cpu().numpy(), fr.boxes.cls.cpu().numpy().astype(int))
+                    if fr.boxes is not None and len(fr.boxes) > 0
+                    else []
+                )
+                h, w = raw_frame.shape[:2]
+                confirmed_fire = fire_tracker.update(last_fire, frame_area=float(h * w), now=t_now)
+            if fire_model is not None:
+                draw_fire(display_frame, last_fire)
+
             if proximity_tracker is not None:
                 draw_proximity(display_frame, last_persons, last_vehicles, last_proximity_event)
             if pose_model is not None:
@@ -897,6 +975,13 @@ def main() -> None:
                     alerts_sent += 1
                     fall_alerts_sent += 1
                     print(f"[ALERT] {fall_detection.describe(event)} → queued")
+
+            # FireTracker latches per class until the scene is clear, so no
+            # extra cooldown is needed; the server applies hot-work permits.
+            for event in confirmed_fire:
+                if queue_event(outbox, rules, fire_detection.alert_payload(event, camera_id)):
+                    alerts_sent += 1
+                    print(f"[ALERT] {fire_detection.describe(event)} → queued")
 
             cv2.imshow(window_title, display_frame)
     finally:

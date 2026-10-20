@@ -32,6 +32,7 @@ class AlertSerializer(serializers.ModelSerializer):
             "snapshot",
             "confidence",
             "event_id",
+            "hot_work_permit",
             "is_resolved",
             "timestamp",
             "resolved_at",
@@ -42,6 +43,7 @@ class AlertSerializer(serializers.ModelSerializer):
             "vest_id",
             "zone_name",
             "event_id",
+            "hot_work_permit",
             "timestamp",
             "resolved_at",
         )
@@ -99,6 +101,8 @@ CAMERA_ALERT_TYPES = (
     AlertType.VEHICLE_PROXIMITY,
     AlertType.INACTIVITY,
     AlertType.FALL,
+    AlertType.FIRE,
+    AlertType.SMOKE,
 )
 
 
@@ -288,7 +292,9 @@ class AlertConfigSerializer(serializers.ModelSerializer):
         alert_type = attrs.get("alert_type", getattr(self.instance, "alert_type", None))
         is_enabled = attrs.get("is_enabled", getattr(self.instance, "is_enabled", True))
         if alert_type in ALWAYS_ENABLED and not is_enabled:
-            raise serializers.ValidationError({"is_enabled": "SOS alerts cannot be disabled."})
+            raise serializers.ValidationError(
+                {"is_enabled": f"{AlertType(alert_type).label} alerts cannot be disabled."}
+            )
         zone = attrs.get("zone", getattr(self.instance, "zone", None))
         clash = AlertConfig.objects.filter(alert_type=alert_type, zone=zone)
         if self.instance is not None:

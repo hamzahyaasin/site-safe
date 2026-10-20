@@ -13,6 +13,7 @@ from alerts.views import (
     CameraEventView,
     DashboardStatsView,
 )
+from sitemap.urls import permit_urlpatterns
 from workers.urls import activity_urlpatterns, vest_urlpatterns
 
 from .jwt_views import PublicTokenObtainPairView, PublicTokenRefreshView
@@ -34,6 +35,7 @@ urlpatterns = [
     path("api/v1/detections/", include((detection_urlpatterns, "alerts"), namespace="detections")),
     path("api/v1/alert-config/", include((alert_config_urlpatterns, "alerts"), namespace="alert-config")),
     path("api/v1/zones/", include("sitemap.urls")),
+    path("api/v1/hot-work-permits/", include((permit_urlpatterns, "sitemap"), namespace="permits")),
     path("api/v1/fcm-tokens/", include("accounts.urls")),
     path("api/v1/profile/", include("accounts.profile_urls")),
     path("api/v1/reports/", include("reports.urls")),

@@ -56,13 +56,19 @@ export default function AlertItem({
           <Badge variant={severityBadgeVariant(alert.severity)}>{alert.severity}</Badge>
         </div>
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500">
-          <span>{alert.worker_name || 'Unknown worker'}</span>
+          <span>{alert.worker_name || 'Worker not identified'}</span>
           <span className="font-mono">{alert.vest_id || '—'}</span>
           {!compact ? (
             <span className="font-mono">{displayCameraId(alert)}</span>
           ) : null}
         </div>
-        <p className="mt-1 text-[11px] text-zinc-600">{formatTimestamp(alert.timestamp)}</p>
+        {alert.description && !compact ? (
+          <p className="mt-1 line-clamp-2 text-xs text-zinc-400">{alert.description}</p>
+        ) : null}
+        <p className="mt-1 text-[11px] text-zinc-600">
+          {formatTimestamp(alert.timestamp)}
+          {alert.source === 'SIMULATED' ? ' · simulated' : ''}
+        </p>
       </div>
       {!alert.is_resolved && onResolve ? (
         <Button

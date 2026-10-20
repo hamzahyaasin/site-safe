@@ -92,7 +92,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+# Site time zone, used where the server writes times into text (alert
+# descriptions, emails). Stored timestamps are always UTC.
+TIME_ZONE = os.environ.get("TIME_ZONE", "UTC")
 USE_I18N = True
 USE_TZ = True
 

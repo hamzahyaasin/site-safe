@@ -22,6 +22,8 @@ test('incident metrics exclude simulated alerts from figures but keep them in th
   assert.equal(m.identified, 4)
   assert.equal(m.byType.PPE_VIOLATION, 2)
   assert.equal(m.byType.ZONE_BREACH, 1)
+  assert.equal(m.byType.FIRE, 0)
+  assert.equal(m.underHotWorkPermit, 0)
   assert.equal(m.resolution.medianMinutes, 60) // 30 and 90
   assert.equal(m.log.length, 6)
   assert.equal(m.log[0].id, 6) // newest first

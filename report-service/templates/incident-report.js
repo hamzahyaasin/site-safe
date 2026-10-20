@@ -43,6 +43,7 @@ function buildIncidentReport({ alerts, dateFrom, dateTo, tz, generatedAt = new D
               ['Incidents (excluding simulated)', String(m.total)],
               ['Open', String(m.open)],
               ['Resolved', String(m.resolved)],
+              ['Fire/smoke under a hot-work permit', String(m.underHotWorkPermit)],
               ['Median time to resolve', formatDuration(m.resolution.medianMinutes)],
               ['90th percentile time to resolve', formatDuration(m.resolution.p90Minutes)],
             ],

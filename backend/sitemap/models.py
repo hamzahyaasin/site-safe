@@ -1,4 +1,6 @@
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class ZoneQuerySet(models.QuerySet):
@@ -46,3 +48,41 @@ class Zone(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.risk_level})"
+
+
+class HotWorkPermitQuerySet(models.QuerySet):
+    def active_at(self, when=None):
+        when = when or timezone.now()
+        return self.filter(revoked_at__isnull=True, starts_at__lte=when, ends_at__gt=when)
+
+
+class HotWorkPermit(models.Model):
+    """Authorises welding, cutting or other flame work in one zone for a time window.
+
+    Fire or smoke seen in that zone during the window is still recorded and
+    shown, but at reduced severity and linked to the permit; outside a permit
+    it is a critical alert. A permit never hides fire.
+    """
+
+    zone = models.ForeignKey(Zone, on_delete=models.CASCADE, related_name="hot_work_permits")
+    description = models.CharField(max_length=200)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    objects = HotWorkPermitQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-starts_at"]
+
+    def __str__(self):
+        return f"{self.zone.name}: {self.description} ({self.starts_at:%d %b %H:%M}–{self.ends_at:%H:%M})"
+
+    @property
+    def is_active(self):
+        now = timezone.now()
+        return self.revoked_at is None and self.starts_at <= now < self.ends_at
