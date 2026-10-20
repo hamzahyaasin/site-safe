@@ -36,3 +36,6 @@ ai-module/outbox/
 
 # Uploaded and generated files (reports, alert snapshots)
 backend/media/
+
+# Local database backups
+backups/

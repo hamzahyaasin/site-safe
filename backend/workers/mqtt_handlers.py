@@ -124,8 +124,10 @@ def apply_vest_telemetry(vest_id, payload, simulated=False):
 
 
 def _apply(vest_id, payload, source):
+    # Lock only the vest row: PostgreSQL cannot lock the nullable side of the
+    # worker join, and the worker row does not need locking.
     vest = (
-        SmartVest.objects.select_for_update()
+        SmartVest.objects.select_for_update(of=("self",))
         .filter(vest_id=vest_id)
         .select_related("worker")
         .first()

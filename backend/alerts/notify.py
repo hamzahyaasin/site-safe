@@ -53,7 +53,10 @@ def deliver(alert_id):
     from .models import Alert
     from .rules import rule_for_alert
 
-    close_old_connections()
+    # Pool threads get their own DB connection; drop it if stale. Inline
+    # delivery (tests) runs on the caller's connection, which must be kept.
+    if not RUN_INLINE:
+        close_old_connections()
     try:
         alert = Alert.objects.select_related("worker").filter(pk=alert_id).first()
         if alert is None:

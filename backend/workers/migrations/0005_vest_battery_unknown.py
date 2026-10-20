@@ -3,6 +3,13 @@
 from django.db import migrations, models
 
 
+def clear_unreported_battery(apps, schema_editor):
+    """The old default (100) was never a measurement; a vest that has not
+    reported has no known battery level."""
+    SmartVest = apps.get_model("workers", "SmartVest")
+    SmartVest.objects.filter(last_seen__isnull=True).update(battery_level=None)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -15,4 +22,5 @@ class Migration(migrations.Migration):
             name='battery_level',
             field=models.IntegerField(blank=True, help_text='0-100 percent as last reported; null until the vest reports it', null=True),
         ),
+        migrations.RunPython(clear_unreported_battery, migrations.RunPython.noop),
     ]
