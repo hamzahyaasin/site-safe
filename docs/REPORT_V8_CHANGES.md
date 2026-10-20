@@ -48,7 +48,7 @@ Each chapter now opens on its own title page: chapter number 18 pt bold, name 22
 - **Chapter 5** contains:
   - the testing approach and status levels;
   - the test environment;
-  - the automated suites (275 tests, re-run on 20 Oct 2026);
+  - the automated suites (308 tests, re-run on 20 Oct 2026);
   - a requirement-linked table built from `REQUIREMENTS_TRACEABILITY.md`;
   - model evaluation with the split-leakage caveat;
   - the latency, recovery, FPS and soak tables from `docs/evidence/CHAPTER5_MEASUREMENTS.md`;

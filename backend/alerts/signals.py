@@ -1,4 +1,4 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from .events import publish_alert
@@ -14,3 +14,10 @@ def alert_saved(sender, instance, created, **kwargs):
         from .notify import schedule
 
         schedule(instance)
+
+
+@receiver(post_delete, sender=Alert)
+def alert_deleted(sender, instance, **kwargs):
+    # Evidence images must not outlive their alert (FR-29 privacy).
+    if instance.snapshot:
+        instance.snapshot.delete(save=False)

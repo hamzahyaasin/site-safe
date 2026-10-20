@@ -15,6 +15,10 @@ export interface Alert {
   zone_name: string | null;
   location: { lat: number; lng: number } | null;
   confidence: number | null;
+  /** Weights that raised an AI alert: file name and SHA-256 prefix (FR-29). */
+  model_version: string;
+  /** API path of the evidence frame, or null; fetch with api.imageDataUri. */
+  snapshot: string | null;
   is_resolved: boolean;
   timestamp: string;
   resolved_at: string | null;

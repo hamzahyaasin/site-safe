@@ -58,7 +58,18 @@ class Alert(models.Model):
         blank=True,
         help_text="GPS coords: {lat, lng}",
     )
-    snapshot = models.ImageField(upload_to="alert_snapshots/", null=True, blank=True)
+    snapshot = models.ImageField(
+        upload_to="alert_snapshots/",
+        null=True,
+        blank=True,
+        help_text="JPEG of the camera frame that confirmed this alert (FR-29)",
+    )
+    model_version = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Weights that produced this alert: file name and SHA-256 prefix",
+    )
     confidence = models.FloatField(
         null=True,
         blank=True,

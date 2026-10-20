@@ -171,6 +171,17 @@ On the **Workers** page, edit a worker and choose **Print badge**. The QR code e
 
 A camera reads badges on the sampled frames and links each one to the person box that contains it. A PPE, fall or inactivity alert for that person is then attributed to the worker. A badge that is ambiguous (overlapping people), unreadable or revoked leaves the alert unidentified. The camera never guesses. Disable reading with `--no-qr`.
 
+### Alert evidence: snapshots and model version
+
+Each AI camera alert records the weights that raised it (`model_version`, for example `sitesafe_v5.pt@1a2b3c4d5e6f`: the file name and the first 12 hex digits of its SHA-256), so an incident can be traced to the exact model even after a retrain under the same name. It also carries a snapshot: the raw frame that confirmed the event, without overlays, scaled to at most 640 px and saved as a JPEG of about 30–80 KB. The snapshot is stored in the camera's outbox with the event, so it survives an outage the same way.
+
+The camera sends the snapshot base64-encoded in the JSON body (`snapshot`), not as a multipart upload, so the outbox replays one self-contained document. The API accepts only a JPEG of at most 512 KB and 4096 px per side. It stores the file under `MEDIA_ROOT/alert_snapshots/` with a random name. A retried or duplicate `event_id` never stores a second image. The alert's `snapshot` field holds the path `/api/alerts/{id}/snapshot/`, which serves the image only to signed-in users, with the same roles that can read the alert. The incident detail on the web and the alert screen on mobile show it. Media files are never served publicly when `DEBUG=False`.
+
+Privacy controls:
+
+- **Turn snapshots off.** Do it at the camera with `--no-snapshots` or `SITESAFE_SNAPSHOTS=0`, and the image never leaves the host. Do it at the server with `ALERT_SNAPSHOTS_ENABLED=False`, and incoming images are discarded. Either way, the confidence and model version are still recorded.
+- **Retention.** `python manage.py purge_alert_snapshots` deletes images older than `ALERT_SNAPSHOT_RETENTION_DAYS` (default 30). It keeps the alerts themselves. Add `--days N` to override the period, or `--dry-run` to only count. Schedule it daily, for example with cron: `0 3 * * * cd /app && python manage.py purge_alert_snapshots`. Deleting an alert also deletes its image.
+
 ### Report service
 
 ```bash
@@ -201,6 +212,9 @@ Copy `backend/.env.example` to `backend/.env`:
 | `EMAIL_BACKEND` | Email notification backend | console (prints mail) |
 | `FIREBASE_CREDENTIALS_PATH` | Service-account JSON enabling push | *(push disabled)* |
 | `MQTT_BROKER_HOST` / `MQTT_PORT` / `MQTT_USERNAME` / `MQTT_PASSWORD` | Vest telemetry broker | `localhost` / `1883` |
+| `ALERT_SNAPSHOTS_ENABLED` | Store camera snapshots sent with alerts | `True` |
+| `ALERT_SNAPSHOT_RETENTION_DAYS` | Age after which `purge_alert_snapshots` deletes snapshots | `30` |
+| `ALERT_SNAPSHOT_MAX_BYTES` | Largest snapshot accepted, in bytes | `524288` |
 
 ---
 
@@ -316,6 +330,7 @@ python test_model.py
    - `SITESAFE_API_BASE` — backend URL (default `http://127.0.0.1:8000/api`)
    - `SITESAFE_CAMERA_SOURCE` / `SITESAFE_CAMERA_ID` — or `--source` / `--camera-id`
    - `--ppe-conf` — runtime PPE candidate threshold (default `0.15`; calibrate on a clean validation set)
+   - `SITESAFE_SNAPSHOTS=0` or `--no-snapshots` — send alerts without a frame snapshot (see *Alert evidence*)
 3. Make sure the backend is running, then:
 
 ```bash
@@ -422,10 +437,11 @@ Run them on the demo machine with the configuration you will present. Prefer a s
 | `GET` | `/api/dashboard/stats/` | JWT | Dashboard summary stats |
 | `GET/POST` | `/api/alerts/` | JWT | List / create alerts |
 | `POST` | `/api/alerts/{id}/resolve/` | JWT | Mark alert resolved |
+| `GET` | `/api/alerts/{id}/snapshot/` | JWT | Evidence JPEG of a camera alert (404 if none or purged) |
 | `POST` | `/api/alerts/simulate/` | JWT | Create a simulated alert |
 | `POST` | `/api/alerts/ingest/` | Vest gateway token | Ingest a vest alert by `vest_id` |
 | `POST` | `/api/v1/vests/telemetry/` | Vest gateway token | Vest GPS/battery/SOS telemetry |
-| `POST` | `/api/v1/camera-events/` | Camera token | Idempotent camera event (`event_id`, optional `badge_code`) |
+| `POST` | `/api/v1/camera-events/` | Camera token | Idempotent camera event (`event_id`, optional `badge_code`, `model_version`, base64 JPEG `snapshot`) |
 | `GET/POST` | `/api/workers/{id}/badge/` | Safety Officer | Badge payload to print / reissue (revokes the old one) |
 | `POST` | `/api/v1/reports/generate/` | Safety Officer | `report_type`, `date_from`, `date_to`, `file_format` (DOCX/PDF), `tz` |
 | `GET` | `/api/v1/camera-config/?camera_id=` | Camera token | Effective alert rules for a camera |

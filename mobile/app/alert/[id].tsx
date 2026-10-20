@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
+import { AlertSnapshot } from '@/components/AlertSnapshot';
 import { Badge, Button, Card, ErrorText, Screen, styles } from '@/components/ui';
 import { C } from '@/constants/theme';
 import { useLive } from '@/context/Live';
@@ -76,6 +77,7 @@ export default function AlertDetail() {
     ['Source', SOURCE[alert.source] ?? alert.source],
     ['Camera', alert.camera_id || '—'],
     ['Confidence', alert.confidence === null ? '—' : `${Math.round(alert.confidence * 100)}%`],
+    ['Model', alert.model_version || '—'],
     ['Location', alert.location ? `${alert.location.lat.toFixed(5)}, ${alert.location.lng.toFixed(5)}` : '—'],
     ['Status', alert.is_resolved ? `Resolved ${formatDateTime(alert.resolved_at)}` : 'Open'],
   ];
@@ -97,6 +99,11 @@ export default function AlertDetail() {
             </View>
           ))}
         </Card>
+        {alert.snapshot ? (
+          <Card>
+            <AlertSnapshot key={alert.snapshot} path={alert.snapshot} />
+          </Card>
+        ) : null}
         {error ? <ErrorText>{error}</ErrorText> : null}
         {!alert.is_resolved && canOperate(profile?.role) ? (
           <Button title="Mark resolved" onPress={resolve} busy={busy} />

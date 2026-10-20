@@ -47,7 +47,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-26 | Dashboard KPIs and charts reflect recorded data only | M | Every displayed number reconciles to the API; nothing fabricated | `DashboardStatsView`, `KpiStrip.jsx`, `DashboardCharts.jsx`, `WorkerStatusGrid.jsx` | `workers/tests.py` DashboardStatsTests (3); browser check 16 Oct | Integrated |
 | FR-27 | Incident and safety-performance reports in DOCX and PDF | M | Fixtures reconcile exactly; PDF produced; no unsupported percentages; period in the user's time zone | `report-service/lib/*`, `templates/*`, `backend/reports/` | `report-service/test` (12); `reports/tests.py` (6); e2e 16 Oct (both types, both formats via API → service; PDF inspected) | Integrated |
 | FR-28 | Mobile app: login, alerts, resolve, worker status, push | M | Android build receives a push and resolves an incident visible on web | `mobile/` (Expo SDK 58) | `mobile/__tests__` (13); web build checked 16 Oct: sign-in, live alert arrival, detail, resolve, resolve from another session removed live, workers presence, sign-out | Integrated on web target (**device + push pending**) |
-| FR-29 | Alert evidence (snapshot, confidence, model version) | S | Each AI incident is traceable to its frame and model | `Alert.confidence`, `Alert.snapshot` field | — | Coded (confidence only) |
+| FR-29 | Alert evidence (snapshot, confidence, model version) | S | Each AI incident is traceable to its frame and model | `ai-module/evidence.py` (model id = weights name + SHA-256 prefix; JPEG of the raw frame ≤ 640 px), snapshot BLOB in `event_outbox.py`, `--no-snapshots` / `SITESAFE_SNAPSHOTS`; `Alert.model_version` (migration alerts 0012), `decode_snapshot` + `CameraEventView` (base64 JPEG ≤ 512 KB, stored once per `event_id`), `/api/alerts/{id}/snapshot/`, `ALERT_SNAPSHOTS_ENABLED`, `purge_alert_snapshots`; `AlertSnapshot.jsx`, `mobile/components/AlertSnapshot.tsx` | `alerts/test_evidence.py` (19), `test_evidence.py` (8), `test_event_outbox.py` snapshot cases (3), `mobile/__tests__/api.test.ts` image fetch (3); e2e 20 Oct on a throwaway database: synthetic frame → outbox → API (201, one 11 KB file), replay of the same `event_id` → 200 and no second file; frame, confidence and model version shown to a Viewer on web and on the mobile web build; `purge_alert_snapshots --days 0` removed the file and kept the alert | Integrated (**synthetic frame; not yet from a live camera run**) |
 
 ## Non-functional requirements
 
@@ -59,7 +59,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. Fire model not yet included | **Met on mps** (re-measure once fire weights exist) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 164, ai-module 65, report-service 13, mobile 13, tools 16 pass (20 Oct); build OK; lint clean | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 183, ai-module 76, report-service 13, mobile 16, tools 16 pass (20 Oct); build OK; lint clean | Met |
 
 ## Progress ledger
 
@@ -273,4 +273,36 @@ Tests (20 Oct 2026): ai-module 65 OK (was 50); backend 164 OK
 Known limitations: episodes are camera-local; an unidentified person who leaves and returns after
   clear_seconds raises a new alert; very fast motion (> one box size per frame) splits an episode
 Human inputs still needed: an annotated clip with known episodes to measure duplicate and missed alerts
+```
+
+```text
+Phase / task IDs: FR-29 — alert evidence (snapshot, confidence, model version)
+Status: integrated on a throwaway SQLite database with a synthetic frame; not yet exercised from a live
+  camera run; dev PostgreSQL database NOT migrated (alerts 0012 adds Alert.model_version)
+Requirement IDs covered: FR-29
+Changes: ai-module/evidence.py (model_version: weights file name + first 12 hex of SHA-256; encode_snapshot:
+  raw frame scaled to <= 640 px, JPEG q80; FrameSnapshot encodes at most once per frame and only after the
+  rule check); event_outbox.py stores the JPEG as a BLOB beside the event (existing queue files upgraded in
+  place) and sends it base64 in the payload's snapshot field; inference.py adds model_version per detector
+  (PPE, COCO for proximity/inactivity, pose, fire) and --no-snapshots / SITESAFE_SNAPSHOTS=0
+  backend: Alert.model_version; CameraEventSerializer accepts model_version and a base64 JPEG snapshot
+  (JSON chosen over multipart so the outbox replays one document): strict base64, <= ALERT_SNAPSHOT_MAX_BYTES
+  (512 KB), Pillow-verified JPEG, <= 4096 px per side; file written once for a new event, deleted if the
+  insert loses a race, never written for duplicates or suppressed events; ALERT_SNAPSHOTS_ENABLED=False
+  discards images; AlertSerializer.snapshot is the API path, not the media URL; GET /api/alerts/{id}/snapshot/
+  serves the JPEG with the alert's read permission (Viewer and up); purge_alert_snapshots (default
+  ALERT_SNAPSHOT_RETENTION_DAYS=30, --days, --dry-run); deleting an alert deletes its image
+  clients: web incident detail and mobile alert detail show the evidence frame, confidence and model
+  report: Tables 4.7, 4.8, 4.9, 5.1, 5.2, 5.7, 5.8, Sections 4.6.2, 4.10, 6.4 and totals updated (308
+  tests); table rows no longer split across pages (cantSplit); rebuilt, 69 pages, 120 contents/list entries
+  checked against the render, 0 mismatches; .docx validates against the OOXML schema
+Defect found end to end: DRF answered 406 to the mobile client's Accept: image/* before the view ran; the
+  snapshot action now ignores the Accept header (errors still JSON); regression test added
+Tests (20 Oct 2026): backend 183 OK (SQLite and PostgreSQL); ai-module 76 OK; mobile jest 16 OK, eslint and
+  tsc clean; frontend lint clean, build OK
+Known limitations: the snapshot is the whole frame, not a crop, so it can show bystanders; the camera outbox
+  can hold up to ~800 MB of snapshots at its 10,000-event cap; retention needs a scheduled job (cron) — none
+  is defined in docker-compose; DEBUG=True serves media/ publicly (random file names, not authenticated)
+Human inputs still needed: agree a retention period and whether snapshots are allowed on site; run
+  migrate on the dev database; one live camera run to confirm a real alert carries its frame
 ```

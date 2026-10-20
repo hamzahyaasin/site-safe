@@ -16,10 +16,16 @@ Delivery outcomes by HTTP status:
 
 The queue is bounded: when ``max_pending`` is reached the oldest pending event
 is evicted and counted in ``evicted``, so a long outage cannot fill the disk.
+
+An event may carry a JPEG snapshot (FR-29 alert evidence). It is stored as a
+BLOB beside the event, so it survives an outage or restart exactly as the
+event does, and is sent base64-encoded in the payload's ``snapshot`` field.
+At ~30-80 KB a snapshot, a full queue of 10,000 events stays under ~800 MB.
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import sqlite3
 import threading
@@ -76,23 +82,28 @@ class EventOutbox:
                 next_attempt REAL NOT NULL,
                 status TEXT NOT NULL DEFAULT 'pending',
                 last_status INTEGER,
-                last_error TEXT
+                last_error TEXT,
+                snapshot BLOB
             )
             """
         )
+        # Queue files written before snapshots existed lack the column.
+        columns = {row[1] for row in self._db.execute("PRAGMA table_info(events)")}
+        if "snapshot" not in columns:
+            self._db.execute("ALTER TABLE events ADD COLUMN snapshot BLOB")
 
     # ---- producer side -------------------------------------------------
 
-    def enqueue(self, payload: dict) -> str:
-        """Persist an event for delivery and return its event_id."""
+    def enqueue(self, payload: dict, snapshot: bytes | None = None) -> str:
+        """Persist an event (and its optional JPEG snapshot) for delivery; return its event_id."""
         payload = dict(payload)
         event_id = str(payload.setdefault("event_id", str(uuid.uuid4())))
         now = self.clock()
         with self._lock:
             self._db.execute(
-                "INSERT OR IGNORE INTO events (event_id, payload, created_at, next_attempt) "
-                "VALUES (?, ?, ?, ?)",
-                (event_id, json.dumps(payload), now, now),
+                "INSERT OR IGNORE INTO events (event_id, payload, created_at, next_attempt, snapshot) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (event_id, json.dumps(payload), now, now, snapshot),
             )
             overflow = self._count("pending") - self.max_pending
             if overflow > 0:
@@ -109,6 +120,13 @@ class EventOutbox:
     def _count(self, status: str) -> int:
         return self._db.execute("SELECT COUNT(*) FROM events WHERE status=?", (status,)).fetchone()[0]
 
+    @staticmethod
+    def _with_snapshot(payload: str, snapshot: bytes | None) -> dict:
+        body = json.loads(payload)
+        if snapshot is not None:
+            body["snapshot"] = base64.b64encode(snapshot).decode("ascii")
+        return body
+
     def _backoff(self, attempts: int) -> float:
         return min(self.base_backoff * (2 ** max(attempts - 1, 0)), self.max_backoff)
 
@@ -117,16 +135,16 @@ class EventOutbox:
         now = self.clock()
         with self._lock:
             rows = self._db.execute(
-                "SELECT event_id, payload, attempts FROM events "
+                "SELECT event_id, payload, attempts, snapshot FROM events "
                 "WHERE status='pending' AND next_attempt<=? ORDER BY created_at LIMIT ?",
                 (now, limit),
             ).fetchall()
 
         delivered = 0
-        for event_id, payload, attempts in rows:
+        for event_id, payload, attempts, snapshot in rows:
             attempts += 1
             try:
-                code = self.sender(json.loads(payload))
+                code = self.sender(self._with_snapshot(payload, snapshot))
                 error = None
             except Exception as exc:  # noqa: BLE001 - any transport failure is retried
                 code, error = None, f"{type(exc).__name__}: {exc}"

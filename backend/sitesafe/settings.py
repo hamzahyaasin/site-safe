@@ -183,6 +183,17 @@ VEST_OFFLINE_AFTER_SECONDS = int(os.environ.get("VEST_OFFLINE_AFTER_SECONDS", "1
 # or QR sighting, dated to when they were last seen.
 CHECKOUT_AFTER_MINUTES = int(os.environ.get("CHECKOUT_AFTER_MINUTES", "30"))
 
+# Alert evidence (FR-29). Cameras send a JPEG of the frame that confirmed an
+# alert; it is stored under MEDIA_ROOT/alert_snapshots/ and served only to
+# signed-in users through /api/alerts/<id>/snapshot/. Set
+# ALERT_SNAPSHOTS_ENABLED=False to discard incoming images (the model version
+# and confidence are still kept). purge_alert_snapshots deletes images older
+# than ALERT_SNAPSHOT_RETENTION_DAYS; schedule it daily.
+ALERT_SNAPSHOTS_ENABLED = os.environ.get("ALERT_SNAPSHOTS_ENABLED", "True").strip().lower() in ("1", "true", "yes")
+ALERT_SNAPSHOT_RETENTION_DAYS = int(os.environ.get("ALERT_SNAPSHOT_RETENTION_DAYS", "30"))
+ALERT_SNAPSHOT_MAX_BYTES = int(os.environ.get("ALERT_SNAPSHOT_MAX_BYTES", str(512 * 1024)))
+ALERT_SNAPSHOT_MAX_SIDE = 4096
+
 REPORT_SERVICE_URL = os.environ.get(
     "REPORT_SERVICE_URL",
     "http://localhost:3001/generate",

@@ -117,7 +117,8 @@ export class ApiClient {
     return this.refreshing;
   }
 
-  async request<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
+  /** Send an authenticated request, renewing the token once on a 401. */
+  private async send(path: string, init: RequestInit = {}, retried = false): Promise<Response> {
     const res = await fetch(`${this.server}${path.replace(/^\//, '')}`, {
       ...init,
       headers: {
@@ -134,12 +135,34 @@ export class ApiClient {
         await this.signOut();
         throw new ApiError(401, { detail: 'Your session has ended. Please sign in again.' });
       }
-      return this.request<T>(path, init, true);
+      return this.send(path, init, true);
     }
+    return res;
+  }
+
+  async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const res = await this.send(path, init);
     if (res.status === 204) return undefined as T;
     const body = await res.json().catch(() => null);
     if (!res.ok) throw new ApiError(res.status, body);
     return body as T;
+  }
+
+  /**
+   * Fetch an authenticated image as a data: URI. A plain Image source cannot
+   * carry the bearer token on every platform (web ignores headers), so the
+   * bytes are fetched here and handed to <Image> inline.
+   */
+  async imageDataUri(path: string): Promise<string> {
+    const res = await this.send(path, { headers: { Accept: 'image/*' } });
+    if (!res.ok) throw new ApiError(res.status, await res.json().catch(() => null));
+    const blob = await res.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error ?? new Error('Could not read image.'));
+      reader.readAsDataURL(blob);
+    });
   }
 
   get<T>(path: string) {

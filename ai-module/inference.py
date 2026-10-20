@@ -21,6 +21,7 @@ import numpy as np
 import requests
 from ultralytics import YOLO
 
+import evidence
 import fall_detection
 import fire_detection
 import identity
@@ -52,6 +53,10 @@ API_BASE = os.environ.get("SITESAFE_API_BASE", "http://127.0.0.1:8000/api")
 # human login. Without it the pipeline still runs and queues events locally.
 DEVICE_KEY_ENV = "SITESAFE_DEVICE_KEY"
 OUTBOX_DIR = os.environ.get("SITESAFE_OUTBOX_DIR", "outbox")
+# Alert evidence (FR-29): a downscaled JPEG of the confirming frame is sent
+# with each AI alert. Set SITESAFE_SNAPSHOTS=0 (or pass --no-snapshots) where
+# site policy does not allow images of workers to leave the camera host.
+SNAPSHOTS_ENV = "SITESAFE_SNAPSHOTS"
 RULES_REFRESH_SECONDS = 60
 # Minimum gap between VEHICLE_PROXIMITY alerts. PPE alerts use per-person
 # episodes instead (ppe_episodes.py).
@@ -353,11 +358,29 @@ def proximity_payload(event: dict, camera_id: str) -> dict:
     }
 
 
-def queue_event(outbox: EventOutbox, rules: CameraRules, payload: dict) -> bool:
-    """Persist a confirmed event for delivery. Returns False if a rule disables it."""
+def with_model(payload: dict, version: str) -> dict:
+    """Name the weights that produced this event (FR-29)."""
+    return {**payload, "model_version": version}
+
+
+def snapshots_enabled_by_default() -> bool:
+    return os.environ.get(SNAPSHOTS_ENV, "1").strip().lower() not in ("0", "false", "no", "off")
+
+
+def queue_event(
+    outbox: EventOutbox,
+    rules: CameraRules,
+    payload: dict,
+    snapshot: evidence.FrameSnapshot | None = None,
+) -> bool:
+    """Persist a confirmed event, with its frame snapshot if any. Returns False if a rule disables it.
+
+    The snapshot is encoded only after the rule check, so a disabled alert
+    type costs no JPEG encoding.
+    """
     if not rules.enabled(payload["alert_type"]):
         return False
-    outbox.enqueue(payload)
+    outbox.enqueue(payload, snapshot.get() if snapshot is not None else None)
     return True
 
 
@@ -674,6 +697,13 @@ def parse_args() -> argparse.Namespace:
         f"alert is raised (default: {fall_detection.DEFAULT_PERSISTENCE_SECONDS:g}). "
         "Filters out a crouch or a bend to pick something up.",
     )
+    parser.add_argument(
+        "--no-snapshots",
+        action="store_true",
+        default=not snapshots_enabled_by_default(),
+        help="Do not attach a frame snapshot to alerts (alert evidence, FR-29). "
+        f"Also set by {SNAPSHOTS_ENV}=0. The model version is still sent.",
+    )
     args = parser.parse_args()
     if not 0.0 <= args.ppe_conf <= 1.0:
         parser.error("--ppe-conf must be between zero and one")
@@ -729,14 +759,20 @@ def main() -> None:
         print(f"[{camera_id}] resuming delivery of {pending} queued event(s)")
 
     model = YOLO(str(model_path))
+    ppe_version = evidence.model_version(model_path)
+    print(f"[{camera_id}] PPE model {ppe_version}")
+    if args.no_snapshots:
+        print(f"[{camera_id}] alert snapshots disabled; alerts carry the model version only")
 
     coco_model = None
+    coco_version = ""
     proximity_tracker = None
     inactivity_tracker = None
     if not (args.no_proximity and args.no_inactivity):
         proximity_model_path = resolve_proximity_model_path()
         if proximity_model_path.is_file():
             coco_model = YOLO(str(proximity_model_path))
+            coco_version = evidence.model_version(proximity_model_path)
             if not args.no_proximity:
                 proximity_tracker = proximity.ProximityTracker(
                     threshold=args.proximity_threshold,
@@ -772,11 +808,13 @@ def main() -> None:
             )
 
     pose_model = None
+    pose_version = ""
     fall_tracker = None
     if not args.no_fall:
         fall_model_path = resolve_fall_model_path()
         if fall_model_path.is_file():
             pose_model = YOLO(str(fall_model_path))
+            pose_version = evidence.model_version(fall_model_path)
             fall_tracker = fall_detection.FallTracker(
                 persistence_seconds=args.fall_persistence,
             )
@@ -795,11 +833,13 @@ def main() -> None:
             )
 
     fire_model = None
+    fire_version = ""
     fire_tracker = None
     if not args.no_fire:
         fire_model_path = resolve_fire_model_path()
         if fire_model_path.is_file():
             fire_model = YOLO(str(fire_model_path))
+            fire_version = evidence.model_version(fire_model_path)
             fire_tracker = fire_detection.FireTracker(persistence_seconds=args.fire_persistence)
             print(f"[{camera_id}] fire/smoke detection enabled (confirm after {args.fire_persistence:g}s)")
         else:
@@ -938,6 +978,9 @@ def main() -> None:
             # and text into those models.  All inference uses ``raw_frame``;
             # only ``display_frame`` is annotated for the operator.
             raw_frame, display_frame = frame_views(frame)
+            # Evidence comes from the raw frame, never the annotated one, and
+            # is encoded only if an event below is confirmed on this frame.
+            snapshot = evidence.FrameSnapshot(raw_frame, enabled=not args.no_snapshots)
 
             results = model.predict(raw_frame, verbose=False, conf=args.ppe_conf, device=device)
             result = results[0]
@@ -1036,7 +1079,7 @@ def main() -> None:
             # re-alerted only after it has cleared.
             for episode in ppe_episodes_tracker.update(badged_violations(violation_dets, identity_tracker), now=t_now):
                 vname, vconf, badge = episode["class"], episode["confidence"], episode["badge"]
-                if queue_event(outbox, rules, ppe_payload(vname, vconf, camera_id, badge)):
+                if queue_event(outbox, rules, with_model(ppe_payload(vname, vconf, camera_id, badge), ppe_version), snapshot):
                     alerts_sent += 1
                     who = f" [{badge}]" if badge else ""
                     print(f"[ALERT] {vname}{who} detected ({vconf:.2f}, episode {episode['track_id']}) → queued")
@@ -1045,7 +1088,9 @@ def main() -> None:
                 last_t = last_alert_time.get("VEHICLE_PROXIMITY", 0.0)
                 if time.time() - last_t >= COOLDOWN_SECONDS:
                     last_alert_time["VEHICLE_PROXIMITY"] = time.time()
-                    if queue_event(outbox, rules, proximity_payload(confirmed_proximity, camera_id)):
+                    if queue_event(
+                        outbox, rules, with_model(proximity_payload(confirmed_proximity, camera_id), coco_version), snapshot
+                    ):
                         alerts_sent += 1
                         proximity_alerts_sent += 1
                         print(f"[ALERT] {proximity.describe(confirmed_proximity)} → queued")
@@ -1060,7 +1105,8 @@ def main() -> None:
                     outbox.enqueue(
                         activity_payload("IDLE_START", badge, camera_id, wall_clock(event["stationary_since"]))
                     )
-                if queue_event(outbox, rules, with_badge(inactivity.alert_payload(event, camera_id), badge)):
+                payload = with_model(with_badge(inactivity.alert_payload(event, camera_id), badge), coco_version)
+                if queue_event(outbox, rules, payload, snapshot):
                     alerts_sent += 1
                     inactivity_alerts_sent += 1
                     print(f"[ALERT] {inactivity.describe(event)} → queued")
@@ -1069,7 +1115,8 @@ def main() -> None:
             # track, so no additional cooldown is applied here.
             for event in confirmed_fall:
                 badge = identity_tracker.identify(event["centroid"]) if identity_tracker else None
-                if queue_event(outbox, rules, with_badge(fall_detection.alert_payload(event, camera_id), badge)):
+                payload = with_model(with_badge(fall_detection.alert_payload(event, camera_id), badge), pose_version)
+                if queue_event(outbox, rules, payload, snapshot):
                     alerts_sent += 1
                     fall_alerts_sent += 1
                     print(f"[ALERT] {fall_detection.describe(event)} → queued")
@@ -1077,7 +1124,7 @@ def main() -> None:
             # FireTracker latches per class until the scene is clear, so no
             # extra cooldown is needed; the server applies hot-work permits.
             for event in confirmed_fire:
-                if queue_event(outbox, rules, fire_detection.alert_payload(event, camera_id)):
+                if queue_event(outbox, rules, with_model(fire_detection.alert_payload(event, camera_id), fire_version), snapshot):
                     alerts_sent += 1
                     print(f"[ALERT] {fire_detection.describe(event)} → queued")
 

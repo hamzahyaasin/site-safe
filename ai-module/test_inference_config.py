@@ -56,7 +56,7 @@ class CameraRulesTests(unittest.TestCase):
             def __init__(self):
                 self.items = []
 
-            def enqueue(self, payload):
+            def enqueue(self, payload, snapshot=None):
                 self.items.append(payload)
 
         rules = inference.CameraRules(session=None, camera_id="CAM-01")

@@ -1,9 +1,12 @@
+import uuid
+
 from django.db.models import Count
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from datetime import datetime, time
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.negotiation import BaseContentNegotiation
 from django.db import IntegrityError, transaction
 
 from accounts.permissions import IsViewer, ReadOnlyOrAdmin, ReadOnlyOrSafetyOfficer
@@ -168,6 +171,21 @@ class DashboardStatsView(APIView):
         )
 
 
+class IgnoreAcceptHeader(BaseContentNegotiation):
+    """Always render errors as JSON, whatever the client asks for.
+
+    The snapshot endpoint returns a raw JPEG that bypasses renderers, and
+    image clients send ``Accept: image/*``, which DRF would otherwise refuse
+    with 406 before the view runs.
+    """
+
+    def select_parser(self, request, parsers):
+        return parsers[0]
+
+    def select_renderer(self, request, renderers, format_suffix=None):
+        return renderers[0], renderers[0].media_type
+
+
 class AlertViewSet(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
@@ -216,6 +234,23 @@ class AlertViewSet(
         alert.save(update_fields=["is_resolved", "resolved_at"])
         return Response(AlertSerializer(alert).data)
 
+    @action(detail=True, methods=["get"], url_path="snapshot", content_negotiation_class=IgnoreAcceptHeader)
+    def snapshot(self, request, pk=None):
+        """The alert's evidence JPEG, for the same users who may read the alert."""
+        from django.http import FileResponse, Http404
+
+        alert = self.get_object()
+        if not alert.snapshot:
+            raise Http404("This alert has no snapshot.")
+        try:
+            handle = alert.snapshot.open("rb")
+        except FileNotFoundError as exc:
+            raise Http404("The snapshot file is missing.") from exc
+        response = FileResponse(handle, content_type="image/jpeg")
+        response["Cache-Control"] = "private, max-age=3600"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
     @action(detail=False, methods=["post"], url_path="simulate")
     def simulate(self, request):
         serializer = AlertSimulateSerializer(data=request.data)
@@ -257,6 +292,12 @@ class CameraEventView(APIView):
 
     Responses: 201 stored, 200 already stored (same ``event_id``), 202
     suppressed by a disabled rule. A camera treats all three as delivered.
+
+    Alert evidence (FR-29): ``model_version`` names the weights, and
+    ``snapshot`` is an optional base64-encoded JPEG in the same JSON body
+    (validated by ``decode_snapshot``). The image is written only for a new
+    event, so a retried or duplicate ``event_id`` never stores a second file,
+    and it is dropped when ``ALERT_SNAPSHOTS_ENABLED`` is off.
     """
 
     permission_classes = [IsCameraService]
@@ -288,21 +329,36 @@ class CameraEventView(APIView):
             description=description,
             camera_id=data["camera_id"],
             confidence=data["confidence"],
+            model_version=data["model_version"],
             event_id=data["event_id"],
             worker=worker,
         )
         rule = rule_for_alert(alert)
         if not rule.is_enabled:
             return _suppressed(rule)
+        from django.conf import settings
+        from django.core.files.base import ContentFile
+
         from sitemap.models import Zone
 
         from . import fire_policy
 
         fire_policy.apply(alert, Zone.objects.for_camera(alert.camera_id).first())
+        if data["snapshot"] and settings.ALERT_SNAPSHOTS_ENABLED:
+            # Written before the insert so the alert is broadcast once, with
+            # its snapshot; a random name keeps files unguessable.
+            alert.snapshot.save(f"{uuid.uuid4().hex}.jpg", ContentFile(data["snapshot"]), save=False)
         try:
             with transaction.atomic():
                 alert.save()
-        except IntegrityError:
+        except Exception as exc:
+            # Never leave an image without its alert. On IntegrityError a
+            # concurrent delivery of the same event won the insert and keeps
+            # its own image.
+            if alert.snapshot:
+                alert.snapshot.delete(save=False)
+            if not isinstance(exc, IntegrityError):
+                raise
             existing = Alert.objects.filter(event_id=data["event_id"]).first()
             if existing is None:
                 raise

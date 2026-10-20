@@ -76,3 +76,61 @@ test('a failed refresh ends the session', async () => {
 test('field errors become readable messages', () => {
   expect(new ApiError(400, { vest: ['Already assigned.'] }).message).toBe('vest: Already assigned.');
 });
+
+describe('imageDataUri', () => {
+  class FakeReader {
+    result: string | null = null;
+    error: Error | null = null;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    readAsDataURL(blob: { type: string; bytes: string }) {
+      this.result = `data:${blob.type};base64,${btoa(blob.bytes)}`;
+      this.onload?.();
+    }
+  }
+
+  beforeEach(() => {
+    (globalThis as unknown as { FileReader: unknown }).FileReader = FakeReader;
+  });
+
+  function image(status: number, bytes = '') {
+    return Promise.resolve({
+      ok: status < 400,
+      status,
+      json: async () => ({ detail: 'Not found.' }),
+      blob: async () => ({ type: 'image/jpeg', bytes }),
+    } as unknown as Response);
+  }
+
+  test('fetches the snapshot with the bearer token as a data URI', async () => {
+    Object.assign(store, { s: 'http://h/api/', a: 'A1' });
+    const client = new ApiClient();
+    await client.load();
+    (fetch as jest.Mock).mockReturnValueOnce(image(200, 'jpeg-bytes'));
+    const uri = await client.imageDataUri('alerts/7/snapshot/');
+    expect(uri).toBe(`data:image/jpeg;base64,${btoa('jpeg-bytes')}`);
+    const [url, init] = (fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe('http://h/api/alerts/7/snapshot/');
+    expect(init.headers).toMatchObject({ Accept: 'image/*', Authorization: 'Bearer A1' });
+  });
+
+  test('renews an expired token before fetching the image', async () => {
+    Object.assign(store, { s: 'http://h/api/', a: 'OLD', r: 'R1' });
+    const client = new ApiClient();
+    await client.load();
+    (fetch as jest.Mock).mockImplementation((url: string, init: RequestInit) => {
+      if (url.endsWith('token/refresh/')) return json(200, { access: 'NEW' });
+      const auth = (init.headers as Record<string, string>).Authorization;
+      return auth === 'Bearer NEW' ? image(200, 'x') : json(401, {});
+    });
+    await expect(client.imageDataUri('alerts/7/snapshot/')).resolves.toMatch(/^data:image\/jpeg;base64,/);
+  });
+
+  test('a purged snapshot surfaces as a 404 ApiError', async () => {
+    Object.assign(store, { s: 'http://h/api/', a: 'A1' });
+    const client = new ApiClient();
+    await client.load();
+    (fetch as jest.Mock).mockReturnValueOnce(image(404));
+    await expect(client.imageDataUri('alerts/7/snapshot/')).rejects.toMatchObject({ status: 404 });
+  });
+});

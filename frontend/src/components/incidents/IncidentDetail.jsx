@@ -1,4 +1,5 @@
 import Badge from '../ui/Badge.jsx'
+import AlertSnapshot from './AlertSnapshot.jsx'
 import {
   displayCameraId,
   formatAlertType,
@@ -24,6 +25,10 @@ export default function IncidentDetail({ alert }) {
         value={<Badge variant={severityBadgeVariant(alert.severity)}>{alert.severity}</Badge>}
       />
       <DetailField label="Source" value={sourceLabel(alert.source)} />
+      {alert.confidence != null ? (
+        <DetailField label="Confidence" value={`${Math.round(alert.confidence * 100)}%`} />
+      ) : null}
+      {alert.model_version ? <DetailField label="Model" value={alert.model_version} mono /> : null}
       <DetailField
         label="Status"
         value={
@@ -40,6 +45,11 @@ export default function IncidentDetail({ alert }) {
       <div className="sm:col-span-2">
         <DetailField label="Description" value={alert.description || 'No description provided.'} />
       </div>
+      {alert.snapshot ? (
+        <div className="sm:col-span-2">
+          <DetailField label="Evidence frame" value={<AlertSnapshot key={alert.id} alertId={alert.id} />} />
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -1,3 +1,9 @@
+import base64
+import binascii
+import io
+
+from django.conf import settings
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -14,6 +20,9 @@ class AlertSerializer(serializers.ModelSerializer):
     worker_name = serializers.SerializerMethodField()
     vest_id = serializers.SerializerMethodField()
     zone_name = serializers.SerializerMethodField()
+    # Not the media URL: images of workers are served only through the
+    # authenticated /api/alerts/<id>/snapshot/ endpoint.
+    snapshot = serializers.SerializerMethodField()
 
     class Meta:
         model = Alert
@@ -31,6 +40,7 @@ class AlertSerializer(serializers.ModelSerializer):
             "location",
             "snapshot",
             "confidence",
+            "model_version",
             "event_id",
             "hot_work_permit",
             "is_resolved",
@@ -42,6 +52,7 @@ class AlertSerializer(serializers.ModelSerializer):
             "worker_name",
             "vest_id",
             "zone_name",
+            "model_version",
             "event_id",
             "hot_work_permit",
             "timestamp",
@@ -59,6 +70,10 @@ class AlertSerializer(serializers.ModelSerializer):
 
     def get_vest_id(self, obj):
         return obj.worker.vest_id if obj.worker_id else None
+
+    def get_snapshot(self, obj):
+        """API path of the evidence image, or None if there is none."""
+        return reverse("alert-snapshot", args=[obj.pk]) if obj.snapshot else None
 
     def get_zone_name(self, obj):
         """Where the alert happened: the camera's zone, else the zone that
@@ -95,6 +110,43 @@ def _validate_confidence(value):
     return value
 
 
+def decode_snapshot(value):
+    """Validate a base64 JPEG from a camera and return its bytes.
+
+    Rejected: invalid base64, more than ALERT_SNAPSHOT_MAX_BYTES once decoded,
+    anything Pillow does not read as a JPEG, and images larger than
+    ALERT_SNAPSHOT_MAX_SIDE on either side (a decompression-bomb guard).
+    """
+    from PIL import Image, UnidentifiedImageError
+
+    limit = settings.ALERT_SNAPSHOT_MAX_BYTES
+    too_big = f"snapshot must be at most {limit // 1024} KB."
+    # Checked before decoding so an oversized string is never expanded.
+    if len(value) > (limit + 2) // 3 * 4:
+        raise serializers.ValidationError(too_big)
+    try:
+        data = base64.b64decode(value, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise serializers.ValidationError("snapshot must be base64-encoded.") from exc
+    if not data:
+        raise serializers.ValidationError("snapshot is empty.")
+    if len(data) > limit:
+        raise serializers.ValidationError(too_big)
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            kind, size = image.format, image.size
+            image.verify()
+    except (UnidentifiedImageError, OSError, SyntaxError) as exc:
+        raise serializers.ValidationError("snapshot is not a readable image.") from exc
+    if kind != "JPEG":
+        raise serializers.ValidationError("snapshot must be a JPEG image.")
+    if max(size) > settings.ALERT_SNAPSHOT_MAX_SIDE:
+        raise serializers.ValidationError(
+            f"snapshot must be at most {settings.ALERT_SNAPSHOT_MAX_SIDE} pixels on each side."
+        )
+    return data
+
+
 # Alert types a camera can observe. SOS and zone breaches come from vests.
 CAMERA_ALERT_TYPES = (
     AlertType.PPE_VIOLATION,
@@ -124,6 +176,14 @@ class CameraEventSerializer(serializers.Serializer):
     # on the person the event concerns. Unknown or revoked codes are stored
     # as unidentified, never matched approximately.
     badge_code = serializers.CharField(required=False, allow_blank=True, default="", max_length=64)
+    # Alert evidence (FR-29). The snapshot is a base64 JPEG inside this JSON
+    # body rather than a multipart upload, so the camera's outbox can replay
+    # one self-contained document and idempotency stays a single check.
+    model_version = serializers.CharField(required=False, allow_blank=True, default="", max_length=128)
+    snapshot = serializers.CharField(required=False, allow_blank=True, default="", trim_whitespace=False)
+
+    def validate_snapshot(self, value):
+        return decode_snapshot(value) if value else None
 
     def validate_camera_id(self, value):
         value = value.strip()

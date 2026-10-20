@@ -114,8 +114,22 @@ def table(doc: Document, templates: Templates, rows, widths, font_size):
         for cell, value in zip(wrapper.rows[r].cells, values):
             U.set_cell_text(cell, value, header=r == 0, size=font_size)
     U.set_repeat_header(wrapper.rows[0])
+    for row in wrapper.rows:
+        keep_row_together(row)
     U.set_table_geometry(wrapper, widths)
     return tbl
+
+
+def keep_row_together(row) -> None:
+    """A row moves to the next page whole instead of leaving a blank band."""
+    tr_pr = row._tr.get_or_add_trPr()
+    cant_split = tr_pr.find(qn("w:cantSplit"))
+    if cant_split is None:
+        # CT_TrPrBase is an unordered choice, but w:ins/w:del must follow it.
+        cant_split = tr_pr.makeelement(qn("w:cantSplit"), {})
+        tr_pr.insert(0, cant_split)
+    # The V7 template rows carry an explicit w:val="0" (splitting allowed).
+    cant_split.set(qn("w:val"), "true")
 
 
 def render_blocks(doc: Document, templates: Templates, blocks) -> list:
