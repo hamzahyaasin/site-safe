@@ -53,11 +53,11 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 
 | ID | Requirement | Target (proposed) | Evidence | Status |
 |---|---|---|---|---|
-| NFR-01 | Event-to-dashboard latency | p95 ≤ 2 s from commit on a local network | — | Not measured |
-| NFR-02 | Outage tolerance | No lost or duplicated events across a 5-minute API outage and sender restart | Unit + small e2e fixture | Partially verified |
+| NFR-01 | Event-to-dashboard latency | p95 ≤ 2 s from commit on a local network | `tools/measure/latency.py`, 20 Oct: 100/100 delivered, p50 32 ms, p95 42 ms (PostgreSQL, single host) | **Met** (local host; LAN not yet measured) |
+| NFR-02 | Outage tolerance | No lost or duplicated events across a 5-minute API outage and sender restart | `tools/measure/recovery.py`: first run 60.3 s (FAIL, 60 s ceiling) → ceiling lowered to 30 s → 30.0 s and 30.2 s, 100/100 stored once, 0 lost, 0 duplicated | **Met** |
 | NFR-03 | Security of producers | No anonymous write endpoints; no credentials in source | `alerts/test_ingest.py`, `test_inference_config.py` | Tested |
-| NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | — | Not measured |
-| NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | — | Not run |
+| NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. Fire model not yet included | **Met on mps** (re-measure once fire weights exist) |
+| NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
 | NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | 134 + 35 + 12 pass; build OK; lint clean (16 Oct) | Met |
 
@@ -224,4 +224,18 @@ Known limitations: timelines look back 2 days for open intervals; vest GPS is no
 Human inputs still needed: record a short annotated scenario (badge visible, idle, leave)
   to validate against the timeline
 Next independent task: measurement tooling for Chapter 5 (NFR-01..05)
+```
+
+```text
+Phase / task IDs: Stage 5 part 2 — measurement tooling for Chapter 5 (NFR-01, 02, 04, 05)
+Status: tools tested and run; evidence in docs/evidence/CHAPTER5_MEASUREMENTS.md
+Measured on: Apple M4, 16 GB, PostgreSQL 18, single host, separate database sitesafe_measure
+Findings acted on: outbox retry ceiling 60 → 30 s (recovery 60.3 s → 30 s); inference now
+  defaults to the GPU (CPU default gave 9.8 FPS)
+Not yet measured: LAN latency to a second device; the 2-hour soak with camera, MQTT consumer and
+  presence monitor running; FPS with the fire model; FPS on the actual demo laptop if different
+Human inputs still needed: run soak.py for 2 h on the demo setup; repeat fps.py once
+  models/fire_smoke.pt exists; regenerate the tables with make_tables.py
+Note: earlier result files record "uncommitted changes"; for the c79cc95 runs the only
+  modified tracked file was the local .claude/launch.json. Results now list modified files.
 ```

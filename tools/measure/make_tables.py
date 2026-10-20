@@ -47,6 +47,11 @@ def f(value, digits=1, unit=""):
     return f"{value:.{digits}f}{unit}"
 
 
+def commit(d: dict) -> str:
+    e = d.get("environment", {})
+    return f"`{e.get('git_commit', '?')}`{'*' if e.get('git_dirty') else ''}"
+
+
 def verdict(ok: bool) -> str:
     return "**PASS**" if ok else "**FAIL**"
 
@@ -88,18 +93,18 @@ def recovery_section(runs: list[dict]) -> list[str]:
         "",
         f"The camera outbox queued events while the API was unreachable, simulated with a proxy switched off. Midway through each outage the sender process was restarted. {env_line(d)}.",
         "",
-        "| Run (UTC) | Events | Outage (s) | Retry ceiling (s) | Queued at restore | Recovery (s) | Stored once | Lost | Duplicated | Result |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| Run (UTC) | Commit | Events | Outage (s) | Retry ceiling (s) | Queued at restore | Recovery (s) | Stored once | Lost | Duplicated | Result |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for r in runs:
         rs = r["settings"]
         lines.append(
-            f"| {r['recorded_at'][:16].replace('T', ' ')} | {rs['events']} | {f(rs['outage_s'], 0)} | {f(rs['max_backoff_s'], 0)} | "
+            f"| {r['recorded_at'][:16].replace('T', ' ')} | {commit(r)} | {rs['events']} | {f(rs['outage_s'], 0)} | {f(rs['max_backoff_s'], 0)} | "
             f"{r['queued_when_restored']} | {f(r['recovery_s'])} | {r['stored_once']} | {r['lost']} | {r['duplicated']} | {verdict(r['passed'])} |"
         )
     lines += [
         "",
-        f"Recovery can take up to one retry ceiling after the API returns. Target: {d['target']}.",
+        f"Recovery can take up to one retry ceiling after the API returns. `*` = measured with uncommitted changes on top of that commit. Target: {d['target']}.",
         "",
     ]
     return lines
@@ -109,25 +114,27 @@ def fps_section(runs: list[dict]) -> list[str]:
     lines = [
         "### Inference throughput with all detectors (NFR-04)",
         "",
-        "Detection and decoding only (no capture or display), so camera FPS is at most these figures.",
+        "Detection and decoding only (no capture or display), so camera FPS is at most these figures. Every run is listed: throughput varies between runs (thermal state, background load), so a single figure near the target is not a reliable pass.",
         "",
-        "| Device | Resolution | Frames | FPS | Frame p50 (ms) | Frame p95 (ms) | Fire model | Result (≥ 10 FPS) |",
-        "|---|---|---:|---:|---:|---:|---|---|",
+        "| Run (UTC) | Commit | Device | Resolution | Frames | FPS | Frame p50 (ms) | Frame p95 (ms) | Fire model | Result (≥ 10 FPS) |",
+        "|---|---|---|---|---:|---:|---:|---:|---|---|",
     ]
     for d in runs:
         s, fm = d["settings"], d["frame_ms"]
         lines.append(
-            f"| {s['device']} | {s['resolution']} | {s['frames_measured']} | {f(d['fps'])} | {f(fm.get('p50'))} | {f(fm.get('p95'))} | "
+            f"| {d['recorded_at'][:16].replace('T', ' ')} | {commit(d)} | {s['device']} | {s['resolution']} | {s['frames_measured']} | {f(d['fps'])} | {f(fm.get('p50'))} | {f(fm.get('p95'))} | "
             f"{'yes' if s['fire_model_present'] else 'not trained yet'} | {verdict((d['fps'] or 0) >= 10)} |"
         )
-    lines += ["", "Per stage (each runs on its own schedule):", "", "| Device | Stage | Every n frames | n | p50 (ms) | p95 (ms) |", "|---|---|---:|---:|---:|---:|"]
+    lines += ["", "Per stage, latest run per device (each stage runs on its own schedule):", "", "| Device | Stage | Every n frames | n | p50 (ms) | p95 (ms) |", "|---|---|---:|---:|---:|---:|"]
     every = {"ppe": 1, "coco": "coco_qr", "qr": "coco_qr", "pose": "pose", "fire": "fire"}
-    for d in runs:
+    latest_per_device = {d["settings"]["device"]: d for d in runs}
+    for d in latest_per_device.values():
         for stage, st in d["stage_ms"].items():
             key = every[stage]
             n_every = 1 if key == 1 else d["settings"]["intervals"][key]
             lines.append(f"| {d['settings']['device']} | {stage} | {n_every} | {st['n']} | {f(st['p50'])} | {f(st['p95'])} |")
-    lines += ["", f"Source: {runs[0]['settings']['source']}. {env_line(runs[0])}.", ""]
+    newest = max(runs, key=lambda d: d["recorded_at"])
+    lines += ["", f"Source: {newest['settings']['source']}. Latest run: {env_line(newest)}.", ""]
     return lines
 
 
@@ -160,7 +167,7 @@ def soak_section(d: dict) -> list[str]:
     return lines
 
 
-def render(by_kind: dict[str, dict], recovery_runs: list[dict] | None = None) -> str:
+def render(by_kind: dict[str, dict], recovery_runs: list[dict] | None = None, fps_history: list[dict] | None = None) -> str:
     lines = [
         "# Chapter 5 measurements",
         "",
@@ -177,7 +184,7 @@ def render(by_kind: dict[str, dict], recovery_runs: list[dict] | None = None) ->
         lines += recovery_section(recovery_runs)
     else:
         missing.append("recovery")
-    fps_runs = [d for k, d in sorted(by_kind.items()) if k.startswith("fps_")]
+    fps_runs = fps_history or [d for k, d in sorted(by_kind.items()) if k.startswith("fps_")]
     if fps_runs:
         lines += fps_section(fps_runs)
     else:
@@ -196,7 +203,8 @@ def main(argv=None) -> int:
     ap.add_argument("--results", type=Path, default=common.RESULTS_DIR)
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args(argv)
-    text = render(latest(args.results), all_runs(args.results, "recovery"))
+    fps_history = sorted(all_runs(args.results, "fps_*"), key=lambda d: (d["settings"]["device"], d["recorded_at"]))
+    text = render(latest(args.results), all_runs(args.results, "recovery"), fps_history)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(text)
     print(f"wrote {args.out}")

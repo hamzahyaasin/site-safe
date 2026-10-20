@@ -64,8 +64,14 @@ def environment() -> dict:
         "system": f"{platform.system()} {platform.release()}",
         "python": sys.version.split()[0],
         "git_commit": git("rev-parse", "--short", "HEAD"),
-        "git_dirty": bool(git("status", "--porcelain", "--untracked-files=no")),
+        # Local editor/launch settings do not change measured code.
+        "git_dirty_files": [
+            line.strip().split(maxsplit=1)[1]
+            for line in git("status", "--porcelain", "--untracked-files=no", "--", ".", ":!.claude", ":!.vscode").splitlines()
+            if line.strip()
+        ],
     }
+    info["git_dirty"] = bool(info["git_dirty_files"])
     try:
         import psutil
 
