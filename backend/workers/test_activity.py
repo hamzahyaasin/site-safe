@@ -192,20 +192,23 @@ class ActivityApiTests(APITestCase):
         self.assertEqual(r.status_code, 403)
 
     def test_timeline_and_daily_endpoints(self):
+        # Yesterday's shift: a shift today would still be partly in the
+        # future before noon, and the timeline rightly stops at "now".
         today = timezone.now().astimezone(PKT).date()
-        start = datetime.combine(today, datetime.min.time(), tzinfo=PKT) + timedelta(hours=9)
+        day = today - timedelta(days=1)
+        start = datetime.combine(day, datetime.min.time(), tzinfo=PKT) + timedelta(hours=9)
         ActivityLog.objects.create(worker=self.w, action="CHECK_IN", timestamp=start)
         ActivityLog.objects.create(worker=self.w, action="CHECK_OUT", timestamp=start + timedelta(hours=3))
         self.client.credentials()
         self.client.force_authenticate(self.viewer)
-        t = self.client.get("/api/v1/activity/timeline/", {"worker_id": self.w.id, "tz": "Asia/Karachi"}).data
+        t = self.client.get("/api/v1/activity/timeline/", {"worker_id": self.w.id, "date": day.isoformat(), "tz": "Asia/Karachi"}).data
         self.assertEqual(t["on_site_minutes"], 180)
         rows = self.client.get(
             "/api/v1/activity/daily/",
             {"start_date": (today - timedelta(days=2)).isoformat(), "end_date": today.isoformat(), "tz": "Asia/Karachi"},
         ).data
         self.assertEqual([(r["worker_name"], r["on_site_minutes"]) for r in rows], [("Ali", 180)])
-        s = self.client.get("/api/v1/activity/summary/", {"worker_id": self.w.id, "tz": "Asia/Karachi"}).data
+        s = self.client.get("/api/v1/activity/summary/", {"worker_id": self.w.id, "date": day.isoformat(), "tz": "Asia/Karachi"}).data
         self.assertEqual(s["hours_worked"], 3.0)
         bad = self.client.get("/api/v1/activity/daily/", {"start_date": "2026-01-01", "end_date": "2026-03-01"})
         self.assertEqual(bad.status_code, 400)

@@ -14,7 +14,7 @@ new text matches the document.
 The finalize pass writes measured page numbers into the contents and the
 lists of figures and tables (run the PDF conversion again afterwards).
 Measure from Microsoft Word, which the report is submitted from: it
-paginates differently from LibreOffice (72 pages against 69), and
+paginates differently from LibreOffice (about three more pages), and
 LibreOffice also hides layout errors that Word shows, such as an
 over-wide table. Close the report in Word before converting, or Word
 renders its open, possibly stale, copy.

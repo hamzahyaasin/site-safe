@@ -122,6 +122,63 @@ class BadgeTests(unittest.TestCase):
         self.assertEqual([e["badge"] for e in events], ["SSW1:sara"])
 
 
+class DuplicateBoxTests(unittest.TestCase):
+    """Boxes recorded from one person in a live webcam run (640x360 frames)."""
+
+    VEST_OUTER = (125.0, 239.0, 475.0, 359.0)
+    VEST_INNER = (196.0, 238.0, 416.0, 359.0)  # IoU 0.63 with VEST_OUTER
+    HELMET_A = (279.0, 114.0, 384.0, 166.0)
+    HELMET_B = (282.0, 93.0, 385.0, 161.0)  # IoU 0.63 with HELMET_A
+    HELMET_C = (260.0, 103.0, 384.0, 157.0)
+    HELMET_D = (264.0, 74.0, 373.0, 148.0)  # IoU 0.50 with HELMET_C
+
+    def one_person(self):
+        return [
+            seen(self.VEST_OUTER, cls="no-vest", conf=0.64),
+            seen(self.VEST_INNER, cls="no-vest", conf=0.55),
+            seen(self.HELMET_A, conf=0.37),
+            seen(self.HELMET_B, conf=0.22),
+        ]
+
+    def test_duplicate_boxes_of_one_person_give_one_alert_per_item(self):
+        t = ppe_episodes.EpisodeTracker()
+        events = run(t, [self.one_person()] * (2 * FPS))
+        self.assertEqual(sorted(e["class"] for e in events), ["no-helmet", "no-vest"])
+
+    def test_least_overlapping_live_pair_is_merged(self):
+        merged = ppe_episodes.merge_duplicates([seen(self.HELMET_C, conf=0.6), seen(self.HELMET_D, conf=0.45)])
+        self.assertEqual(merged, [seen(self.HELMET_C, conf=0.6)])
+
+    def test_flickering_duplicate_does_not_reopen_episodes(self):
+        # The weak box drops in and out for a minute; only one alert per item.
+        t = ppe_episodes.EpisodeTracker()
+        frames = []
+        for i in range(60 * FPS):
+            frame = self.one_person()[:3]
+            if (i // (7 * FPS)) % 2:  # weak helmet box present in alternate 7 s spells
+                frame.append(seen(self.HELMET_B, conf=0.22))
+            frames.append(frame)
+        self.assertEqual(len(run(t, frames)), 2)
+
+    def test_merge_keeps_badge_from_weaker_box(self):
+        merged = ppe_episodes.merge_duplicates([seen(self.HELMET_A, conf=0.37), seen(self.HELMET_B, conf=0.22, badge="SSW1:ali")])
+        self.assertEqual(merged, [seen(self.HELMET_A, conf=0.37, badge="SSW1:ali")])
+
+    def test_overlapping_boxes_with_different_badges_stay_apart(self):
+        dets = [seen(self.HELMET_A, badge="SSW1:ali"), seen(self.HELMET_B, badge="SSW1:sara")]
+        self.assertEqual(len(ppe_episodes.merge_duplicates(dets)), 2)
+
+    def test_different_classes_are_not_merged(self):
+        dets = [seen(self.HELMET_A, cls="no-helmet"), seen(self.HELMET_A, cls="no-goggles")]
+        self.assertEqual(len(ppe_episodes.merge_duplicates(dets)), 2)
+
+    def test_violation_back_within_clear_time_is_same_episode(self):
+        t = ppe_episodes.EpisodeTracker()
+        run(t, [[seen(LEFT)]] * (2 * FPS))
+        run(t, [[]] * (20 * FPS), start=2.0)  # away 20 s, under the 30 s default
+        self.assertEqual(run(t, [[seen(LEFT)]] * (2 * FPS), start=22.0), [])
+
+
 class ValidationTests(unittest.TestCase):
     def test_rejects_invalid_settings(self):
         with self.assertRaises(ValueError):

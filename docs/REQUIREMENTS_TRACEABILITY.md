@@ -23,7 +23,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-02 | Three roles (Admin, Safety Officer, Viewer) enforced by the API | M | Every forbidden role action returns 403; each permitted counterpart succeeds | `accounts/permissions.py` | `accounts/tests.py` (16) | Tested |
 | FR-03 | UI offers only actions the user's role permits | S | Viewer sees no resolve/edit/generate controls | `AuthContext.jsx` (`canOperate`, `isAdmin`) across Dashboard, Incidents, Workers, Vests, Zones, Settings, Reports | Browser check 16 Oct (officer: zones read-only; admin: zone editor) | Integrated (viewer path not browser-checked) |
 | FR-04 | Detect missing PPE (10 classes) from a camera | M | Event precision ≥90% and episode recall ≥85% per retained class, on a sealed target-camera set | `ai-module/inference.py`, `models/sitesafe_v5.pt` | Held-out mAP50 0.562 on a leaky split (not a valid claim) | Coded |
-| FR-05 | One alert per person per violation episode | M | Two people with the same violation give two alerts; a single-frame flicker gives none | `ai-module/ppe_episodes.py`, `badged_violations` + episode loop in `inference.py`, `--ppe-persistence`, `--ppe-clear-seconds` | `test_ppe_episodes.py` (15); headless pipeline run 20 Oct on a still-image clip: 3 people missing helmets + 1 missing goggles → 4 alerts, no repeats over 40 frames | Tested (**no annotated video scored yet**) |
+| FR-05 | One alert per person per violation episode | M | Two people with the same violation give two alerts; a single-frame flicker gives none | `ai-module/ppe_episodes.py`, `badged_violations` + episode loop in `inference.py`, `--ppe-persistence`, `--ppe-clear-seconds` | `test_ppe_episodes.py` (22); headless pipeline run 20 Oct on a still-image clip: 3 people missing helmets + 1 missing goggles → 4 alerts, no repeats over 40 frames; live webcam run 21 Oct (55 s, one person) found duplicate-box episodes → fixed, replay of its recorded boxes gives one alert per item | Tested (**no annotated video scored yet**) |
 | FR-06 | Detect falls from camera pose | M | Positive and hard-negative videos meet the AI event targets | `ai-module/fall_detection.py` | `alerts/test_fall.py` (21) | Tested |
 | FR-07 | Warn when a worker is too close to a vehicle | M | Calibrated distance threshold; video evaluation | `ai-module/proximity.py` | `alerts/test_proximity.py` (9) | Tested |
 | FR-08 | Detect prolonged inactivity; timeout configurable from the dashboard | M | Changing the INACTIVITY rule changes the camera timeout within 60 s | `ai-module/inactivity.py`, `CameraRules` | `alerts/test_inactivity.py` (10), `test_inference_config.py` | Tested |
@@ -305,4 +305,19 @@ Known limitations: the snapshot is the whole frame, not a crop, so it can show b
   is defined in docker-compose; DEBUG=True serves media/ publicly (random file names, not authenticated)
 Human inputs still needed: agree a retention period and whether snapshots are allowed on site; run
   migrate on the dev database; one live camera run to confirm a real alert carries its frame
+```
+
+```text
+Phase / task IDs: FR-05 tuning from the first live webcam run (21 Oct 2026)
+Status: tested; tuned against box positions recorded in that run; not re-run live yet
+Finding: one person, 55 s, 13 alerts (9 AI, 4 forced test). The detector reported the same body part
+  as two same-class boxes overlapping by IoU 0.50-0.63 (Ultralytics NMS keeps boxes below 0.7), so one
+  person became two episodes per item, and the weaker box (conf 0.22-0.45, near the 0.15 candidate
+  threshold) kept reopening episodes after the 10 s close time
+Changes: ppe_episodes.merge_duplicates (same-class boxes with IoU >= 0.4 merged per frame, never across
+  different badges); DEFAULT_CLEAR_SECONDS 10 -> 30; 7 new tests built from the recorded boxes
+  (old settings: 4 alerts in a 60 s replay, new: 2, one per missing item)
+Also fixed: workers.test_activity timeline test depended on the time of day (failed before 12:00 PKT)
+Tests (21 Oct 2026): backend 183, ai-module 83, fire prep 4, report-service 13, mobile 16, tools 16 = 315 OK
+Human inputs still needed: repeat the webcam run to confirm, then record an annotated clip
 ```

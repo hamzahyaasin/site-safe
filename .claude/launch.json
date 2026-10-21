@@ -9,9 +9,29 @@
     },
     {
       "name": "backend",
-      "runtimeExecutable": ".venv/bin/python",
-      "runtimeArgs": ["backend/manage.py", "runserver", "8000"],
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8081",
+        ".venv/bin/python", "backend/manage.py", "runserver", "8000"
+      ],
       "port": 8000
+    },
+    {
+      "name": "report-service",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["report-service/index.js"],
+      "port": 3001
+    },
+    {
+      "name": "presence-monitor",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": ["backend/manage.py", "run_presence_monitor"]
+    },
+    {
+      "name": "mobile",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "mobile", "run", "web", "--", "--port", "8081"],
+      "port": 8081
     }
   ]
 }
