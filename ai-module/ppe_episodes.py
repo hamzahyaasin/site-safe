@@ -14,8 +14,10 @@ violation box is tracked between frames as one person's *episode*:
   episode and a new alert.
 * The detector sometimes reports one body part twice, as two same-class
   boxes overlapping less than its own NMS removes (IoU 0.50-0.63 in a live
-  run). Same-class boxes overlapping by ``duplicate_iou`` or more in one
-  frame are merged first, unless they carry different badges; otherwise one
+  run), sometimes three for one head. Same-class boxes in one frame are
+  merged first when they overlap by ``duplicate_iou`` or more, or when one
+  box's centre lies inside the other and they overlap by at least
+  ``nested_iou``; boxes with different badges are never merged. Otherwise one
   person becomes two episodes and the weaker box, flickering around the
   candidate threshold, keeps reopening new ones.
 * Boxes are matched to tracks of the same class by centre distance relative
@@ -41,6 +43,9 @@ DEFAULT_MAX_GAP_SECONDS = 0.5
 DEFAULT_CLEAR_SECONDS = 30.0
 # Same-class boxes in one frame overlapping at least this much are one person.
 DEFAULT_DUPLICATE_IOU = 0.4
+# ...as are boxes where one centre lies inside the other, from this overlap up.
+# A second live run had one head as a short and a tall box at IoU 0.26.
+DEFAULT_NESTED_IOU = 0.2
 # A box matches a track when their centres are at most this many box sizes apart.
 DEFAULT_MAX_MATCH_DISTANCE = 1.0
 
@@ -81,11 +86,24 @@ def _area(box: Box) -> float:
     return (box[2] - box[0]) * (box[3] - box[1])
 
 
+def _contains_centre(outer: Box, inner: Box) -> bool:
+    x, y = _centre(inner)
+    return outer[0] <= x <= outer[2] and outer[1] <= y <= outer[3]
+
+
+def _same_part(a: Box, b: Box, duplicate_iou: float, nested_iou: float) -> bool:
+    overlap = _iou(a, b)
+    if overlap >= duplicate_iou:
+        return True
+    return overlap >= nested_iou and (_contains_centre(a, b) or _contains_centre(b, a))
+
+
 def merge_duplicates(
     detections: list[tuple[str, float, Box, str | None]],
     duplicate_iou: float = DEFAULT_DUPLICATE_IOU,
+    nested_iou: float = DEFAULT_NESTED_IOU,
 ) -> list[tuple[str, float, Box, str | None]]:
-    """Collapse same-class boxes that overlap by ``duplicate_iou`` or more.
+    """Collapse same-class boxes that cover the same body part.
 
     The most confident box of a group is kept; it takes a badge from a
     merged box if it has none. Boxes with different badges are never merged.
@@ -93,7 +111,7 @@ def merge_duplicates(
     kept: list[list] = []
     for name, conf, box, badge in sorted(detections, key=lambda d: d[1], reverse=True):
         for k in kept:
-            if k[0] == name and _iou(k[2], box) >= duplicate_iou and not (badge and k[3] and badge != k[3]):
+            if k[0] == name and _same_part(k[2], box, duplicate_iou, nested_iou) and not (badge and k[3] and badge != k[3]):
                 k[3] = k[3] or badge
                 break
         else:
@@ -116,6 +134,7 @@ class EpisodeTracker:
         clear_seconds: float = DEFAULT_CLEAR_SECONDS,
         max_match_distance: float = DEFAULT_MAX_MATCH_DISTANCE,
         duplicate_iou: float = DEFAULT_DUPLICATE_IOU,
+        nested_iou: float = DEFAULT_NESTED_IOU,
     ):
         if persistence_seconds < 0:
             raise ValueError("persistence_seconds must be zero or greater")
@@ -129,6 +148,7 @@ class EpisodeTracker:
         self.clear_seconds = clear_seconds
         self.max_match_distance = max_match_distance
         self.duplicate_iou = duplicate_iou
+        self.nested_iou = nested_iou
         self.tracks: list[_Track] = []
         self._next_id = 1
 
@@ -143,7 +163,7 @@ class EpisodeTracker:
         """Feed one frame's (class, conf, box, badge) violations; return newly confirmed episodes."""
         matched: set[int] = set()
         unmatched = []
-        for det in merge_duplicates(detections, self.duplicate_iou):
+        for det in merge_duplicates(detections, self.duplicate_iou, self.nested_iou):
             track = self._match(det, matched)
             if track is None:
                 unmatched.append(det)

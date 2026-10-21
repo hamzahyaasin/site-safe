@@ -23,7 +23,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-02 | Three roles (Admin, Safety Officer, Viewer) enforced by the API | M | Every forbidden role action returns 403; each permitted counterpart succeeds | `accounts/permissions.py` | `accounts/tests.py` (16) | Tested |
 | FR-03 | UI offers only actions the user's role permits | S | Viewer sees no resolve/edit/generate controls | `AuthContext.jsx` (`canOperate`, `isAdmin`) across Dashboard, Incidents, Workers, Vests, Zones, Settings, Reports | Browser check 16 Oct (officer: zones read-only; admin: zone editor) | Integrated (viewer path not browser-checked) |
 | FR-04 | Detect missing PPE (10 classes) from a camera | M | Event precision ≥90% and episode recall ≥85% per retained class, on a sealed target-camera set | `ai-module/inference.py`, `models/sitesafe_v5.pt` | Held-out mAP50 0.562 on a leaky split (not a valid claim) | Coded |
-| FR-05 | One alert per person per violation episode | M | Two people with the same violation give two alerts; a single-frame flicker gives none | `ai-module/ppe_episodes.py`, `badged_violations` + episode loop in `inference.py`, `--ppe-persistence`, `--ppe-clear-seconds` | `test_ppe_episodes.py` (22); headless pipeline run 20 Oct on a still-image clip: 3 people missing helmets + 1 missing goggles → 4 alerts, no repeats over 40 frames; live webcam run 21 Oct (55 s, one person) found duplicate-box episodes → fixed, replay of its recorded boxes gives one alert per item | Tested (**no annotated video scored yet**) |
+| FR-05 | One alert per person per violation episode | M | Two people with the same violation give two alerts; a single-frame flicker gives none | `ai-module/ppe_episodes.py`, `badged_violations` + episode loop in `inference.py`, `--ppe-persistence`, `--ppe-clear-seconds` | `test_ppe_episodes.py` (25); headless pipeline run 20 Oct on a still-image clip: 3 people missing helmets + 1 missing goggles → 4 alerts, no repeats over 40 frames; live webcam run 21 Oct (55 s, one person) found duplicate-box episodes → fixed, replay of its recorded boxes gives one alert per item | Tested (**no annotated video scored yet**) |
 | FR-06 | Detect falls from camera pose | M | Positive and hard-negative videos meet the AI event targets | `ai-module/fall_detection.py` | `alerts/test_fall.py` (21) | Tested |
 | FR-07 | Warn when a worker is too close to a vehicle | M | Calibrated distance threshold; video evaluation | `ai-module/proximity.py` | `alerts/test_proximity.py` (9) | Tested |
 | FR-08 | Detect prolonged inactivity; timeout configurable from the dashboard | M | Changing the INACTIVITY rule changes the camera timeout within 60 s | `ai-module/inactivity.py`, `CameraRules` | `alerts/test_inactivity.py` (10), `test_inference_config.py` | Tested |
@@ -320,4 +320,16 @@ Changes: ppe_episodes.merge_duplicates (same-class boxes with IoU >= 0.4 merged 
 Also fixed: workers.test_activity timeline test depended on the time of day (failed before 12:00 PKT)
 Tests (21 Oct 2026): backend 183, ai-module 83, fire prep 4, report-service 13, mobile 16, tools 16 = 315 OK
 Human inputs still needed: repeat the webcam run to confirm, then record an annotated clip
+```
+
+```text
+Phase / task IDs: FR-05 second live webcam run (21 Oct 2026)
+Status: tested on the recorded boxes; third live run still to confirm
+Finding: 25 s, 5 alerts. One was a real second person at the frame edge (correct). One helmet alert
+  repeated: the head came as three boxes; when the strongest dropped out the other two overlapped at
+  IoU 0.26 and became two tracks
+Change: same-class boxes also merge when one centre lies inside the other and IoU >= 0.2
+  (DEFAULT_NESTED_IOU); 3 new tests from the recorded boxes (head pattern: 2 alerts -> 1; edge person
+  still separate; side-by-side heads stay separate)
+Tests (21 Oct 2026): ai-module 86 OK; total 318
 ```

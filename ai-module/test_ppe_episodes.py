@@ -172,6 +172,33 @@ class DuplicateBoxTests(unittest.TestCase):
         dets = [seen(self.HELMET_A, cls="no-helmet"), seen(self.HELMET_A, cls="no-goggles")]
         self.assertEqual(len(ppe_episodes.merge_duplicates(dets)), 2)
 
+    # Second live run: one head as three boxes, and a second person's
+    # shoulder at the left edge of the frame.
+    HEAD_MID = (265.0, 89.0, 389.0, 153.0)
+    HEAD_TOP = (275.0, 60.0, 379.0, 137.0)
+    HEAD_TALL = (265.0, 89.0, 388.0, 218.0)  # IoU 0.26 with HEAD_TOP, centre inside it
+    MY_VEST = (176.0, 237.0, 506.0, 360.0)
+    EDGE_VEST = (0.0, 233.0, 105.0, 358.0)
+
+    def test_three_box_head_gives_one_alert_when_middle_box_drops_out(self):
+        t = ppe_episodes.EpisodeTracker()
+        frames = []
+        for i in range(20 * FPS):
+            frame = [seen(self.HEAD_TOP, conf=0.30), seen(self.HEAD_TALL, conf=0.28)]
+            if i % 3:  # the strongest box is missed every third frame
+                frame.append(seen(self.HEAD_MID, conf=0.47))
+            frames.append(frame)
+        self.assertEqual(len(run(t, frames)), 1)
+
+    def test_second_person_at_frame_edge_is_a_second_alert(self):
+        t = ppe_episodes.EpisodeTracker()
+        frame = [seen(self.MY_VEST, cls="no-vest", conf=0.68), seen(self.EDGE_VEST, cls="no-vest", conf=0.41)]
+        self.assertEqual(len(run(t, [frame] * (2 * FPS))), 2)
+
+    def test_heads_side_by_side_stay_separate(self):
+        right = shifted(self.HEAD_MID, 110)  # touching neighbour, no centre inside
+        self.assertEqual(len(ppe_episodes.merge_duplicates([seen(self.HEAD_MID), seen(right)])), 2)
+
     def test_violation_back_within_clear_time_is_same_episode(self):
         t = ppe_episodes.EpisodeTracker()
         run(t, [[seen(LEFT)]] * (2 * FPS))
