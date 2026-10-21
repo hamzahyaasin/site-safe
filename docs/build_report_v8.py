@@ -8,11 +8,16 @@ new text matches the document.
 
     .venv/bin/python docs/figures/make_figures.py
     .venv/bin/python docs/build_report_v8.py build docs/SiteSafe_FYP_Report_V7.docx docs/SiteSafe_FYP_Report_V8.docx
-    soffice --headless --convert-to pdf --outdir <dir> docs/SiteSafe_FYP_Report_V8.docx
-    .venv/bin/python docs/build_report_v8.py finalize docs/SiteSafe_FYP_Report_V8.docx <dir>/SiteSafe_FYP_Report_V8.pdf docs/SiteSafe_FYP_Report_V8.docx
+    osascript docs/word_to_pdf.applescript "$PWD/docs/SiteSafe_FYP_Report_V8.docx" "$PWD/<out>.pdf"
+    .venv/bin/python docs/build_report_v8.py finalize docs/SiteSafe_FYP_Report_V8.docx <out>.pdf docs/SiteSafe_FYP_Report_V8.docx
 
 The finalize pass writes measured page numbers into the contents and the
 lists of figures and tables (run the PDF conversion again afterwards).
+Measure from Microsoft Word, which the report is submitted from: it
+paginates differently from LibreOffice (72 pages against 69), and
+LibreOffice also hides layout errors that Word shows, such as an
+over-wide table. Close the report in Word before converting, or Word
+renders its open, possibly stale, copy.
 """
 
 from __future__ import annotations

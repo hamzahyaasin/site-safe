@@ -19,7 +19,7 @@ from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Inches, Pt
+from docx.shared import Pt
 from docx.table import Table
 from pypdf import PdfReader
 
@@ -382,7 +382,10 @@ def set_repeat_header(row) -> None:
 
 
 def set_table_geometry(table: Table, widths_inches: list[float]) -> None:
-    widths = [int(Inches(value)) for value in widths_inches]
+    # tblW, gridCol and tcW are in twentieths of a point (1440 per inch).
+    # Inches() gives EMUs (914400 per inch): LibreOffice clamps such a
+    # table to the page, but Word lays it out thousands of inches wide.
+    widths = [round(value * 1440) for value in widths_inches]
     total = sum(widths)
     tbl_pr = table._tbl.tblPr
     tbl_w = tbl_pr.find(qn("w:tblW"))

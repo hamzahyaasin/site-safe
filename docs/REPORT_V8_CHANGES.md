@@ -2,7 +2,9 @@
 
 `docs/SiteSafe_FYP_Report_V8.docx` is built from the submitted V7 (left unchanged) by `docs/build_report_v8.py`. The text lives in `docs/report_v8_content.py` and the figures come from `docs/figures/make_figures.py`. Edit those files and rebuild; don't hand-edit the .docx, or the next build will overwrite the edits. The build, render and page-number commands are in the docstring of `build_report_v8.py`.
 
-The rendered PDF (`docs/SiteSafe_FYP_Report_V8.pdf`, 69 pages) comes from LibreOffice. Word may paginate slightly differently, so if you submit from Word, re-check the contents page numbers there.
+The rendered PDF (`docs/SiteSafe_FYP_Report_V8.pdf`, 72 pages) is exported from Microsoft Word, and the contents and list page numbers were measured from that Word render (all 120 entries match).
+
+Fixed on 21 Oct 2026: the shared table helper in `update_fyp_report.py` wrote widths in EMUs where Word expects twips, so 18 tables claimed to be about 3,800 inches wide. Word laid them out off the page, which made Table 4.1 look broken and pushed later chapters out of view. LibreOffice had silently clamped the widths, so this didn't show in the earlier checks. V7 already had five such tables from the same helper.
 
 ## Length
 
