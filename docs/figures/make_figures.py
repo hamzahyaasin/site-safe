@@ -484,7 +484,151 @@ def training_pipeline():
     d.save("fig_training_pipeline.png")
 
 
+def activity_node(d, cx, cy, text, w=1.42, h=0.34, kind="server", dashed=False):
+    """Rounded action box centred on (cx, cy); text may hold a line break."""
+    fill, edge = COLORS[kind]
+    d.ax.add_patch(FancyBboxPatch(
+        (cx - w / 2, cy - h / 2), w, h, boxstyle="round,pad=0.01,rounding_size=0.09", fc=fill, ec=edge, lw=0.9,
+        ls=(0, (3, 2)) if dashed else "-",
+    ))
+    d.ax.text(cx, cy, text, ha="center", va="center", fontsize=5.7, color=INK, linespacing=1.15)
+    return {"x": cx - w / 2, "y": cy - h / 2, "w": w, "h": h}
+
+
+def decision(d, cx, cy, text, w=1.3, h=0.38):
+    d.ax.add_patch(plt.Polygon(
+        [(cx, cy - h / 2), (cx + w / 2, cy), (cx, cy + h / 2), (cx - w / 2, cy)], closed=True,
+        fc=COLORS["client"][0], ec=COLORS["client"][1], lw=0.9,
+    ))
+    d.ax.text(cx, cy, text, ha="center", va="center", fontsize=5.6, color=INK)
+    return {"x": cx - w / 2, "y": cy - h / 2, "w": w, "h": h}
+
+
+def terminal(d, cx, cy, end=False):
+    from matplotlib.patches import Circle
+
+    if end:
+        d.ax.add_patch(Circle((cx, cy), 0.085, fc="white", ec=INK, lw=0.9))
+    d.ax.add_patch(Circle((cx, cy), 0.055, fc=INK, ec=INK))
+    return {"x": cx - 0.085, "y": cy - 0.085, "w": 0.17, "h": 0.17}
+
+
+def elbow(d, points, label="", label_at=None):
+    """Polyline whose last segment ends in an arrowhead."""
+    xs, ys = zip(*points)
+    d.ax.plot(xs[:-1], ys[:-1], color=LINE, lw=0.8)
+    d.arrow(points[-2], points[-1])
+    if label:
+        x, y = label_at or points[1]
+        d.ax.text(x, y, label, ha="center", va="center", fontsize=5.6, color=INK,
+                  bbox=dict(fc="white", ec="none", pad=0.5))
+
+
+def activity_workflow():
+    """Whole-system workflow, from site set-up to the compliance report."""
+    apps = django_models()
+    check_fields(apps.get_model("alerts", "Alert"), ["event_id", "snapshot", "model_version", "is_resolved", "hot_work_permit"])
+    check_fields(apps.get_model("alerts", "AlertConfig"), ["is_enabled", "notify_push", "notify_email"])
+    check_fields(apps.get_model("workers", "Worker"), ["badge_code"])
+    check_fields(apps.get_model("sitemap", "Zone"), ["boundaries", "camera_ids"])
+    check_fields(apps.get_model("sitemap", "HotWorkPermit"), ["starts_at", "ends_at", "revoked_at"])
+
+    lanes = ["Admin / Safety Officer", "Camera pipeline (edge)", "Backend (Django)", "Web and mobile clients"]
+    width, lane_w, top, step = 6.4, 1.6, 0.42, 0.47
+    rows = 15.3
+    height = top + 0.2 + step * rows
+    d = Diagram(width, height)
+    for i, name in enumerate(lanes):
+        kind = ["external", "edge", "server", "client"][i]
+        fill, edge = COLORS[kind]
+        d.ax.add_patch(FancyBboxPatch((i * lane_w + 0.02, 0.02), lane_w - 0.04, 0.28, boxstyle="round,pad=0.005,rounding_size=0.04",
+                                      fc=fill, ec=edge, lw=0.8))
+        d.ax.text(i * lane_w + lane_w / 2, 0.16, name, ha="center", va="center", fontsize=6.4, weight="bold", color=edge)
+        if i:
+            d.ax.plot([i * lane_w, i * lane_w], [0.02, height - 0.2], color="#9ca3af", lw=0.6, ls=(0, (4, 2)))
+    cx = [lane_w * i + lane_w / 2 for i in range(4)]
+
+    def y(row):
+        return top + 0.12 + row * step
+
+    start = terminal(d, cx[0], y(0))
+    register = activity_node(d, cx[0], y(1), "Register workers;\nprint QR badges", kind="external")
+    zones = activity_node(d, cx[0], y(2), "Draw zones, assign cameras,\nset alert rules", kind="external")
+    permit = activity_node(d, cx[0], y(3), "Issue hot-work permits\nfor planned flame work", kind="external")
+    capture = activity_node(d, cx[1], y(4), "Capture frame\n(RTSP, HTTP or USB)", kind="edge")
+    detect = activity_node(d, cx[1], y(5), "Run PPE, person/vehicle,\npose, QR and fire models", kind="edge")
+    hazard = decision(d, cx[1], y(6), "Hazard confirmed?")
+    evidence = activity_node(d, cx[1], y(7), "Attach badge identity,\nconfidence, model, snapshot", kind="edge")
+    outbox = activity_node(d, cx[1], y(8), "Queue in outbox; POST\nwith device token", kind="edge")
+    vest = activity_node(d, cx[2], y(7), "Vest telemetry: position,\nSOS (Figure 4.8)", kind="future", dashed=True)
+    validate = activity_node(d, cx[2], y(8), "Authenticate device;\nvalidate payload")
+    enabled = decision(d, cx[2], y(9), "Rule enabled?")
+    stop = terminal(d, cx[2] + 0.98, y(9), end=True)
+    severity = activity_node(d, cx[2], y(10), "Set severity; FIRE/SMOKE\nchecks hot-work permit")
+    store = activity_node(d, cx[2], y(11), "Store alert once per event;\nupdate attendance")
+    live = activity_node(d, cx[3], y(11), "Alert shown live;\npush and e-mail per rule", kind="client")
+    review = activity_node(d, cx[3], y(12), "Officer reviews alert\nand snapshot; acts on site", kind="client")
+    resolve = activity_node(d, cx[3], y(13), "Resolve alert\n(all sessions update)", kind="client")
+    report = activity_node(d, cx[3], y(14), "Generate DOCX or PDF\ncompliance report", kind="client")
+    end = terminal(d, cx[3], y(14.75), end=True)
+
+    for a, b in [(start, register), (register, zones), (zones, permit), (capture, detect), (detect, hazard),
+                 (evidence, outbox), (vest, validate), (validate, enabled), (severity, store),
+                 (live, review), (review, resolve), (resolve, report), (report, end)]:
+        d.arrow(mid(a, "b"), mid(b, "t"))
+    d.arrow(mid(hazard, "b"), mid(evidence, "t"))
+    d.ax.text(cx[1] + 0.1, y(6.5), "yes", fontsize=5.6, color=INK, va="center")
+    d.arrow(mid(enabled, "b"), mid(severity, "t"))
+    d.ax.text(cx[2] + 0.1, y(9.5), "yes", fontsize=5.6, color=INK, va="center")
+    elbow(d, [mid(permit, "b"), (cx[0], y(3.55)), (cx[1], y(3.55)), mid(capture, "t")], "site running", (cx[0] + 0.55, y(3.55)))
+    left = cx[1] - lane_w / 2 + 0.1
+    elbow(d, [mid(hazard, "l"), (left, y(6)), (left, y(4)), mid(capture, "l")], "no", (left + 0.1, y(6) - 0.1))
+    elbow(d, [mid(outbox, "r"), mid(validate, "l")])
+    d.arrow(mid(enabled, "r"), mid(stop, "l"))
+    d.ax.text(cx[2] + 0.79, y(9) - 0.11, "no: 202", ha="center", fontsize=5.6, color=INK)
+    d.arrow(mid(store, "r"), mid(live, "l"))
+    d.ax.text(cx[2] + 0.8, y(11) - 0.24, "on commit", ha="center", va="center", fontsize=5.6, color=INK)
+    d.ax.text(0.06, height - 0.08, "Every hazard type follows the camera path; the vest path (dashed) enters at validation. "
+              "Failed delivery leaves the event in the outbox for retry (Figure 4.9).",
+              fontsize=5.6, style="italic", color=LINE, va="bottom")
+    d.save("fig_activity_workflow.png")
+
+
+def dfd_level0():
+    """Context-level data flow diagram: one process, external entities, no stores."""
+    from matplotlib.patches import Ellipse
+
+    d = Diagram(6.4, 3.5)
+    cx, cy, rx, ry = 2.75, 1.72, 0.8, 0.55
+    d.ax.add_patch(Ellipse((cx, cy), 2 * rx, 2 * ry, fc=COLORS["server"][0], ec=COLORS["server"][1], lw=1.0))
+    d.ax.text(cx, cy - 0.27, "0", ha="center", va="center", fontsize=7, weight="bold", color=COLORS["server"][1])
+    d.ax.text(cx, cy + 0.05, "Site-Safe\nSystem", ha="center", va="center", fontsize=7.5, weight="bold",
+              color=COLORS["server"][1], linespacing=1.1)
+
+    def entity(x, y, title, sub):
+        return d.box(x, y, 1.35, 0.5, title, [sub], kind="external", align="center")
+
+    camera = entity(0.05, 0.3, "IP Camera", "site video stream")
+    vest = entity(0.05, 2.75, "Smart Vest Gateway", "hardware or simulator")
+    admin = entity(5.0, 0.15, "Admin", "site configuration")
+    officer = entity(5.0, 1.45, "Safety Officer", "web and mobile user")
+    notify = entity(5.0, 2.75, "Notification Services", "Firebase push, e-mail")
+
+    d.arrow(mid(camera, "r"), (cx - 0.55, cy - 0.38), "video frames\n(badges in view)", label_pos=0.45, offset=(0.3, -0.05))
+    d.arrow(mid(vest, "r"), (cx - 0.55, cy + 0.38), "position,\nbattery, SOS", label_pos=0.45, offset=(0.25, 0.05))
+    d.arrow(mid(admin, "l", 0.3), (cx + 0.45, cy - 0.46), "workers, zones, cameras,\nalert rules", label_pos=0.35, offset=(-0.05, -0.17))
+    d.arrow((cx + 0.6, cy - 0.36), mid(admin, "l", 0.8), "QR badges, reports", label_pos=0.62, offset=(0.05, 0.13))
+    d.arrow(mid(officer, "l", 0.3), (cx + 0.8, cy - 0.06), "permits, resolutions,\nreport requests", label_pos=0.5, offset=(0, -0.2))
+    d.arrow((cx + 0.79, cy + 0.12), mid(officer, "l", 0.75), "live alerts, snapshots,\ntimelines, reports", label_pos=0.5, offset=(0, 0.21))
+    d.arrow((cx + 0.55, cy + 0.4), mid(notify, "l"), "alert notifications", label_pos=0.5, offset=(0.1, 0.12))
+    d.ax.text(0.05, 3.42, "Workers are not an entity: their QR badge reaches the system through the camera, their SOS through the vest. "
+              "Figure 3.4 decomposes process 0.", fontsize=5.6, style="italic", color=LINE, va="bottom")
+    d.save("fig_dfd_level0.png")
+
+
 if __name__ == "__main__":
+    activity_workflow()
+    dfd_level0()
     component_view()
     deployment_view()
     rels = erd()

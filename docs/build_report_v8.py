@@ -2,7 +2,10 @@
 """Build report V8 from the submitted V7.
 
 V7 stays untouched. Chapters 1-3 keep their semester-7 structure and get
-targeted corrections; Chapters 4-6 are rebuilt from report_v8_content.py.
+targeted corrections plus the requirements and workflow sections of
+Chapter 3; Chapters 4-6 and the appendices are built from
+report_v8_content.py, and the blank approval pages are added to the front
+matter.
 Paragraph, heading, caption and table formatting is cloned from V7 so the
 new text matches the document.
 
@@ -23,11 +26,14 @@ renders its open, possibly stale, copy.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from copy import deepcopy
 from pathlib import Path
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 from docx.table import Table
@@ -119,6 +125,11 @@ def table(doc: Document, templates: Templates, rows, widths, font_size):
         for cell, value in zip(wrapper.rows[r].cells, values):
             U.set_cell_text(cell, value, header=r == 0, size=font_size)
     U.set_repeat_header(wrapper.rows[0])
+    # A header row never ends a page on its own, and a short table stays whole.
+    for row in wrapper.rows[:-1] if len(rows) <= 10 else wrapper.rows[:1]:
+        for cell in row.cells:
+            for p in cell.paragraphs:
+                p.paragraph_format.keep_with_next = True
     for row in wrapper.rows:
         keep_row_together(row)
     U.set_table_geometry(wrapper, widths)
@@ -221,6 +232,192 @@ def replace_abstract(doc: Document) -> list:
     return [first._p, *rest]
 
 
+def replace_between_headings(doc: Document, heading: str, next_heading: str, elements) -> None:
+    """Replace everything between two headings. V7's 3.2.2 list sits in
+    Google Docs content controls, which python-docx's paragraphs skip."""
+    node = U.find_paragraph(doc, heading)._p.getnext()
+    end = U.find_paragraph(doc, next_heading)._p
+    while node is not end:
+        following = node.getnext()
+        node.getparent().remove(node)
+        node = following
+    U.insert_before(end, elements)
+
+
+def extend_chapter_3(doc: Document, templates: Templates) -> None:
+    replace_between_headings(doc, "3.2.2 Data Flow", "3.3 Module 1: Vision Intelligence",
+                             render_blocks(doc, templates, C.DATA_FLOW_322))
+    old, new = C.LIMITATIONS_HEADING
+    limitations = U.find_paragraph(doc, old)
+    U.insert_before(limitations._p, render_blocks(doc, templates, C.CHAPTER_3_ADDITIONS))
+    U.set_paragraph_text(limitations, new)
+
+
+def without_moved_tables(blocks):
+    return [b for b in blocks if not (b[0] == "table" and b[1].split(":")[0] in C.MOVED_TABLES)]
+
+
+def add_appendices(doc: Document, templates: Templates) -> None:
+    """Each appendix gets a title page like the chapters', placed between
+    Chapter 6 and the References."""
+    label = U.find_paragraph(doc, "Chapter 6")._p
+    separator = [label.getprevious(), label, label.getnext()]
+    assert has_page_break(separator[0]), "Chapter 6 label is not preceded by a page break"
+    end = U.find_paragraph(doc, "References")._p.getprevious()
+    assert end.tag == qn("w:p") and not text_of(end) and style_of(end) == "Heading1", "No end marker before References"
+    for number, title, blocks in C.APPENDICES:
+        brk, number_p, title_p = (deepcopy(e) for e in separator)
+        for element, text in ((number_p, f"Appendix {number}"), (title_p, title)):
+            element.findall(qn("w:r"))[0].find(qn("w:t")).text = text
+            for run in element.findall(qn("w:r"))[1:]:
+                element.remove(run)
+        U.insert_before(end, [brk, number_p, title_p, *render_blocks(doc, templates, blocks)])
+    U.find_paragraph(doc, "References").paragraph_format.page_break_before = True
+
+
+def renumber_tables(doc: Document) -> dict[str, str]:
+    """Number the tables left in each chapter consecutively again and point
+    every reference ("Table 5.8", "Tables 5.3 to 5.6") at the new number or
+    at the appendix table that replaced it."""
+    body = list(doc.element.body)
+    start = next(i for i, e in enumerate(body) if text_of(e) == "Chapter 1")
+    mapping = {old.split()[1]: new.split()[1] for old, new in C.MOVED_TABLES.items()}
+    counters: dict[str, int] = {}
+    for element in body[start:]:
+        match = re.match(r"Table (\d+)\.(\d+):", text_of(element)) if element.tag == qn("w:p") else None
+        if match:
+            chapter = match.group(1)
+            counters[chapter] = counters.get(chapter, 0) + 1
+            new = f"{chapter}.{counters[chapter]}"
+            if new != f"{chapter}.{match.group(2)}":
+                mapping[f"{chapter}.{match.group(2)}"] = new
+    reference = re.compile(r"\b(Tables?\s+)(\d+\.\d+(?:(?:\s*,\s*|\s+and\s+|\s+to\s+|\s*[–-]\s*)\d+\.\d+)*)")
+
+    def rewrite(match):
+        return match.group(1) + re.sub(r"\d+\.\d+", lambda m: mapping.get(m.group(), m.group()), match.group(2))
+
+    for element in body[start:]:
+        for t in element.iter(qn("w:t")):
+            if t.text and "Table" in t.text:
+                t.text = reference.sub(rewrite, t.text)
+    captions = {m.group(1) for e in body[start:] if (m := re.match(r"Table ([\dIVX]+\.\d+):", text_of(e)))}
+    for element in body[start:]:
+        for paragraph in element.iter(qn("w:p")):
+            for match in reference.finditer(text_of(paragraph)):
+                for number in re.findall(r"\d+\.\d+", match.group(2)):
+                    if number not in captions:
+                        raise AssertionError(f"Reference to missing Table {number}: {text_of(paragraph)[:80]!r}")
+    print(f"  tables renumbered: {mapping}")
+    return mapping
+
+
+def appendix_title_pages(doc: Document) -> None:
+    paragraphs = doc.paragraphs
+    for idx, p in enumerate(paragraphs):
+        if not re.fullmatch(r"Appendix [IVX]+", p.text.strip()):
+            continue
+        name = paragraphs[idx + 1]
+        for para, size in ((p, 18), (name, 22)):
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            para.paragraph_format.line_spacing = None
+            for run in para.runs:
+                U.set_run_font(run, size=size, bold=True)
+        p.paragraph_format.space_before = Pt(220)
+        first = next(q for q in paragraphs[idx + 2:] if q.text.strip())
+        first.paragraph_format.page_break_before = True
+
+
+def front_paragraph(text: str = "", *, size=12, bold=False, align="both", page_break=False,
+                    before=0, after=160, right: str | None = None):
+    """A front-matter paragraph; ``right`` goes after a tab at the right margin."""
+    p = OxmlElement("w:p")
+    p_pr = OxmlElement("w:pPr")
+    if page_break:
+        p_pr.append(OxmlElement("w:pageBreakBefore"))
+    if right is not None:
+        tabs = OxmlElement("w:tabs")
+        tab = OxmlElement("w:tab")
+        tab.set(qn("w:val"), "right")
+        tab.set(qn("w:pos"), "8640")
+        tabs.append(tab)
+        p_pr.append(tabs)
+    spacing = OxmlElement("w:spacing")
+    spacing.set(qn("w:before"), str(before))
+    spacing.set(qn("w:after"), str(after))
+    spacing.set(qn("w:line"), "360")
+    spacing.set(qn("w:lineRule"), "auto")
+    p_pr.append(spacing)
+    jc = OxmlElement("w:jc")
+    jc.set(qn("w:val"), align)
+    p_pr.append(jc)
+    p.append(p_pr)
+
+    def run(value, tab=False):
+        r = OxmlElement("w:r")
+        r_pr = OxmlElement("w:rPr")
+        fonts = OxmlElement("w:rFonts")
+        for attr in ("ascii", "hAnsi", "cs"):
+            fonts.set(qn(f"w:{attr}"), "Times New Roman")
+        r_pr.append(fonts)
+        if bold:
+            r_pr.append(OxmlElement("w:b"))
+        for tag in ("w:sz", "w:szCs"):
+            sz = OxmlElement(tag)
+            sz.set(qn("w:val"), str(int(size * 2)))
+            r_pr.append(sz)
+        r.append(r_pr)
+        if tab:
+            r.append(OxmlElement("w:tab"))
+        t = OxmlElement("w:t")
+        t.set(qn("xml:space"), "preserve")
+        t.text = value
+        r.append(t)
+        p.append(r)
+
+    run(text)
+    if right is not None:
+        run(right, tab=True)
+    return p
+
+
+def add_front_matter_pages(doc: Document) -> None:
+    """SOP order: abstract, approval certificate, declaration, plagiarism
+    certificate, Turnitin report, then the contents."""
+    contents = U.find_paragraph(doc, "TABLE OF CONTENTS")._p
+    elements = []
+    for page in C.FRONT_PAGES:
+        for kind, *values in page:
+            if kind == "title":
+                elements.append(front_paragraph(values[0], size=16, bold=True, align="center", page_break=True, before=480, after=480))
+            elif kind == "heading":
+                elements.append(front_paragraph(values[0], size=14, bold=True, align="center", before=240, after=240))
+            elif kind == "right":
+                elements.append(front_paragraph(values[0], align="right", after=240))
+            elif kind == "line":
+                elements.append(front_paragraph(values[0], align="left", after=360, right=values[1]))
+            elif kind == "gap":
+                elements.append(front_paragraph(after=240))
+            else:
+                elements.append(front_paragraph(values[0]))
+    U.insert_before(contents, elements)
+
+
+def roman_front_matter(doc: Document) -> None:
+    """Guideline: front matter in roman numerals, the title page unnumbered."""
+    sect_pr = next(doc.element.body.iter(qn("w:sectPr")))
+    assert sect_pr.getparent().tag == qn("w:pPr"), "Expected the front matter to end in a section break"
+    pg = sect_pr.find(qn("w:pgNumType"))
+    pg.set(qn("w:fmt"), "lowerRoman")
+    if sect_pr.find(qn("w:titlePg")) is None:
+        later = [qn(t) for t in ("w:textDirection", "w:bidi", "w:rtlGutter", "w:docGrid", "w:printerSettings", "w:sectPrChange")]
+        title_pg = OxmlElement("w:titlePg")
+        following = next((c for c in sect_pr if c.tag in later), None)
+        if following is not None:
+            following.addprevious(title_pg)
+        else:
+            sect_pr.append(title_pg)
+
+
 def edit_abbreviations(doc: Document) -> None:
     start = U.find_paragraph(doc, "LIST OF ABBREVIATIONS")._p
     entries = []
@@ -283,9 +480,12 @@ def build(input_path: Path, output_path: Path) -> None:
     templates = Templates(doc)
     abstract = replace_abstract(doc)
     edit_chapters_1_to_3(doc)
-    replace_chapter_body(doc, "4.1 Development Environment", render_blocks(doc, templates, C.CHAPTER_4))
-    replace_chapter_body(doc, "5.1 Testing Approach", render_blocks(doc, templates, C.CHAPTER_5))
+    extend_chapter_3(doc, templates)
+    replace_chapter_body(doc, "4.1 Development Environment", render_blocks(doc, templates, without_moved_tables(C.CHAPTER_4)))
+    replace_chapter_body(doc, "5.1 Testing Approach", render_blocks(doc, templates, without_moved_tables(C.CHAPTER_5)))
     replace_chapter_body(doc, "6.1 Conclusion", render_blocks(doc, templates, C.CHAPTER_6))
+    add_appendices(doc, templates)
+    renumber_tables(doc)
     edit_abbreviations(doc)
     edit_references(doc)
     U.normalize_typography(doc)
@@ -295,6 +495,9 @@ def build(input_path: Path, output_path: Path) -> None:
 
             U.set_run_font(Run(run, None), size=12)
     chapter_title_pages(doc)
+    appendix_title_pages(doc)
+    add_front_matter_pages(doc)
+    roman_front_matter(doc)
     U.write_front_matter(doc)
     doc.core_properties.revision = (doc.core_properties.revision or 0) + 1
     output_path.parent.mkdir(parents=True, exist_ok=True)

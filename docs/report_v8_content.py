@@ -39,7 +39,7 @@ CHAPTER_1_TO_3_EDITS = [
     ("SDG 11 (Sustainable Cities and Communities)",
      "SDG 11 (Sustainable Cities and Communities): The fire and smoke detection module, with hot-work permits that distinguish scheduled flame work from uncontrolled fires, contributes to safer urban construction environments, reducing the risk of uncontrolled fires on building sites that endanger both workers and surrounding communities."),
     ("Chapter 2 reviews existing systems",
-     "Chapter 2 reviews existing systems and relevant published research, identifying the specific gap that Site-Safe fills. Chapter 3 describes the proposed system design: architecture, module specifications including QR-based identification, fall detection, fire and smoke detection, workforce monitoring, mobile application design, and data flow. Chapter 4 describes the implementation: the development environment, QR identification and the Smart Vest software path, the vision modules, the backend, web and mobile applications, workforce activity monitoring, and the component, deployment, data and interaction views of the delivered system. Chapter 5 reports testing against the requirements traceability matrix, model evaluation and measured performance and reliability. Chapter 6 compares the outcomes with the objectives and sets out limitations and future work."),
+     "Chapter 2 reviews existing systems and relevant published research, identifying the specific gap that Site-Safe fills. Chapter 3 describes the proposed system design: architecture, module specifications including QR-based identification, fall detection, fire and smoke detection, workforce monitoring, mobile application design, and data flow, followed by the requirements specification, the complete system workflow and the feasibility of the system. Chapter 4 describes the implementation: the development environment, QR identification and the Smart Vest software path, the vision modules, the backend, web and mobile applications, workforce activity monitoring, and the component, deployment, data and interaction views of the delivered system. Chapter 5 reports testing against the requirements traceability matrix, model evaluation and measured performance and reliability. Chapter 6 compares the outcomes with the objectives and sets out limitations and future work. The appendices give a user manual, an installation guide, the API and database reference and the detailed test evidence."),
     # 2.5: [1] is YOLOv3 (2018), not the 2016 paper.
     ("The academic literature on computer vision applied to construction safety",
      "The academic literature on computer vision applied to construction safety is substantial and growing. The YOLO family of models, introduced by Redmon et al. in 2016, refined in YOLOv3 [1] and developed through successive iterations to YOLOv11 [3], has become the standard architectural choice for real-time PPE detection. The single-pass inference design achieves detection speeds and accuracy levels that are genuinely usable in operational contexts."),
@@ -81,6 +81,216 @@ REFERENCES_ADD = [
     '[21] Expo, "Expo SDK 58," 2026. [Online]. Available: https://docs.expo.dev/',
     '[22] Django Software Foundation, "Channels," version 4.3.2, 2026. [Online]. Available: https://channels.readthedocs.io/',
     '[23] Leaflet, "Leaflet: an open-source JavaScript library for interactive maps," version 1.9.4, 2023. [Online]. Available: https://leafletjs.com/',
+]
+
+# ---------------------------------------------------------------- Chapter 3
+# 3.2.2 replaces V7's list, whose items were run together; Sections 3.8 and
+# 3.9 are inserted before V7's 3.8 Limitations, which becomes 3.10. Their
+# tables and figures follow Table 3.2 and Figure 3.8, so nothing earlier in
+# the chapter is renumbered.
+
+DATA_FLOW_322 = [
+    ("p", "Data moves through the tiers in three flows. Camera frames are analysed on the edge, and only confirmed events, with the worker's badge and the evidence frame, are posted to the API. Vest positions and SOS presses reach the API over HTTP or MQTT. Configuration (zones, cameras, alert rules and permits) flows from the dashboard to the database, and cameras poll their rules from it. Figure 3.4 shows these flows as a Level-1 data flow diagram; Section 3.9 gives the Level-0 diagram and the complete workflow."),
+]
+
+LIMITATIONS_HEADING = ("3.8 Limitations", "3.10 Limitations")
+
+TABLE_33 = [
+    ("Interface", "Type", "Requirement"),
+    ("Camera to edge computer", "Hardware", "IP camera over RTSP or HTTP, or a USB camera, placed so badges (60 mm) are readable; tested at 1280×720"),
+    ("Edge computer", "Hardware", "GPU able to run all detectors at 10 FPS or more (NFR-04)"),
+    ("Vest to gateway", "Hardware", "ESP32 with GPS (UART) and SOS button (GPIO); LoRa link to a gateway (proposed, Table 4.2)"),
+    ("Camera and gateway to API", "Software", "JSON over HTTP (HTTPS on a site network) with a device token, Authorization: Device <key>, one per camera or gateway"),
+    ("Gateway to broker", "Software", "MQTT topics sitesafe/vest/<id>/telemetry and /sos on Mosquitto"),
+    ("Clients to API", "Software", "REST with a 30-minute JWT renewed by a refresh token; WebSocket /ws/dashboard/ with the same token"),
+    ("Backend to services", "Software", "PostgreSQL 14 or later; Redis channel layer; Node.js report service; Firebase Cloud Messaging and SMTP"),
+    ("Users", "Software", "Current desktop browser for the command centre; Android or iOS phone (Expo) for the mobile app"),
+]
+
+TABLE_34 = [
+    ("ID", "Requirement", "Pri.", "Acceptance criterion"),
+    ("FR-01", "Sign in with e-mail and password; sessions renew silently", "M", "Expired access token renews; revoked refresh token returns to sign-in"),
+    ("FR-02", "Admin, Safety Officer and Viewer roles enforced by the API", "M", "Every forbidden action returns 403; its permitted counterpart succeeds"),
+    ("FR-03", "Interface offers only actions the role permits", "S", "Viewer sees no resolve, edit or generate controls"),
+    ("FR-04", "Detect missing PPE (10 classes) from a camera", "M", "Event precision ≥ 90% and episode recall ≥ 85% on a sealed target-camera set"),
+    ("FR-05", "One alert per person per violation episode", "M", "Two people give two alerts; a one-frame flicker gives none"),
+    ("FR-06", "Detect falls from camera pose", "M", "Fall and hard-negative videos meet the AI event targets"),
+    ("FR-07", "Warn when a worker is too close to a vehicle", "M", "Calibrated distance threshold evaluated on video"),
+    ("FR-08", "Detect prolonged inactivity with a dashboard-set timeout", "M", "A changed rule changes the camera timeout within 60 s"),
+    ("FR-09", "Fire and smoke detection governed by hot-work permits", "M", "Fixture videos pass; a permitted fire is downgraded, never dropped"),
+    ("FR-10", "Identify workers by the QR badge on the helmet", "M", "Association, unknown and wrong-person rates measured at stated distance and light"),
+    ("FR-11", "Camera events reach the API reliably", "M", "100 events queued in a 5-minute outage arrive exactly once"),
+    ("FR-12", "Only authorised devices submit data", "M", "Anonymous, revoked, wrong-kind or wrong-camera tokens are rejected"),
+    ("FR-13", "Live updates for every alert, vest and worker change", "M", "Two sessions converge after create, resolve, SOS and reconnect"),
+    ("FR-14", "WebSocket requires a valid user token and allowed origin", "M", "Missing, bad or expired token closes with code 4401"),
+    ("FR-15", "Alert rules (enable, threshold, notify) change behaviour", "M", "A disabled type stores nothing; SOS and FIRE cannot be disabled"),
+    ("FR-16", "Push notifications to subscribed users", "S", "An Android phone receives a push; tapping opens the alert"),
+    ("FR-17", "E-mail notifications", "S", "Mail reaches opted-in users when the rule enables it"),
+    ("FR-18", "Register, edit and deactivate workers in the interface", "M", "All three work in the browser; one vest per worker"),
+    ("FR-19", "Zones with polygon boundaries and assigned cameras", "M", "Invalid geometry rejected; boundary drawn on a map"),
+    ("FR-20", "Automatic restricted-zone breach and over-occupancy alerts", "M", "One ZONE_BREACH per unassigned entry or excess occupancy"),
+    ("FR-21", "Smart Vest: GPS position, SOS button, LoRa link", "M", "A physical SOS reaches the dashboard (hardware moved to future work)"),
+    ("FR-22", "Vest telemetry is validated", "M", "Out-of-range coordinates or battery return 400"),
+    ("FR-23", "Vest offline detection", "S", "A vest silent for 120 s is shown offline"),
+    ("FR-24", "Activity history: check-in, check-out, idle", "M", "Recorded automatically and reconciled with annotated scenarios"),
+    ("FR-25", "Incident list, detail, resolve and CSV export", "M", "Resolution is broadcast; filters cover every alert type"),
+    ("FR-26", "Dashboard shows recorded data only", "M", "Every figure reconciles to the API"),
+    ("FR-27", "Incident and safety-performance reports in DOCX and PDF", "M", "Fixtures reconcile exactly; no unsupported percentages"),
+    ("FR-28", "Mobile app: sign-in, alerts, resolve, workers, push", "M", "An Android build receives a push and resolves an alert seen on the web"),
+    ("FR-29", "Alert evidence: snapshot, confidence, model version", "S", "Each AI alert is traceable to its frame and model"),
+]
+
+TABLE_35 = [
+    ("Use case (Figure 3.1)", "Actors", "Description", "FRs"),
+    ("UC-1 Wear QR-tagged helmet", "Worker", "Wears the printed badge so cameras can attribute events", "FR-10"),
+    ("UC-2 Trigger SOS alert", "Worker", "Presses the vest SOS button (Table 3.7)", "FR-20–23"),
+    ("UC-3 Detect PPE violations", "IP Camera, Safety Officer", "Camera raises a violation; officer responds (Table 3.6)", "FR-04, 05, 29"),
+    ("UC-4 Identify workers via QR", "IP Camera", "Badge decoded and linked to the person's box", "FR-10"),
+    ("UC-5 Monitor zone breaches", "Safety Officer, Admin", "Restricted entry or over-occupancy raises an alert", "FR-19, 20"),
+    ("UC-6 Track workforce activity", "Safety Officer", "Attendance, idle time and timelines per worker", "FR-08, 24"),
+    ("UC-7 View dashboard and alerts", "Safety Officer, Admin", "Live alerts, incidents, reports on web and mobile", "FR-13, 25–28"),
+    ("UC-8 Configure alert thresholds", "Admin", "Enable rules, set thresholds and notifications", "FR-15"),
+]
+
+TABLE_36 = [
+    ("Field", "UC-3 Detect PPE Violations"),
+    ("Scope and level", "Site-Safe system; user goal"),
+    ("Primary actor", "IP Camera (initiates); Safety Officer (responds)"),
+    ("Stakeholders", "Safety Officer: a prompt alert naming the worker. Worker: no false accusation, images kept no longer than needed. Management: an auditable record."),
+    ("Preconditions", "The camera has a device token and is assigned to a zone; the PPE rule is enabled; the officer is signed in."),
+    ("Success guarantee", "One alert per person per episode is stored with type, severity, camera, zone, worker if identified, confidence, model version and snapshot, shown live, and its resolution recorded."),
+    ("Main success scenario", "1. The pipeline detects a missing-PPE box on a person. 2. The episode persists for 1 s in at least 3 frames. 3. The person's badge is read and the evidence attached. 4. The event is queued and posted. 5. The server checks the token and rule and stores the alert once. 6. Dashboard and app show it; push and e-mail follow the rule. 7. The officer reviews the snapshot, acts and resolves it. 8. Every session shows it resolved."),
+    ("Extensions", "2a. Shorter flicker: no alert. 3a. Badge unreadable or ambiguous: the alert is stored as not identified. 4a. Server unreachable: the event stays in the outbox and is retried until stored once. 5a. Rule disabled: reply 202, nothing stored. Fall, proximity, inactivity and fire follow the same path with their own confirmation; fire severity depends on hot-work permits."),
+    ("Special requirements", "NFR-01 latency, NFR-02 outage tolerance, NFR-03 security; snapshots of at most 512 KB, deleted after 30 days."),
+]
+
+TABLE_37 = [
+    ("Field", "UC-2 Trigger SOS Alert"),
+    ("Scope and level", "Site-Safe system; user goal"),
+    ("Primary actor", "Worker; supporting actor: vest gateway"),
+    ("Stakeholders", "Worker: help arrives quickly at the right place. Safety Officer: one clear alert with a position."),
+    ("Preconditions", "The vest is registered and assigned to the worker; the gateway has a device token."),
+    ("Success guarantee", "One CRITICAL SOS alert with the worker and position is stored, shown live and notified; the worker is checked in."),
+    ("Main success scenario", "1. The worker presses SOS. 2. The vest sends position and SOS state through the gateway (HTTP or MQTT). 3. The server validates it, updates the position and finds the zone. 4. On the rising edge of SOS it raises the alert. 5. The map and app show the alert and location; notifications are sent. 6. The officer responds and resolves it."),
+    ("Extensions", "1a. Button held: no repeat alert. 3a. Invalid payload: rejected with 400. 3b. Restricted zone: a ZONE_BREACH is also raised. Vest silent for 120 s: shown offline. Simulator token: alert labelled SIMULATED and excluded from reports."),
+    ("Special requirements", "Physical vest moved to future work; verified with the simulator (FR-21)."),
+]
+
+TABLE_38 = [
+    ("ID", "Category", "Requirement", "Target (proposed)"),
+    ("NFR-01", "Performance", "Event-to-dashboard latency", "95th percentile ≤ 2 s on a local network"),
+    ("NFR-02", "Reliability", "Outage tolerance", "No lost or duplicated events across a 5-minute API outage and sender restart"),
+    ("NFR-03", "Security", "Producer security", "No anonymous write endpoint; no credentials in source code"),
+    ("NFR-04", "Performance", "Inference throughput", "≥ 10 FPS with all detectors on the demonstration machine"),
+    ("NFR-05", "Reliability", "Soak", "2-hour full-stack run with a controlled disconnect"),
+    ("NFR-06", "Portability", "Reproducible setup", "A fresh machine reaches a working demonstration from the README"),
+    ("NFR-07", "Maintainability", "Quality gate", "All test suites pass; frontend builds and lints clean"),
+]
+
+TABLE_39 = [
+    ("Resource", "Used in the prototype", "Justification"),
+    ("Development and edge computer", "Apple M4 laptop, 16 GB, built-in GPU", "Runs all detectors at 15.7 FPS (NFR-04); a Jetson-class unit is the site option"),
+    ("Training GPU", "Google Colab, Tesla T4", "Training YOLO11-medium exceeded the laptop's memory"),
+    ("Cameras", "Webcam and phone IP-camera application", "Same code path as site RTSP cameras"),
+    ("Phone", "Android phone (push test pending)", "Firebase push needs a development build on a device"),
+    ("Smart Vest parts", "Not bought; simulator used", "ESP32, GPS, LoRa and button of Table 4.2 when the vest is built"),
+    ("Software and data", "Open-source stack (Table 4.1); CC BY 4.0 dataset", "No licence cost; dataset licence permits reuse with attribution"),
+    ("Human effort", "Three members over two semesters", "[Task division and person-months to be completed by the team]"),
+]
+
+TABLE_310 = [
+    ("Aspect", "Assessment"),
+    ("Technical", "Feasible. Every component uses mature open-source frameworks, the full detector set runs at 15.7 FPS on a laptop GPU and 318 automated tests pass. The open risk is detection of missing equipment (Section 5.5)."),
+    ("Operational", "Feasible. Officers keep their role and receive alerts on their phones; workers need only a paper badge; zones are drawn on a map. Cameras must be placed so badges are readable."),
+    ("Economic", "Low cost. The software is open source, existing IP cameras can be reused and badges cost a sheet of paper; the main expense is an edge GPU computer per site, plus optional vest hardware."),
+    ("Legal and ethical", "Camera monitoring needs informed worker consent and signage. Badges carry a random code, not personal data; snapshots are visible only to signed-in users, deleted after 30 days and can be switched off. The system informs the officer and makes no disciplinary decision."),
+    ("Health, safety and society", "Aims to prevent injuries and deaths (SDG 3 and 8). Missed detections remain possible, so it supplements supervision rather than replacing it."),
+    ("Environmental", "Runs on existing hardware; the only consumables are paper badges and, later, vest batteries."),
+]
+
+CHAPTER_3_ADDITIONS = [
+    ("h2", "3.8 Requirements Specification"),
+    ("h3", "3.8.1 Interface Requirements"),
+    ("p", "Table 3.3 lists the interfaces between the components and with external systems. Cameras and vest gateways never sign in as users; each authenticates with a device token limited to its own kind of data."),
+    ("table", "Table 3.3: Interface Requirements", TABLE_33, [1.6, 0.8, 3.6], 8.5),
+    ("h3", "3.8.2 Functional Requirements"),
+    ("p", "Table 3.4 lists the functional requirements with their priority (M must, S should) and the acceptance criterion each is tested against in Chapter 5. The criteria are the team's proposals."),
+    ("table", "Table 3.4: Functional Requirements", TABLE_34, [0.6, 2.2, 0.4, 2.8], 7.8),
+    ("h3", "3.8.3 Use Cases"),
+    ("p", "Table 3.5 describes the use cases of Figure 3.1. Two are written as full-dress use cases because they cross several components and have failure paths: detecting a PPE violation (Table 3.6), which every camera hazard follows, and triggering an SOS (Table 3.7)."),
+    ("table", "Table 3.5: Use Case Descriptions", TABLE_35, [1.65, 1.2, 2.25, 0.9], 8),
+    ("table", "Table 3.6: Full-Dress Use Case: Detect PPE Violations", TABLE_36, [1.3, 4.7], 8),
+    ("table", "Table 3.7: Full-Dress Use Case: Trigger SOS Alert", TABLE_37, [1.3, 4.7], 8),
+    ("h3", "3.8.4 Non-Functional Requirements"),
+    ("p", "Table 3.8 lists the non-functional requirements; Section 5.6 reports their measurement."),
+    ("table", "Table 3.8: Non-Functional Requirements", TABLE_38, [0.7, 1.1, 1.5, 2.7], 8.5),
+    ("h3", "3.8.5 Resource Requirements"),
+    ("p", "Table 3.9 lists the resources used to build and run the prototype. Costs are not tabulated: the software is open source, and quotations for the vest parts have not yet been recorded."),
+    ("table", "Table 3.9: Resource Requirements", TABLE_39, [1.45, 2.05, 2.5], 8.5),
+    ("h3", "3.8.6 Database Requirements"),
+    ("p", "The system needs a relational database (PostgreSQL) that stores each camera event exactly once under its event identifier, keeps every alert with its worker, zone, permit, model version and snapshot, records attendance at the time of the event so that late deliveries merge into their session, and holds only a hash of each device key. Snapshots are deleted after the retention period while their alerts are kept. Figure 4.2 shows the data model and Appendix III the tables."),
+    ("h3", "3.8.7 Project Feasibility"),
+    ("p", "Table 3.10 assesses the feasibility of the system, including its cost, health and safety, legal, ethical, societal and environmental aspects."),
+    ("table", "Table 3.10: Feasibility Assessment", TABLE_310, [1.3, 4.7], 8.5),
+    ("h2", "3.9 System Workflow"),
+    ("p", "Figure 3.9 shows the complete workflow as an activity diagram, from setting up a site to the compliance report. An administrator registers workers and prints their QR badges, draws zones, assigns cameras and sets alert rules, and safety officers issue hot-work permits for planned flame work. While the site runs, each camera pipeline captures frames and runs its detectors; an unconfirmed hazard returns the loop to the next frame. A confirmed hazard is tagged with the person's badge, the confidence, the model version and a snapshot, queued in the outbox and posted with the camera's device token."),
+    ("p", "The backend authenticates the device, discards alert types whose rule is disabled, sets the severity, which for fire and smoke depends on any active permit, and stores the alert once. After the transaction commits, the alert appears live on the dashboard and the mobile app and notifications are sent. The officer reviews the snapshot, acts on site and resolves the alert, and the stored records feed the attendance timelines and reports. Vest telemetry joins the same path at validation (Section 4.9)."),
+    ("fig", "fig_activity_workflow.png", 5.6, "Figure 3.9: System Workflow Activity Diagram"),
+    ("p", "Figure 3.10 is the Level-0 data flow diagram: the whole system as one process and the data it exchanges with its external entities. Figure 3.4 decomposes it into Level-1 processes."),
+    ("fig", "fig_dfd_level0.png", 6.0, "Figure 3.10: Level-0 Data Flow Diagram"),
+]
+
+# ---------------------------------------------------------------- Front matter
+# Blank pages from SOP Appendix G, between the abstract and the contents.
+# Blanks are left for the committee, signatures and the Turnitin result.
+
+PROJECT_TITLE = "Site-Safe: A Digital Ecosystem for Autonomous Construction Safety"
+STUDENTS = ("Muhammad Hamza", "Hamza Hussain", "Hanan Saeed")
+SUPERVISOR = "Muhammad Yousif"
+BLANK = "____________________"
+SHORT_BLANK = "______________"
+
+# ("title" | "heading" | "p" | "line" (left, right) | "right" | "gap", ...)
+FRONT_PAGES = [
+    [
+        ("title", "CERTIFICATE"),
+        ("right", f"Dated: {BLANK}"),
+        ("heading", "Final Approval"),
+        ("p", f"It is certified that the project report titled “{PROJECT_TITLE}”, submitted by {STUDENTS[0]}, {STUDENTS[1]} and {STUDENTS[2]} for the partial fulfillment of the requirement of the Bachelor’s Degree in Computer Science, is approved."),
+        ("gap",),
+        ("heading", "COMMITTEE"),
+        ("line", f"Dean (Engineering & Computing): {SHORT_BLANK}", f"Signature: {SHORT_BLANK}"),
+        ("line", f"Head of Department, Computer Science: {SHORT_BLANK}", f"Signature: {SHORT_BLANK}"),
+        ("line", f"Project Coordinator: {SHORT_BLANK}", f"Signature: {SHORT_BLANK}"),
+        ("line", f"Supervisor: {SUPERVISOR}", f"Signature: {SHORT_BLANK}"),
+    ],
+    [
+        ("title", "DECLARATION"),
+        ("p", "We hereby declare that our dissertation is entirely our own work and genuine and original. We understand that in case of discovery of any PLAGIARISM at any stage, our group will be assigned an F (FAIL) grade and it may result in withdrawal of our Bachelor’s degree."),
+        ("gap",),
+        ("p", "Group members:"),
+        ("line", "Name", "Signature"),
+        *[("line", name, BLANK) for name in STUDENTS],
+    ],
+    [
+        ("title", "PLAGIARISM CERTIFICATE"),
+        ("p", f"This is to certify that the project entitled “{PROJECT_TITLE}”, which is being submitted herewith for the award of the Degree of Bachelor’s in Computer Science, is the result of the original work by {STUDENTS[0]}, {STUDENTS[1]} and {STUDENTS[2]} under my supervision and guidance. The work embodied in this project has not been done earlier as the basis for the award of any degree or comparable certificate or similar title by any other diploma or examining body or university, to the best of my knowledge and belief."),
+        ("gap",),
+        ("line", "Turnitin similarity index:", "______ %"),
+        ("line", "Internet sources:", "______ %"),
+        ("line", "Publications:", "______ %"),
+        ("line", "Student papers:", "______ %"),
+        ("gap",),
+        ("line", f"Date: {BLANK}", f"{SUPERVISOR} (Supervisor)"),
+    ],
+    [
+        ("title", "TURNITIN ORIGINALITY REPORT"),
+        ("p", f"{PROJECT_TITLE} [BSCS] by {STUDENTS[0]}, {STUDENTS[1]} and {STUDENTS[2]}, from {SUPERVISOR}."),
+        ("line", f"Processed on: {BLANK}", f"ID: {BLANK}"),
+        ("line", f"Word count: {BLANK}", "Similarity index: ______ %"),
+        ("gap",),
+        ("p", "[Insert the Turnitin originality report pages here.]"),
+    ],
 ]
 
 # ---------------------------------------------------------------- Chapter 4
@@ -472,4 +682,80 @@ CHAPTER_6 = [
     ("p", "The first priority is the data behind detection. The 69 conflicting label groups should be resolved so the group-constrained split can be used, footage should be collected from the target cameras with hard negatives and the weakest classes, per-class thresholds calibrated, and alerts scored per event and episode on a sealed set, which would also measure the episode tracking of FR-05 on video. The fire and smoke model should be trained on a licence-checked dataset and evaluated on recorded clips, including welding and other hard negatives."),
     ("p", "The second priority is physical verification: a QR range and lighting test with printed badges, an Android development build receiving push notifications, the two-hour soak test, latency to a second device over a LAN, a staged fall recording, and a run of the docker-compose deployment and the CI workflow. The measurement scripts already exist, so each of these is a matter of running them on the demonstration setup."),
     ("p", "Beyond the FYP, the Smart Vest can be built against the existing gateway interface: an ESP32 with GPS and an SOS button, a point-to-point LoRa link to a USB receiver that bridges to MQTT, and field tests of range, delivery delay and battery life. Other extensions are a durable queue for notifications, alert-rule configuration in the mobile app, and support for more than one site."),
+]
+
+# ---------------------------------------------------------------- Appendices
+# Long reference tables move here from Chapters 4 and 5 (the old caption is
+# the key). The builder drops them from the chapters, renumbers the tables
+# left behind and rewrites every reference in the text.
+
+MOVED_TABLES = {
+    "Table 4.7": "Table III.1",
+    "Table 4.8": "Table III.2",
+    "Table 5.2": "Table IV.1",
+    "Table 5.7": "Table IV.2",
+    "Table 5.8": "Table IV.3",
+}
+
+TABLE_I1 = [
+    ("Task", "Role", "Steps"),
+    ("Sign in", "All", "Open the dashboard address; enter e-mail and password. The session renews itself while in use."),
+    ("Monitor the site", "All", "Dashboard: counts and charts from recorded data, live alerts and worker status."),
+    ("Register a worker and print a badge", "Safety Officer, Admin", "Workers → Add worker: full name, trade, phone, assigned zone and smart vest. Edit the worker → Print badge; print at 100% (60 mm) and fix it to the helmet front. Reissue badge revokes earlier prints."),
+    ("Follow a worker's day", "All", "Workers → open a worker → timeline of time on site and idle time for a chosen day."),
+    ("Manage vests", "Safety Officer, Admin", "Vest Management: register a vest, assign it to a worker, see battery and online state."),
+    ("Draw a zone", "Admin", "Zones: draw the polygon on the map, then set name, risk level, maximum occupancy and cameras."),
+    ("Issue a hot-work permit", "Safety Officer, Admin", "Zones → select the zone → Hot-work permits: description, start and end (up to 12 hours). Revoke ends it early."),
+    ("Review and resolve incidents", "Safety Officer, Admin", "Incidents: filter by type, status and date; open an alert to see snapshot, confidence and model version; Resolve. Export CSV saves the list."),
+    ("Generate a report", "Safety Officer, Admin", "Reports: choose incident or safety-performance report, period and DOCX or PDF; Generate, then download."),
+    ("Configure alert rules", "Admin", "Settings → Alert Configuration → edit a rule: enabled, threshold in seconds, push and e-mail. SOS and FIRE stay enabled."),
+    ("Notifications and password", "All", "Settings → Notifications to opt out of push or e-mail; Settings → Profile to change the password."),
+]
+
+TABLE_I2 = [
+    ("Task", "Steps"),
+    ("Sign in", "Enter the server's address on the site network (for example 192.168.1.20:8000), e-mail and password."),
+    ("See alerts", "Alerts tab: open or all alerts, updated live."),
+    ("Resolve an alert", "Tap an alert to see its snapshot, confidence and model version; Resolve (Safety Officer and Admin)."),
+    ("Check workers", "Workers tab: role, zone, vest and presence."),
+    ("Receive push", "Android: allow notifications at first sign-in; tapping a notification opens the alert."),
+    ("Sign out", "Settings tab → Sign out; the phone stops receiving push."),
+]
+
+TABLE_II1 = [
+    ("Step", "Action", "Commands and notes"),
+    ("1", "Prerequisites", "Python 3.12 or later, Node.js 18 or later, PostgreSQL 14 or later (18 used); Redis and Mosquitto for multi-process runs; a webcam or IP camera"),
+    ("2", "Database", "Create user and database sitesafe in PostgreSQL"),
+    ("3", "Backend", "cd backend; python3 -m venv .venv; pip install -r requirements.txt; cp .env.example .env and set SECRET_KEY and DB_*; python manage.py migrate; python manage.py createsuperuser; daphne -b 127.0.0.1 -p 8000 sitesafe.asgi:application"),
+    ("4", "Background jobs", "python manage.py run_mqtt_consumer; python manage.py run_presence_monitor; schedule python manage.py purge_alert_snapshots daily"),
+    ("5", "Report service", "cd report-service; npm ci; DJANGO_API_URL=http://localhost:8000/api/ npm start (port 3001)"),
+    ("6", "Web dashboard", "cd frontend; npm install; npm run dev; open http://localhost:5173 and sign in"),
+    ("7", "Camera token", "python manage.py create_service_token CAM-01 --kind CAMERA --camera-id CAM-01 (the key is shown once)"),
+    ("8", "Camera pipeline", "cd ai-module; pip install -r requirements-vision.txt; copy the weights to models/sitesafe_v5.pt; SITESAFE_DEVICE_KEY=<key> python inference.py --camera-id CAM-01 --source <device or stream URL>. Keys: Q quit, P pause, S test alert"),
+    ("9", "Mobile app", "cd mobile; npm ci; npx expo start; sign in with the server's LAN address. Push needs a Firebase project and an Android development build"),
+    ("10", "Vest simulator", "python manage.py create_service_token vest-sim --kind VEST_GATEWAY --simulator; SITESAFE_DEVICE_KEY=<key> python tools/vest_simulator.py tools/vest_scenarios/demo.json --speedup 5"),
+    ("11", "Docker (alternative)", "cp .env.docker.example .env.docker; docker compose --env-file .env.docker up --build (dashboard on port 8080, API on 8000); not yet run"),
+]
+
+APPENDICES = [
+    ("I", "User Manual", [
+        ("p", "This appendix explains how each role uses Site-Safe once it is installed (Appendix II). The web command centre is used for set-up and monitoring (Table I.1) and the mobile app for responding on site (Table I.2). Controls appear only for the roles that may use them."),
+        ("table", "Table I.1: Web Command Centre Tasks", TABLE_I1, [1.45, 1.1, 3.45], 8.5),
+        ("table", "Table I.2: Mobile Application Tasks", TABLE_I2, [1.45, 4.55], 8.5),
+    ]),
+    ("II", "Installation and Setup Guide", [
+        ("p", "Table II.1 brings up the system on one computer, as used for the measurements in Chapter 5. The repository README describes every option and environment variable."),
+        ("table", "Table II.1: Setup Steps", TABLE_II1, [0.45, 1.25, 4.3], 8),
+    ]),
+    ("III", "API and Database Reference", [
+        ("p", "Tables III.1 and III.2 list the backend's endpoints and database tables described in Section 4.4; Figure 4.2 shows their relations."),
+        ("table", "Table III.1: Core API Endpoints", TABLE_47, [2.5, 1.7, 1.8], 7.8),
+        ("table", "Table III.2: Database Schema Summary", TABLE_48, [1.15, 2.85, 2.0], 7.8),
+    ]),
+    ("IV", "Test Evidence", [
+        ("p", "Tables IV.1 to IV.3 give the evidence summarised in Chapter 5: the status reached by each functional requirement, the end-to-end verification record and the defects found by testing."),
+        ("table", "Table IV.1: Requirements, Evidence and Status", TABLE_52, [0.6, 1.75, 2.45, 1.2], 7.5),
+        ("table", "Table IV.2: End-to-End Verification Record", TABLE_57, [0.6, 1.4, 2.5, 1.5], 7.8),
+        ("table", "Table IV.3: Defects Found by Testing", TABLE_58, [2.6, 1.6, 1.8], 8),
+    ]),
 ]
