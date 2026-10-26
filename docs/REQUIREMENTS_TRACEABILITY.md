@@ -21,7 +21,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 |---|---|---|---|---|---|---|
 | FR-01 | Users sign in with email and password; sessions renew without re-login | M | Valid login gets tokens. Expired access token renews silently. Revoked/invalid refresh token returns to login. | `accounts/`, `frontend/src/api/axios.js` | `accounts/tests.py`; browser check 16 Oct (corrupted token → refresh → retried requests 200) | Integrated |
 | FR-02 | Three roles (Admin, Safety Officer, Viewer) enforced by the API | M | Every forbidden role action returns 403; each permitted counterpart succeeds | `accounts/permissions.py` | `accounts/tests.py` (16) | Tested |
-| FR-03 | UI offers only actions the user's role permits | S | Viewer sees no resolve/edit/generate controls | `AuthContext.jsx` (`canOperate`, `isAdmin`) across Dashboard, Incidents, Workers, Vests, Zones, Settings, Reports | Browser check 16 Oct (officer: zones read-only; admin: zone editor) | Integrated (viewer path not browser-checked) |
+| FR-03 | UI offers only actions the user's role permits | S | Viewer sees no resolve/edit/generate controls | `AuthContext.jsx` (`canOperate`, `isAdmin`) across Dashboard, Incidents, Workers, Vests, Zones, Settings, Reports | Browser check 16 Oct (officer: zones read-only; admin: zone editor); Viewer browser check 26 Oct on every page: no resolve, register, edit, generate, permit or rule controls (Alert Configuration read-only, vest assignment disabled, Reports shows a role notice); only own notification preferences and password are editable; API refused the Viewer's resolve and report generation with 403; same pages as Safety Officer show Resolve, Generate Report, Register worker/vest, Edit and Issue permit | Integrated |
 | FR-04 | Detect missing PPE (10 classes) from a camera | M | Event precision ≥90% and episode recall ≥85% per retained class, on a sealed target-camera set | `ai-module/inference.py`, `models/sitesafe_v5.pt` | Held-out mAP50 0.562 on a leaky split (not a valid claim) | Coded |
 | FR-05 | One alert per person per violation episode | M | Two people with the same violation give two alerts; a single-frame flicker gives none | `ai-module/ppe_episodes.py`, `badged_violations` + episode loop in `inference.py`, `--ppe-persistence`, `--ppe-clear-seconds` | `test_ppe_episodes.py` (25); headless pipeline run 20 Oct on a still-image clip: 3 people missing helmets + 1 missing goggles → 4 alerts, no repeats over 40 frames; live webcam run 21 Oct (55 s, one person) found duplicate-box episodes → fixed, replay of its recorded boxes gives one alert per item | Tested (**no annotated video scored yet**) |
 | FR-06 | Detect falls from camera pose | M | Positive and hard-negative videos meet the AI event targets | `ai-module/fall_detection.py` | `alerts/test_fall.py` (21) | Tested |
@@ -43,7 +43,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-22 | Vest telemetry is validated | M | Out-of-range latitude/longitude, a lone coordinate, or battery outside 0–100 returns 400 | `VestTelemetrySerializer` | `alerts/test_ingest.py` | Tested |
 | FR-23 | Vest offline detection | S | No report within `VEST_OFFLINE_AFTER_SECONDS` shows the vest offline | `workers/presence.py`, `run_presence_monitor` | `workers/tests.py` PresenceTests (4); browser check (occupancy dropped to 0 after timeout) | Integrated |
 | FR-24 | Worker activity history (check-in/out, idle, zone transitions) | M | Generated automatically and reconciled with annotated scenarios | `workers/activity.py`, `workers/timeline.py`, camera `SightingThrottle` + idle events, `WorkerTimeline.jsx`, report attendance tables | `workers/test_activity.py` (18), `test_activity_events.py` (5), report-service attendance tests; e2e 20 Oct: camera sightings + idle → 60 min on site, 20 min idle, auto check-out at last sighting; vest session open; timeline and PDF agree | Integrated (**no annotated real-camera scenario yet**) |
-| FR-25 | Incident list, detail, resolve, CSV export | M | Resolve is broadcast; filters include every type | `frontend/src/components/incidents/` | FALL filter added 16 Oct; resolve broadcast covered by FR-13 | Coded |
+| FR-25 | Incident list, detail, resolve, CSV export | M | Resolve is broadcast; filters include every type | `frontend/src/components/incidents/` | Browser check 26 Oct on a throwaway database with one alert of every type (9 alerts): each of the 8 type filters and 4 severity filters returned exactly the seeded rows; vest search found the 2 vest alerts; row detail shows zone, source and description; an officer's resolve (API) appeared as RESOLVED in the Viewer's open list within 1.5 s without reload; resolve from the UI as Safety Officer; CSV export follows the active filter (FIRE → 1 row; all → header + 9 rows), captured in the page, not downloaded | Integrated (at a 1024 px window the table is wider than its area, so Status and Resolve need a sideways scroll) |
 | FR-26 | Dashboard KPIs and charts reflect recorded data only | M | Every displayed number reconciles to the API; nothing fabricated | `DashboardStatsView`, `KpiStrip.jsx`, `DashboardCharts.jsx`, `WorkerStatusGrid.jsx` | `workers/tests.py` DashboardStatsTests (3); browser check 16 Oct | Integrated |
 | FR-27 | Incident and safety-performance reports in DOCX and PDF | M | Fixtures reconcile exactly; PDF produced; no unsupported percentages; period in the user's time zone | `report-service/lib/*`, `templates/*`, `backend/reports/` | `report-service/test` (12); `reports/tests.py` (6); e2e 16 Oct (both types, both formats via API → service; PDF inspected) | Integrated |
 | FR-28 | Mobile app: login, alerts, resolve, worker status, push | M | Android build receives a push and resolves an incident visible on web | `mobile/` (Expo SDK 58) | `mobile/__tests__` (13); web build checked 16 Oct: sign-in, live alert arrival, detail, resolve, resolve from another session removed live, workers presence, sign-out | Integrated on web target (**device + push pending**) |
@@ -332,4 +332,24 @@ Change: same-class boxes also merge when one centre lies inside the other and Io
   (DEFAULT_NESTED_IOU); 3 new tests from the recorded boxes (head pattern: 2 alerts -> 1; edge person
   still separate; side-by-side heads stay separate)
 Tests (21 Oct 2026): ai-module 86 OK; total 318
+```
+
+```text
+Phase / task IDs: FR-03 viewer path, FR-25 incident log
+Status: both Integrated; browser checks on a throwaway SQLite database (worktree at stage tip d1bb33f),
+  dev database untouched
+Fixture: admin, safety officer and viewer test accounts; 1 zone, 1 worker with a vest; 9 simulated alerts,
+  one per type plus a resolved FALL
+FR-03 (Viewer, every page): no resolve, register, edit, generate, permit or alert-rule controls; Alert
+  Configuration read-only; vest assignment disabled; Reports shows the role notice; Zones labelled
+  read-only; own notification preferences and password remain editable by design; API: Viewer resolve 403,
+  report generation 403. As Safety Officer the same pages show Resolve, Generate Report, Register
+  worker/vest, Edit and Issue permit (zone editing stays Admin-only)
+FR-25: 8 type and 4 severity filters each matched the seeded rows exactly (no LOW alert seeded); vest
+  search; row detail; resolve broadcast to the Viewer's open list in < 1.5 s without reload; UI resolve
+  as Safety Officer (open badge 7 -> 6); CSV export respects filters (captured in the page)
+Known limitation: at a 1024 px window the incident table (875 px) overflows its 734 px area, so Status
+  and Resolve need a sideways scroll
+Not done: report V8 Tables 5.2 and 6.1 still show the older FR-03/FR-25 wording; update them after the
+  report branch (claude/competent-moore-5fa363) is merged
 ```
