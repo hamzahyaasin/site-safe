@@ -57,7 +57,7 @@ jobs:
       - run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
       - run: pip install -r requirements-vision.txt opencv-python-headless
       - run: python -m unittest test_activity_events test_fire_detection test_identity test_inference_config test_dataset_audit test_prepare_dataset_v2 test_event_outbox test_ppe_episodes test_evidence
-      - run: python -m unittest test_prepare_fire_dataset
+      - run: python -m unittest test_prepare_fire_dataset test_unpack_parquet_dataset
         working-directory: ai-module/fire
 
   tools:
@@ -72,7 +72,7 @@ jobs:
           python-version: "3.14"
       - run: pip install -r measure/requirements.txt
       - run: python -m unittest test_vest_simulator
-      - run: python -m unittest test_measure
+      - run: python -m unittest test_measure test_evaluate_clip
         working-directory: tools/measure
 
   report-service:

@@ -45,3 +45,6 @@ backups/
 
 # Raw measurement runs (copy chosen results into docs/evidence/)
 tools/measure/results/
+
+# Downloaded fire/smoke datasets and their prepared copies (large; see ai-module/fire/)
+ai-module/fire/datasets/
