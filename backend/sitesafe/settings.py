@@ -164,6 +164,23 @@ else:
         }
     }
 
+# Holds each camera's latest live-view frame. Shared through Redis when the
+# API runs as several processes; in-process otherwise.
+if REDIS_URL:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": REDIS_URL}}
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+# Live view (Cameras page). Cameras post their annotated frame a few times a
+# second; the API relays it to Safety Officers and Admins over /ws/cameras/
+# and keeps only the latest frame per camera in memory, never on disk.
+LIVE_VIEW_ENABLED = os.environ.get("LIVE_VIEW_ENABLED", "True").strip().lower() in ("1", "true", "yes")
+LIVE_FRAME_MAX_BYTES = 256 * 1024
+LIVE_FRAME_MAX_SIDE = 1920
+LIVE_MAX_FPS = 15
+# A camera with no frame for this long is shown as offline.
+LIVE_OFFLINE_AFTER_SECONDS = 5
+
 # Email notifications. Defaults to printing to the console so development
 # never sends real mail; configure an SMTP backend through the environment.
 EMAIL_BACKEND = os.environ.get(

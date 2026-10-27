@@ -27,6 +27,7 @@ import fire_detection
 import identity
 from event_outbox import EventOutbox
 import inactivity
+import live_feed
 import ppe_episodes
 import proximity
 
@@ -57,6 +58,10 @@ OUTBOX_DIR = os.environ.get("SITESAFE_OUTBOX_DIR", "outbox")
 # with each AI alert. Set SITESAFE_SNAPSHOTS=0 (or pass --no-snapshots) where
 # site policy does not allow images of workers to leave the camera host.
 SNAPSHOTS_ENV = "SITESAFE_SNAPSHOTS"
+# Live view (Cameras page): the annotated frame is sent to the API a few times
+# a second for Safety Officers and Admins to watch. Never stored server-side.
+# Set SITESAFE_LIVE=0 (or pass --no-live) to keep video on the camera host.
+LIVE_ENV = "SITESAFE_LIVE"
 RULES_REFRESH_SECONDS = 60
 # Minimum gap between VEHICLE_PROXIMITY alerts. PPE alerts use per-person
 # episodes instead (ppe_episodes.py).
@@ -363,8 +368,27 @@ def with_model(payload: dict, version: str) -> dict:
     return {**payload, "model_version": version}
 
 
+def env_enabled(name: str) -> bool:
+    return os.environ.get(name, "1").strip().lower() not in ("0", "false", "no", "off")
+
+
 def snapshots_enabled_by_default() -> bool:
-    return os.environ.get(SNAPSHOTS_ENV, "1").strip().lower() not in ("0", "false", "no", "off")
+    return env_enabled(SNAPSHOTS_ENV)
+
+
+def make_live_sender(session: requests.Session, camera_id: str):
+    """Post one JPEG to /v1/camera-frames/; return the HTTP status code."""
+
+    def send(jpeg: bytes) -> int:
+        return session.post(
+            api_url("v1", "camera-frames", ""),
+            params={"camera_id": camera_id},
+            data=jpeg,
+            headers={"Content-Type": "image/jpeg"},
+            timeout=2,
+        ).status_code
+
+    return send
 
 
 def queue_event(
@@ -704,6 +728,18 @@ def parse_args() -> argparse.Namespace:
         help="Do not attach a frame snapshot to alerts (alert evidence, FR-29). "
         f"Also set by {SNAPSHOTS_ENV}=0. The model version is still sent.",
     )
+    parser.add_argument(
+        "--no-live",
+        action="store_true",
+        default=not env_enabled(LIVE_ENV),
+        help=f"Do not send the live view to the dashboard's Cameras page. Also set by {LIVE_ENV}=0.",
+    )
+    parser.add_argument(
+        "--live-fps",
+        type=float,
+        default=live_feed.DEFAULT_FPS,
+        help=f"Live view frames per second sent to the dashboard (default {live_feed.DEFAULT_FPS:g}).",
+    )
     args = parser.parse_args()
     if not 0.0 <= args.ppe_conf <= 1.0:
         parser.error("--ppe-conf must be between zero and one")
@@ -721,6 +757,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--fire-conf must be between zero and one")
     if args.fire_persistence <= 0:
         parser.error("--fire-persistence must be greater than zero")
+    if not 0.0 < args.live_fps <= 15.0:
+        parser.error("--live-fps must be greater than zero and at most 15")
     return args
 
 
@@ -754,6 +792,11 @@ def main() -> None:
     rules.start()
     outbox = open_outbox(camera_id, session)
     outbox.start()
+    live = None
+    if not args.no_live:
+        live = live_feed.LiveFeed(make_live_sender(session, camera_id), fps=args.live_fps)
+        live.start()
+        print(f"[{camera_id}] live view to the dashboard at up to {args.live_fps:g} FPS")
     pending = outbox.stats()["pending"]
     if pending:
         print(f"[{camera_id}] resuming delivery of {pending} queued event(s)")
@@ -970,6 +1013,8 @@ def main() -> None:
                 )
                 draw_fps(frame, fps_smooth)
                 cv2.imshow(window_title, frame)
+                if live is not None:
+                    live.offer(frame)
                 continue
 
             # Keep detector inputs free of visual overlays.  ``plot_detections``
@@ -1129,10 +1174,14 @@ def main() -> None:
                     print(f"[ALERT] {fire_detection.describe(event)} → queued")
 
             cv2.imshow(window_title, display_frame)
+            if live is not None:
+                live.offer(display_frame)
     finally:
         cap.release()
         cv2.destroyAllWindows()
         rules.stop()
+        if live is not None:
+            live.stop()
         outbox.stop()
         delivery = outbox.stats()
         outbox.close()
@@ -1151,6 +1200,8 @@ def main() -> None:
             print(f"  Evicted (queue full):   {delivery['evicted']}")
         if delivery["last_error"]:
             print(f"  Last delivery error:    {delivery['last_error']}")
+        if live is not None:
+            print(f"  Live frames sent:       {live.sent} ({live.failed} failed)")
         print(f"  Session duration:       {duration:.1f}s")
 
 

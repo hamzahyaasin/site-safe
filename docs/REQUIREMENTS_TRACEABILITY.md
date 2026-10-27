@@ -48,6 +48,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-27 | Incident and safety-performance reports in DOCX and PDF | M | Fixtures reconcile exactly; PDF produced; no unsupported percentages; period in the user's time zone | `report-service/lib/*`, `templates/*`, `backend/reports/` | `report-service/test` (12); `reports/tests.py` (6); e2e 16 Oct (both types, both formats via API → service; PDF inspected) | Integrated |
 | FR-28 | Mobile app: login, alerts, resolve, worker status, push | M | Android build receives a push and resolves an incident visible on web | `mobile/` (Expo SDK 58) | `mobile/__tests__` (13); web build checked 16 Oct: sign-in, live alert arrival, detail, resolve, resolve from another session removed live, workers presence, sign-out | Integrated on web target (**device + push pending**) |
 | FR-29 | Alert evidence (snapshot, confidence, model version) | S | Each AI incident is traceable to its frame and model | `ai-module/evidence.py` (model id = weights name + SHA-256 prefix; JPEG of the raw frame ≤ 640 px), snapshot BLOB in `event_outbox.py`, `--no-snapshots` / `SITESAFE_SNAPSHOTS`; `Alert.model_version` (migration alerts 0012), `decode_snapshot` + `CameraEventView` (base64 JPEG ≤ 512 KB, stored once per `event_id`), `/api/alerts/{id}/snapshot/`, `ALERT_SNAPSHOTS_ENABLED`, `purge_alert_snapshots`; `AlertSnapshot.jsx`, `mobile/components/AlertSnapshot.tsx` | `alerts/test_evidence.py` (19), `test_evidence.py` (8), `test_event_outbox.py` snapshot cases (3), `mobile/__tests__/api.test.ts` image fetch (3); e2e 20 Oct on a throwaway database: synthetic frame → outbox → API (201, one 11 KB file), replay of the same `event_id` → 200 and no second file; frame, confidence and model version shown to a Viewer on web and on the mobile web build; `purge_alert_snapshots --days 0` removed the file and kept the alert | Integrated (**synthetic frame; not yet from a live camera run**) |
+| FR-30 | Live camera grid for monitoring (all cameras, including a test webcam) | S | Every running camera appears live within seconds to Safety Officers and Admins, configured cameras that are not running show as offline, and Viewers cannot see video | `ai-module/live_feed.py`, `--no-live` / `SITESAFE_LIVE`, `--live-fps`; `alerts/live.py`, `CameraFrameView` (`/api/v1/camera-frames/`), `CameraListView` (`/api/v1/cameras/`), `CameraFeedConsumer` (`/ws/cameras/`), `LIVE_VIEW_ENABLED`; `pages/CamerasPage.jsx`, `hooks/useCameraFeed.js` | `test_live_feed.py` (7), `alerts/test_live.py` (11); e2e 27 Oct on a throwaway database: real pipeline (all detectors) on a test video as CAM-01 plus synthetic test frames as WEBCAM-TEST, both live in the grid at 5.0 frames/s in the browser with detections drawn; CAM-GATE (zone, not running) offline; enlarged view; pipeline 17.6 FPS while streaming; Viewer had no Cameras tab and saw the role notice | Integrated (**test video and synthetic frames; no physical camera or second machine yet**) |
 
 ## Non-functional requirements
 
@@ -382,4 +383,29 @@ Human inputs still needed: confirm D-Fire's licence and cite it; record or colle
   hard negatives to evaluate alerts; report V8 Chapters 4-6 still describe fire as untrained
 Not included: the 22 Oct 2 h soak result in tools/measure/results/ (soak_20261022T144721Z.json, PASS) was run
   with uncommitted soak.py changes in the main checkout; its tables and NFR-05 status are left to that work
+```
+
+```text
+Phase / task IDs: FR-30 live camera grid (new requirement, requested 27 Oct)
+Status: Integrated on a throwaway database with a test video and synthetic frames
+Decisions (user, 27 Oct): Safety Officers and Admins only; the feed shows the annotated view (detections drawn)
+Design: each camera running inference.py sends its display frame as a 640 px JPEG (q70) at up to 5 FPS from a
+  background thread (live_feed.LiveFeed: newest frame wins, never queued, 5 s backoff on errors, no outbox).
+  POST /api/v1/camera-frames/ (camera token, image/jpeg <= 256 KB, header-checked JPEG <= 1920 px, server
+  limit 15 FPS -> 202 dropped) keeps the latest frame per camera in the cache for 30 s (Redis when REDIS_URL
+  is set) and relays it to /ws/cameras/ (JWT; Viewer 4403, anonymous 4401); nothing is stored on disk.
+  GET /api/v1/cameras/ lists zone cameras, camera-token cameras and cameras seen live (offline after 5 s).
+  Web: Cameras tab (hidden for Viewers), responsive grid, click to enlarge, Esc to close
+Switches: --no-live / SITESAFE_LIVE=0 on a camera; LIVE_VIEW_ENABLED=False on the server
+Tests (27 Oct 2026): ai-module 93 OK (7 new); backend 194 OK on SQLite and PostgreSQL (11 new); frontend lint
+  clean, build OK
+E2E: inference.py with all detectors (fire included) on a 40 s test video built from PPE test images, display
+  stubbed, as CAM-01, 5 runs: 400 frames each, 123-145 live frames sent per run, 0 failed, 7 alerts queued per
+  run, 0 rejected; synthetic labelled test frames as WEBCAM-TEST; browser as Safety Officer: both tiles live at
+  5.0 frames/s, CAM-GATE (zone camera, not running) offline; enlarged view shows boxes and banner; pipeline
+  17.6 FPS while streaming. As Viewer: no Cameras tab, role notice at /cameras, no frames fetched
+Known limitations: every frame goes through the API process (about 5 x 30-60 KB/s per camera per viewer), fine
+  for a few cameras on a LAN, not a replacement for an NVR; no recording or playback; the main checkout has
+  uncommitted inference.py changes (video source, --no-display) that will need merging with this change
+Human inputs still needed: run with the real webcam and, ideally, a second machine as a camera
 ```

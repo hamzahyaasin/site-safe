@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import LoginPage from './components/auth/LoginPage.jsx'
 import DashboardLayout from './components/layout/DashboardLayout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import CamerasPage from './pages/CamerasPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import IncidentsPage from './pages/IncidentsPage.jsx'
 import ReportsPage from './pages/ReportsPage.jsx'
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/incidents" element={<IncidentsPage />} />
           <Route path="/alerts" element={<Navigate to="/incidents" replace />} />
           <Route path="/vests" element={<VestManagementPage />} />
+          <Route path="/cameras" element={<CamerasPage />} />
           <Route path="/zones" element={<ZonesPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

@@ -15,6 +15,7 @@ const NAV_SECTIONS = [
       { to: '/workers', label: 'Workers', icon: IconUsers },
       { to: '/incidents', label: 'Incidents', icon: IconAlertTriangle, badgeKey: 'incidents' },
       { to: '/vests', label: 'Vest Management', icon: IconVest },
+      { to: '/cameras', label: 'Cameras', icon: IconCamera, operatorsOnly: true },
     ],
   },
   {
@@ -43,7 +44,7 @@ function navLinkClass({ isActive }, disabled) {
 }
 
 export default function Sidebar({ collapsed, onToggle, unresolvedCount = 0 }) {
-  const { userEmail, logout } = useAuth()
+  const { userEmail, logout, canOperate } = useAuth()
   const { status } = useWebSocket()
 
   const statusLabel =
@@ -97,7 +98,7 @@ export default function Sidebar({ collapsed, onToggle, unresolvedCount = 0 }) {
               </p>
             ) : null}
             <ul className="space-y-0.5">
-              {section.items.map((item) => (
+              {section.items.filter((item) => !item.operatorsOnly || canOperate).map((item) => (
                 <li key={item.to}>
                   {item.disabled ? (
                     <span className={navLinkClass({ isActive: false }, true)}>
@@ -216,6 +217,15 @@ function IconVest({ className }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 2l3 4h4l-1 14H6L5 6h4l3-4z" />
+    </svg>
+  )
+}
+
+function IconCamera({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M23 7l-7 5 7 5V7z" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
     </svg>
   )
 }
