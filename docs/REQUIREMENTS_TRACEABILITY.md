@@ -21,13 +21,13 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 |---|---|---|---|---|---|---|
 | FR-01 | Users sign in with email and password; sessions renew without re-login | M | Valid login gets tokens. Expired access token renews silently. Revoked/invalid refresh token returns to login. | `accounts/`, `frontend/src/api/axios.js` | `accounts/tests.py`; browser check 16 Oct (corrupted token → refresh → retried requests 200) | Integrated |
 | FR-02 | Three roles (Admin, Safety Officer, Viewer) enforced by the API | M | Every forbidden role action returns 403; each permitted counterpart succeeds | `accounts/permissions.py` | `accounts/tests.py` (16) | Tested |
-| FR-03 | UI offers only actions the user's role permits | S | Viewer sees no resolve/edit/generate controls | `AuthContext.jsx` (`canOperate`, `isAdmin`) across Dashboard, Incidents, Workers, Vests, Zones, Settings, Reports | Browser check 16 Oct (officer: zones read-only; admin: zone editor) | Integrated (viewer path not browser-checked) |
+| FR-03 | UI offers only actions the user's role permits | S | Viewer sees no resolve/edit/generate controls | `AuthContext.jsx` (`canOperate`, `isAdmin`) across Dashboard, Incidents, Workers, Vests, Zones, Settings, Reports | Browser check 16 Oct (officer: zones read-only; admin: zone editor); Viewer browser check 26 Oct on every page: no resolve, register, edit, generate, permit or rule controls (Alert Configuration read-only, vest assignment disabled, Reports shows a role notice); only own notification preferences and password are editable; API refused the Viewer's resolve and report generation with 403; same pages as Safety Officer show Resolve, Generate Report, Register worker/vest, Edit and Issue permit | Integrated |
 | FR-04 | Detect missing PPE (10 classes) from a camera | M | Event precision ≥90% and episode recall ≥85% per retained class, on a sealed target-camera set | `ai-module/inference.py`, `models/sitesafe_v5.pt` | Held-out mAP50 0.562 on a leaky split (not a valid claim) | Coded |
 | FR-05 | One alert per person per violation episode | M | Two people with the same violation give two alerts; a single-frame flicker gives none | `ai-module/ppe_episodes.py`, `badged_violations` + episode loop in `inference.py`, `--ppe-persistence`, `--ppe-clear-seconds` | `test_ppe_episodes.py` (25); headless pipeline run on a still-image clip: the dataset labels 2 people without helmets and 1 without gloves; 20 Oct (before the duplicate merge) it gave 3 helmet alerts, misread at the time as 3 people (one was a duplicate box, IoU 0.68); 22 Oct with `tools/measure/evaluate_clip.py`: 2 of 2 helmet episodes, gloves missed, 1 goggles alert not in the labels; live webcam run 21 Oct (55 s, one person) found duplicate-box episodes → fixed, replay of its recorded boxes gives one alert per item | Tested (**no annotated video scored yet**) |
 | FR-06 | Detect falls from camera pose | M | Positive and hard-negative videos meet the AI event targets | `ai-module/fall_detection.py` | `alerts/test_fall.py` (21) | Tested |
 | FR-07 | Warn when a worker is too close to a vehicle | M | Calibrated distance threshold; video evaluation | `ai-module/proximity.py` | `alerts/test_proximity.py` (9) | Tested |
 | FR-08 | Detect prolonged inactivity; timeout configurable from the dashboard | M | Changing the INACTIVITY rule changes the camera timeout within 60 s | `ai-module/inactivity.py`, `CameraRules` | `alerts/test_inactivity.py` (10), `test_inference_config.py` | Tested |
-| FR-09 | Fire/smoke detection with hot-work permit suppression | M | Licensed fixture videos pass; a permitted hot-work fire is downgraded, not dropped | `ai-module/fire_detection.py`, `ai-module/fire/` (prep script, Colab notebook), `alerts/fire_policy.py`, `sitemap.HotWorkPermit`, `components/zones/HotWorkPermits.jsx` | `test_fire_detection.py` (8), `fire/test_prepare_fire_dataset.py` (4), `sitemap/tests.py` permit + policy (8); e2e 20 Oct: permit issued in UI → fire in permitted zone MEDIUM + linked, elsewhere CRITICAL | Integrated (**model not yet trained; no video evaluation**) |
+| FR-09 | Fire/smoke detection with hot-work permit suppression | M | Licensed fixture videos pass; a permitted hot-work fire is downgraded, not dropped | `ai-module/fire_detection.py`, `ai-module/fire/` (prep script, Colab and Kaggle notebooks), `models/fire_smoke.pt` (YOLO11s, D-Fire, sha256 `4bdbf702…2e38d10`; evidence in `models/fire_smoke_v1_export/`), `alerts/fire_policy.py`, `sitemap.HotWorkPermit`, `components/zones/HotWorkPermits.jsx` | `test_fire_detection.py` (8), `fire/test_prepare_fire_dataset.py` (4), `sitemap/tests.py` permit + policy (8); e2e 20 Oct: permit issued in UI → fire in permitted zone MEDIUM + linked, elsewhere CRITICAL; model trained 26–27 Oct on Kaggle (T4, 96 epochs, early stop, best epoch 76); held-out test (4,294 images, never used for training or selection): P 0.775, R 0.720, mAP50 0.787, mAP50-95 0.459 (fire R 0.651 / mAP50 0.726; smoke R 0.789 / mAP50 0.848), reproduced on the Mac to 3 decimals; real detections through `FireTracker` on still images: fire image → 1 FIRE + 1 SMOKE alert after 2 s, negative image → none | Integrated (**model trained; image-level metrics only, no video or hard-negative alert evaluation**) |
 | FR-10 | QR worker identification linking camera events to a worker | M | Correct-association, unknown and wrong-person rates measured at a stated size, distance, angle and lighting | `ai-module/identity.py`, `group_violations` in `inference.py`, `Worker.badge_code`, `/workers/{id}/badge/`, `frontend/src/lib/badge.js` | `test_identity.py` (14, including real OpenCV QR encode→decode); `workers/tests.py` Badge/CameraBadgeIdentity (7); e2e 16 Oct (synthetic frame: badge decoded → alert attributed to Ali; second person unidentified) | Integrated (synthetic frames only; **physical camera test pending**) |
 | FR-11 | Camera events reach the API reliably | M | 100 events queued in a 5-minute outage arrive exactly once after recovery | `ai-module/event_outbox.py`, `CameraEventView` | `test_event_outbox.py` (8), `alerts/test_ingest.py`; e2e 16 Oct (3 queued while API down → 2 stored, 1 dead-lettered for wrong camera) | Integrated (small fixture) |
 | FR-12 | Only authorised devices can submit data | M | Anonymous, revoked, wrong-kind or wrong-camera tokens are rejected | `accounts/service_auth.py` | `alerts/test_ingest.py` | Tested |
@@ -43,11 +43,12 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-22 | Vest telemetry is validated | M | Out-of-range latitude/longitude, a lone coordinate, or battery outside 0–100 returns 400 | `VestTelemetrySerializer` | `alerts/test_ingest.py` | Tested |
 | FR-23 | Vest offline detection | S | No report within `VEST_OFFLINE_AFTER_SECONDS` shows the vest offline | `workers/presence.py`, `run_presence_monitor` | `workers/tests.py` PresenceTests (4); browser check (occupancy dropped to 0 after timeout) | Integrated |
 | FR-24 | Worker activity history (check-in/out, idle, zone transitions) | M | Generated automatically and reconciled with annotated scenarios | `workers/activity.py`, `workers/timeline.py`, camera `SightingThrottle` + idle events, `WorkerTimeline.jsx`, report attendance tables | `workers/test_activity.py` (18), `test_activity_events.py` (5), report-service attendance tests; e2e 20 Oct: camera sightings + idle → 60 min on site, 20 min idle, auto check-out at last sighting; vest session open; timeline and PDF agree | Integrated (**no annotated real-camera scenario yet**) |
-| FR-25 | Incident list, detail, resolve, CSV export | M | Resolve is broadcast; filters include every type | `frontend/src/components/incidents/` | FALL filter added 16 Oct; resolve broadcast covered by FR-13 | Coded |
+| FR-25 | Incident list, detail, resolve, CSV export | M | Resolve is broadcast; filters include every type | `frontend/src/components/incidents/` | Browser check 26 Oct on a throwaway database with one alert of every type (9 alerts): each of the 8 type filters and 4 severity filters returned exactly the seeded rows; vest search found the 2 vest alerts; row detail shows zone, source and description; an officer's resolve (API) appeared as RESOLVED in the Viewer's open list within 1.5 s without reload; resolve from the UI as Safety Officer; CSV export follows the active filter (FIRE → 1 row; all → header + 9 rows), captured in the page, not downloaded | Integrated (at a 1024 px window the table is wider than its area, so Status and Resolve need a sideways scroll) |
 | FR-26 | Dashboard KPIs and charts reflect recorded data only | M | Every displayed number reconciles to the API; nothing fabricated | `DashboardStatsView`, `KpiStrip.jsx`, `DashboardCharts.jsx`, `WorkerStatusGrid.jsx` | `workers/tests.py` DashboardStatsTests (3); browser check 16 Oct | Integrated |
 | FR-27 | Incident and safety-performance reports in DOCX and PDF | M | Fixtures reconcile exactly; PDF produced; no unsupported percentages; period in the user's time zone | `report-service/lib/*`, `templates/*`, `backend/reports/` | `report-service/test` (12); `reports/tests.py` (6); e2e 16 Oct (both types, both formats via API → service; PDF inspected) | Integrated |
 | FR-28 | Mobile app: login, alerts, resolve, worker status, push | M | Android build receives a push and resolves an incident visible on web | `mobile/` (Expo SDK 58) | `mobile/__tests__` (13); web build checked 16 Oct: sign-in, live alert arrival, detail, resolve, resolve from another session removed live, workers presence, sign-out | Integrated on web target (**device + push pending**) |
 | FR-29 | Alert evidence (snapshot, confidence, model version) | S | Each AI incident is traceable to its frame and model | `ai-module/evidence.py` (model id = weights name + SHA-256 prefix; JPEG of the raw frame ≤ 640 px), snapshot BLOB in `event_outbox.py`, `--no-snapshots` / `SITESAFE_SNAPSHOTS`; `Alert.model_version` (migration alerts 0012), `decode_snapshot` + `CameraEventView` (base64 JPEG ≤ 512 KB, stored once per `event_id`), `/api/alerts/{id}/snapshot/`, `ALERT_SNAPSHOTS_ENABLED`, `purge_alert_snapshots`; `AlertSnapshot.jsx`, `mobile/components/AlertSnapshot.tsx` | `alerts/test_evidence.py` (19), `test_evidence.py` (8), `test_event_outbox.py` snapshot cases (3), `mobile/__tests__/api.test.ts` image fetch (3); e2e 20 Oct on a throwaway database: synthetic frame → outbox → API (201, one 11 KB file), replay of the same `event_id` → 200 and no second file; frame, confidence and model version shown to a Viewer on web and on the mobile web build; `purge_alert_snapshots --days 0` removed the file and kept the alert | Integrated (**synthetic frame; not yet from a live camera run**) |
+| FR-30 | Live camera grid for monitoring (all cameras, including a test webcam) | S | Every running camera appears live within seconds to Safety Officers and Admins, configured cameras that are not running show as offline, and Viewers cannot see video | `ai-module/live_feed.py`, `--no-live` / `SITESAFE_LIVE`, `--live-fps`; `alerts/live.py`, `CameraFrameView` (`/api/v1/camera-frames/`), `CameraListView` (`/api/v1/cameras/`), `CameraFeedConsumer` (`/ws/cameras/`), `LIVE_VIEW_ENABLED`; `pages/CamerasPage.jsx`, `hooks/useCameraFeed.js` | `test_live_feed.py` (7), `alerts/test_live.py` (11); e2e 27 Oct on a throwaway database: real pipeline (all detectors) on a test video as CAM-01 plus synthetic test frames as WEBCAM-TEST, both live in the grid at 5.0 frames/s in the browser with detections drawn; CAM-GATE (zone, not running) offline; enlarged view; pipeline 17.6 FPS while streaming; Viewer had no Cameras tab and saw the role notice | Integrated (**test video and synthetic frames; no physical camera or second machine yet**) |
 
 ## Non-functional requirements
 
@@ -56,7 +57,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-01 | Event-to-dashboard latency | p95 ≤ 2 s from commit on a local network | `tools/measure/latency.py`, 20 Oct: 100/100 delivered, p50 32 ms, p95 42 ms (PostgreSQL, single host) | **Met** (local host; LAN not yet measured) |
 | NFR-02 | Outage tolerance | No lost or duplicated events across a 5-minute API outage and sender restart | `tools/measure/recovery.py`: first run 60.3 s (FAIL, 60 s ceiling) → ceiling lowered to 30 s → 30.0 s and 30.2 s, 100/100 stored once, 0 lost, 0 duplicated | **Met** |
 | NFR-03 | Security of producers | No anonymous write endpoints; no credentials in source | `alerts/test_ingest.py`, `test_inference_config.py` | Tested |
-| NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. Fire model not yet included | **Met on mps** (re-measure once fire weights exist) |
+| NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. With the fire model (27 Oct, commit `fae1367`, clean tree): mps 15.8 and 16.1 FPS, cpu 10.4 and 10.2 FPS; fire stage p50 18 ms (mps) every 5th frame | **Met on mps with all detectors** (cpu marginal) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
 | NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 183, ai-module 76, report-service 13, mobile 16, tools 16 pass (20 Oct); build OK; lint clean | Met |
@@ -332,4 +333,79 @@ Change: same-class boxes also merge when one centre lies inside the other and Io
   (DEFAULT_NESTED_IOU); 3 new tests from the recorded boxes (head pattern: 2 alerts -> 1; edge person
   still separate; side-by-side heads stay separate)
 Tests (21 Oct 2026): ai-module 86 OK; total 318
+```
+
+```text
+Phase / task IDs: FR-03 viewer path, FR-25 incident log
+Status: both Integrated; browser checks on a throwaway SQLite database (worktree at stage tip d1bb33f),
+  dev database untouched
+Fixture: admin, safety officer and viewer test accounts; 1 zone, 1 worker with a vest; 9 simulated alerts,
+  one per type plus a resolved FALL
+FR-03 (Viewer, every page): no resolve, register, edit, generate, permit or alert-rule controls; Alert
+  Configuration read-only; vest assignment disabled; Reports shows the role notice; Zones labelled
+  read-only; own notification preferences and password remain editable by design; API: Viewer resolve 403,
+  report generation 403. As Safety Officer the same pages show Resolve, Generate Report, Register
+  worker/vest, Edit and Issue permit (zone editing stays Admin-only)
+FR-25: 8 type and 4 severity filters each matched the seeded rows exactly (no LOW alert seeded); vest
+  search; row detail; resolve broadcast to the Viewer's open list in < 1.5 s without reload; UI resolve
+  as Safety Officer (open badge 7 -> 6); CSV export respects filters (captured in the page)
+Known limitation: at a 1024 px window the incident table (875 px) overflows its 734 px area, so Status
+  and Resolve need a sideways scroll
+Not done: report V8 Tables 5.2 and 6.1 still show the older FR-03/FR-25 wording; update them after the
+  report branch (claude/competent-moore-5fa363) is merged
+```
+
+```text
+Phase / task IDs: FR-09 fire/smoke model; NFR-04 re-measure with fire
+Status: model trained and installed; FR-09 stays Integrated, now with a trained model (image-level metrics only)
+Training: ai-module/fire/train_fire_smoke_kaggle.ipynb (same recipe as the Colab notebook: YOLO11s from yolo11s.pt,
+  640 px, batch 16, AdamW lr 0.001, seed 42, deterministic, patience 20; workers 4). Ran unattended as Kaggle
+  version v1, Tesla T4, 26-27 Oct: 96 epochs in 7.0 h (early stop; best epoch 76), time guard (10 h) not
+  triggered. Split identical to the 22 Oct local and Colab runs (15,469 / 1,738 / 4,294 images, 26 skipped for
+  invalid labels). Earlier attempts: local mps run 22 Oct stopped in epoch 1 (process ended); Colab free tier
+  disconnected around epoch 46 (no checkpoint saved); neither produced weights.
+Notebook fixes found by local dry runs and the first Kaggle attempt: Path.rglob does not follow Kaggle's
+  symlinked inputs on Python < 3.13 (now os.walk followlinks); copied images kept read-only mode so truncated
+  JPEGs were dropped instead of repaired; reading ~43k files serially from Kaggle's input storage was too slow
+  (now a parallel copy to local disk first)
+Model: models/fire_smoke.pt, sha256 4bdbf70218da49dac240720a4c9928f2853b954262d2a4ef12c3b0eee2e38d10;
+  models/fire_smoke_v1_export/ holds args.yaml, results.csv, dataset manifest, run manifest, held-out metrics.
+  The 22 Oct aborted local run's manifest was kept as models/fire_smoke_v1_local_aborted_export/
+Held-out test (once): P 0.775, R 0.720, mAP50 0.787, mAP50-95 0.459; fire P 0.720 R 0.651 mAP50 0.726;
+  smoke P 0.831 R 0.789 mAP50 0.848. Re-evaluated on the Mac (mps): identical to 3 decimals
+Alert path: real detections through FireTracker at the pipeline's sampling (every 5th frame at 30 FPS) on
+  still images: fire image -> FIRE CRITICAL and SMOKE HIGH once each after 2.0 s; negative image -> none
+NFR-04 (27 Oct, all detectors incl. fire, 1280x720, 517 PPE test images): mps 15.8 / 16.1 FPS, cpu 10.4 /
+  10.2 FPS; docs/evidence/CHAPTER5_MEASUREMENTS.md regenerated (throughput section only)
+Known limitations: fire recall 0.651 at image level; D-Fire is not construction footage; no video, hard-negative
+  (sunset, orange vest, welding sparks, dust) or alert-level evaluation yet
+Human inputs still needed: confirm D-Fire's licence and cite it; record or collect licensed clips including
+  hard negatives to evaluate alerts; report V8 Chapters 4-6 still describe fire as untrained
+Not included: the 22 Oct 2 h soak result in tools/measure/results/ (soak_20261022T144721Z.json, PASS) was run
+  with uncommitted soak.py changes in the main checkout; its tables and NFR-05 status are left to that work
+```
+
+```text
+Phase / task IDs: FR-30 live camera grid (new requirement, requested 27 Oct)
+Status: Integrated on a throwaway database with a test video and synthetic frames
+Decisions (user, 27 Oct): Safety Officers and Admins only; the feed shows the annotated view (detections drawn)
+Design: each camera running inference.py sends its display frame as a 640 px JPEG (q70) at up to 5 FPS from a
+  background thread (live_feed.LiveFeed: newest frame wins, never queued, 5 s backoff on errors, no outbox).
+  POST /api/v1/camera-frames/ (camera token, image/jpeg <= 256 KB, header-checked JPEG <= 1920 px, server
+  limit 15 FPS -> 202 dropped) keeps the latest frame per camera in the cache for 30 s (Redis when REDIS_URL
+  is set) and relays it to /ws/cameras/ (JWT; Viewer 4403, anonymous 4401); nothing is stored on disk.
+  GET /api/v1/cameras/ lists zone cameras, camera-token cameras and cameras seen live (offline after 5 s).
+  Web: Cameras tab (hidden for Viewers), responsive grid, click to enlarge, Esc to close
+Switches: --no-live / SITESAFE_LIVE=0 on a camera; LIVE_VIEW_ENABLED=False on the server
+Tests (27 Oct 2026): ai-module 93 OK (7 new); backend 194 OK on SQLite and PostgreSQL (11 new); frontend lint
+  clean, build OK
+E2E: inference.py with all detectors (fire included) on a 40 s test video built from PPE test images, display
+  stubbed, as CAM-01, 5 runs: 400 frames each, 123-145 live frames sent per run, 0 failed, 7 alerts queued per
+  run, 0 rejected; synthetic labelled test frames as WEBCAM-TEST; browser as Safety Officer: both tiles live at
+  5.0 frames/s, CAM-GATE (zone camera, not running) offline; enlarged view shows boxes and banner; pipeline
+  17.6 FPS while streaming. As Viewer: no Cameras tab, role notice at /cameras, no frames fetched
+Known limitations: every frame goes through the API process (about 5 x 30-60 KB/s per camera per viewer), fine
+  for a few cameras on a LAN, not a replacement for an NVR; no recording or playback; the main checkout has
+  uncommitted inference.py changes (video source, --no-display) that will need merging with this change
+Human inputs still needed: run with the real webcam and, ideally, a second machine as a camera
 ```

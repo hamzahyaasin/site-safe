@@ -146,7 +146,7 @@ def run_pipeline(video: Path, events_out: Path, extra: list[str]) -> int:
         )
         python = AI / ".venv" / "bin" / "python"
         cmd = [str(python if python.exists() else sys.executable), "-u", "inference.py",
-               "--source", str(video), "--camera-id", "EVAL", "--video-clock", "--no-display",
+               "--source", str(video), "--camera-id", "EVAL", "--video-clock", "--no-display", "--no-live",
                "--events-out", str(events_out), *extra]
         return subprocess.run(cmd, cwd=AI, env=env).returncode
 

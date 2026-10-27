@@ -154,7 +154,7 @@ Camera events carry the time they happened, so the outbox can deliver them late 
 
 ### Fire and smoke detection, hot-work permits
 
-The camera pipeline runs a fire/smoke detector when `ai-module/models/fire_smoke.pt` exists. Train it with `ai-module/fire/train_fire_smoke_colab.ipynb` on a dataset you are licensed to use. Prepare the dataset with `ai-module/fire/prepare_fire_dataset.py`, which remaps classes, keeps clip frames in one split, keeps negatives, and leaves out images with broken labels. An alert needs fire or smoke to persist for 2 s (`--fire-persistence`). Afterwards the camera stays quiet until the scene has been clear for 30 s.
+The camera pipeline runs a fire/smoke detector when `ai-module/models/fire_smoke.pt` exists. Train it with `ai-module/fire/train_fire_smoke_colab.ipynb`, or with `ai-module/fire/train_fire_smoke_kaggle.ipynb`, which runs unattended as a Kaggle *Save & Run All* version and stops before the 12-hour session limit, on a dataset you are licensed to use. The current weights (D-Fire, YOLO11s) and their held-out metrics are in `ai-module/models/fire_smoke_v1_export/`. If your copy of D-Fire is the Parquet mirror (for example on Hugging Face), convert it first with `python fire/unpack_parquet_dataset.py --parquet <folder> --out fire/datasets/D-Fire --classes smoke,fire`. To train on this machine instead, run `python fire/train_fire_local.py --data fire/datasets/fire_v1/data.yaml --hours 9 --install`, which uses the same recipe and writes the same export folder. Prepare the dataset with `ai-module/fire/prepare_fire_dataset.py`, which remaps classes, keeps clip frames in one split, keeps negatives, and leaves out images with broken labels. An alert needs fire or smoke to persist for 2 s (`--fire-persistence`). Afterwards the camera stays quiet until the scene has been clear for 30 s.
 
 The server sets the severity:
 
@@ -181,6 +181,12 @@ Privacy controls:
 
 - **Turn snapshots off.** Do it at the camera with `--no-snapshots` or `SITESAFE_SNAPSHOTS=0`, and the image never leaves the host. Do it at the server with `ALERT_SNAPSHOTS_ENABLED=False`, and incoming images are discarded. Either way, the confidence and model version are still recorded.
 - **Retention.** `python manage.py purge_alert_snapshots` deletes images older than `ALERT_SNAPSHOT_RETENTION_DAYS` (default 30). It keeps the alerts themselves. Add `--days N` to override the period, or `--dry-run` to only count. Schedule it daily, for example with cron: `0 3 * * * cd /app && python manage.py purge_alert_snapshots`. Deleting an alert also deletes its image.
+
+### Live camera view
+
+The **Cameras** page (Safety Officers and Admins only) shows a live grid of every camera: those assigned to a zone, those named by a camera token, and any camera currently sending, including a test webcam. Each camera running `inference.py` sends its annotated view (boxes, status banner) as a 640 px JPEG up to 5 times a second (`--live-fps`). It sends from a background thread, so detection never waits, and it drops old frames rather than queueing them. The API relays frames over `/ws/cameras/` and keeps only the latest frame per camera, in memory for 30 s. Live frames are never written to disk and never go through the outbox. A camera with no frame for 5 s shows as offline. Click a tile to enlarge it.
+
+Turn it off on a camera with `--no-live` or `SITESAFE_LIVE=0`, or for the whole server with `LIVE_VIEW_ENABLED=False`. When the API runs as several processes, set `REDIS_URL`, which shares the latest frames through Redis.
 
 ### Report service
 
@@ -215,6 +221,8 @@ Copy `backend/.env.example` to `backend/.env`:
 | `ALERT_SNAPSHOTS_ENABLED` | Store camera snapshots sent with alerts | `True` |
 | `ALERT_SNAPSHOT_RETENTION_DAYS` | Age after which `purge_alert_snapshots` deletes snapshots | `30` |
 | `ALERT_SNAPSHOT_MAX_BYTES` | Largest snapshot accepted, in bytes | `524288` |
+| `LIVE_VIEW_ENABLED` | Relay camera live views to the Cameras page | `True` |
+| `MEDIA_ROOT` | Where uploaded files (alert snapshots) are stored | `backend/media` |
 
 ---
 
@@ -331,6 +339,9 @@ python test_model.py
    - `SITESAFE_CAMERA_SOURCE` / `SITESAFE_CAMERA_ID` — or `--source` / `--camera-id`
    - `--ppe-conf` — runtime PPE candidate threshold (default `0.15`; calibrate on a clean validation set)
    - `SITESAFE_SNAPSHOTS=0` or `--no-snapshots` — send alerts without a frame snapshot (see *Alert evidence*)
+   - `SITESAFE_LIVE=0` or `--no-live` — do not send the live view to the Cameras page; `--live-fps` sets its rate (default 5)
+   - `--source clip.mp4 --loop` — play a recorded video as a camera, rewinding at the end (demonstrations, long tests)
+   - `--no-display` — run without the preview window (stop with Ctrl+C; the summary still prints)
 3. Make sure the backend is running, then:
 
 ```bash
@@ -426,6 +437,15 @@ python tools/measure/soak.py --hours 2                                # run with
 python tools/measure/make_tables.py --out docs/evidence/CHAPTER5_MEASUREMENTS.md
 ```
 
+If a second copy of the stack runs on the same machine, give `soak.py` the processes to watch: `--pids api=1234,camera=5678,presence_monitor=91011`.
+
+**Scoring detection on a recorded clip.** `tools/measure/evaluate_clip.py` runs the full pipeline on a video, headless and offline, timing every tracker by the video's own clock (`--video-clock`). It then scores the alerts against a CSV of the true episodes: detections, misses, duplicates, false alerts and delay per event type. Copy `tools/measure/clip_annotations_template.csv`, write one row per true episode (event, start and end in seconds, badge if worn), then run:
+
+```bash
+python tools/measure/evaluate_clip.py --video clip.mp4 --annotations clip.csv
+python tools/measure/evaluate_clip.py --events events.jsonl --annotations clip.csv   # re-score a saved run
+```
+
 Run them on the demo machine with the configuration you will present. Prefer a separate database: measurement traffic is labelled SIMULATED, but it still creates alerts and notifications. The recovery test simulates the outage with a local proxy, so the API keeps running. The FPS figure covers detection only; the camera's real frame rate is at most that.
 
 ## API overview
@@ -445,6 +465,9 @@ Run them on the demo machine with the configuration you will present. Prefer a s
 | `GET/POST` | `/api/workers/{id}/badge/` | Safety Officer | Badge payload to print / reissue (revokes the old one) |
 | `POST` | `/api/v1/reports/generate/` | Safety Officer | `report_type`, `date_from`, `date_to`, `file_format` (DOCX/PDF), `tz` |
 | `GET` | `/api/v1/camera-config/?camera_id=` | Camera token | Effective alert rules for a camera |
+| `POST` | `/api/v1/camera-frames/?camera_id=` | Camera token | Live-view JPEG (`image/jpeg` body, max 256 KB); relayed, not stored |
+| `GET` | `/api/v1/cameras/` | Safety Officer | Every known camera with zone and live status |
+| `WS` | `/ws/cameras/?token=<access>` | Safety Officer | Live frames: binary `camera_id`, newline, JPEG |
 | `POST` | `/api/v1/camera-activity/` | Camera token | Badge sighting / idle start / idle end with `occurred_at` |
 | `GET` | `/api/v1/activity/timeline/?worker_id=&date=&tz=` | JWT | One worker's day: sessions, idle, zone visits, totals |
 | `GET` | `/api/v1/activity/daily/?start_date=&end_date=&tz=` | JWT | Per-worker daily attendance (max 31 days) |

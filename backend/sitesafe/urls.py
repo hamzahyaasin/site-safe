@@ -12,6 +12,8 @@ from alerts.views import (
     CameraActivityView,
     CameraConfigView,
     CameraEventView,
+    CameraFrameView,
+    CameraListView,
     DashboardStatsView,
 )
 from sitemap.urls import permit_urlpatterns
@@ -31,6 +33,8 @@ urlpatterns = [
     path("api/v1/camera-events/", CameraEventView.as_view(), name="camera-events"),
     path("api/v1/camera-config/", CameraConfigView.as_view(), name="camera-config"),
     path("api/v1/camera-activity/", CameraActivityView.as_view(), name="camera-activity"),
+    path("api/v1/camera-frames/", CameraFrameView.as_view(), name="camera-frames"),
+    path("api/v1/cameras/", CameraListView.as_view(), name="cameras"),
     path("api/workers/", include("workers.urls")),
     path("api/v1/vests/", include((vest_urlpatterns, "workers"), namespace="vests")),
     path("api/v1/activity/", include((activity_urlpatterns, "workers"), namespace="activity")),

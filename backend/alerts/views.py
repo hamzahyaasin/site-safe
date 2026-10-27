@@ -7,9 +7,10 @@ from datetime import datetime, time
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.negotiation import BaseContentNegotiation
+from rest_framework.parsers import BaseParser
 from django.db import IntegrityError, transaction
 
-from accounts.permissions import IsViewer, ReadOnlyOrAdmin, ReadOnlyOrSafetyOfficer
+from accounts.permissions import IsSafetyOfficer, IsViewer, ReadOnlyOrAdmin, ReadOnlyOrSafetyOfficer
 from accounts.service_auth import IsCameraService, IsVestGateway
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -364,6 +365,66 @@ class CameraEventView(APIView):
                 raise
             return Response(AlertSerializer(existing).data, status=status.HTTP_200_OK)
         return Response(AlertSerializer(alert).data, status=status.HTTP_201_CREATED)
+
+
+class JPEGParser(BaseParser):
+    """Raw ``image/jpeg`` body, read up to one byte past the live-frame limit."""
+
+    media_type = "image/jpeg"
+
+    def parse(self, stream, media_type=None, parser_context=None):
+        from django.conf import settings
+
+        return stream.read(settings.LIVE_FRAME_MAX_BYTES + 1) if stream else b""
+
+
+class CameraFrameView(APIView):
+    """POST a camera's live-view JPEG (``?camera_id=``); relayed, never stored.
+
+    Responses: 204 relayed; 202 dropped (live view disabled on the server, or
+    the camera is sending faster than ``LIVE_MAX_FPS``); 400 invalid frame;
+    403 camera not allowed for this token.
+    """
+
+    permission_classes = [IsCameraService]
+    parser_classes = [JPEGParser]
+
+    def post(self, request, *args, **kwargs):
+        import time as _time
+
+        from django.conf import settings
+
+        from . import live
+
+        camera_id = (request.query_params.get("camera_id") or "").strip()
+        if not live.CAMERA_ID.match(camera_id):
+            return Response({"camera_id": "A camera_id of letters, digits, '.', '_' or '-' is required."}, status=400)
+        if not request.auth.allows_camera(camera_id):
+            return Response({"detail": "This device token may not report for this camera."}, status=403)
+        if not settings.LIVE_VIEW_ENABLED:
+            return Response({"status": "dropped", "reason": "Live view is disabled on this server."}, status=202)
+        try:
+            live.validate_frame(request.data)
+        except live.InvalidFrame as exc:
+            return Response({"frame": str(exc)}, status=400)
+        now = _time.time()
+        if live.too_soon(camera_id, now):
+            return Response({"status": "dropped", "reason": "Frame rate above the server limit."}, status=202)
+        live.publish(camera_id, request.data, now)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CameraListView(APIView):
+    """GET every known camera with its zone and whether its live view is current."""
+
+    permission_classes = [IsSafetyOfficer]
+
+    def get(self, request, *args, **kwargs):
+        from django.conf import settings
+
+        from . import live
+
+        return Response({"live_view_enabled": settings.LIVE_VIEW_ENABLED, "cameras": live.camera_list()})
 
 
 class CameraActivityView(APIView):
