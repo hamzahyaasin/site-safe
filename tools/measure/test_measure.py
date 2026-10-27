@@ -93,6 +93,16 @@ class TableTests(unittest.TestCase):
         self.assertIn("Not yet measured", text)
         self.assertIn("recovery, fps, soak", text)
 
+    def test_soak_pids_option(self):
+        import soak
+
+        self.assertEqual(soak.parse_pids("api=12, camera=34"), {"api": 12, "camera": 34})
+        self.assertEqual(soak.parse_pids(""), {})
+        with self.assertRaises(ValueError):
+            soak.parse_pids("browser=1")
+        with self.assertRaises(ValueError):
+            soak.parse_pids("api=x")
+
     def test_short_soak_is_not_a_pass(self):
         soak = result(
             "soak",

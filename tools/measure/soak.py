@@ -66,6 +66,29 @@ def find_processes():
     return found
 
 
+def parse_pids(text: str) -> dict[str, int]:
+    """``api=123,camera=456`` -> {"api": 123, "camera": 456}."""
+    pids = {}
+    for part in filter(None, (p.strip() for p in text.split(","))):
+        label, _, pid = part.partition("=")
+        if label not in PROCESS_PATTERNS or not pid.isdigit():
+            raise ValueError(f"expected label=pid with label in {sorted(PROCESS_PATTERNS)}, got {part!r}")
+        pids[label] = int(pid)
+    return pids
+
+
+def processes_by_pid(pids: dict[str, int]):
+    """Watch exactly these processes, for when another copy of the stack
+    is running on the same machine and command-line matching would be
+    ambiguous."""
+    import psutil
+
+    found = {label: psutil.Process(pid) for label, pid in pids.items()}
+    for p in found.values():
+        p.cpu_percent(None)
+    return found
+
+
 def growth(series):
     if len(series) < 2:
         return None
@@ -79,7 +102,7 @@ async def run(args, csv_path: Path) -> dict:
     api = args.api.rstrip("/")
     session = requests.Session()
     session.headers["Authorization"] = f"Device {args.device_key}"
-    procs = find_processes()
+    procs = processes_by_pid(args.pids) if args.pids else find_processes()
     memory = {label: [] for label in procs}
     latencies, misses, errors = [], 0, []
     reconnects, forced_reconnect_s = 0, None
@@ -193,6 +216,9 @@ def main(argv=None) -> int:
     ap.add_argument("--probe-interval", type=float, default=5.0)
     ap.add_argument("--sample-interval", type=float, default=30.0)
     ap.add_argument("--camera-id", default="MEASURE-CAM")
+    ap.add_argument("--pids", type=parse_pids, default={},
+                    help="Processes to monitor as label=pid,... (labels: " + ", ".join(PROCESS_PATTERNS) + "); "
+                    "default: find them by command line")
     args = ap.parse_args(argv)
     args.device_key = common.env_or(args.device_key, "SITESAFE_DEVICE_KEY")
     args.email = common.env_or(args.email, "SITESAFE_EMAIL")
