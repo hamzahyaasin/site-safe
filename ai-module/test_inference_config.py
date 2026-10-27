@@ -31,6 +31,63 @@ class InferenceConfigurationTests(unittest.TestCase):
             args = inference.parse_args()
         self.assertEqual(args.ppe_conf, 0.42)
 
+    def test_loop_and_no_display_flags(self):
+        with patch.object(sys, "argv", ["inference.py", "--loop", "--no-display"]):
+            args = inference.parse_args()
+        self.assertTrue(args.loop and args.no_display)
+        with patch.object(sys, "argv", ["inference.py"]):
+            args = inference.parse_args()
+        self.assertFalse(args.loop or args.no_display)
+
+    def test_only_files_on_disk_can_loop(self):
+        self.assertTrue(inference.is_file_source(__file__))
+        self.assertFalse(inference.is_file_source(0))
+        self.assertFalse(inference.is_file_source("rtsp://192.168.1.20/stream"))
+        self.assertFalse(inference.is_file_source("/no/such/clip.mp4"))
+
+    def test_event_label_reads_ppe_class_from_payload(self):
+        payload = inference.ppe_payload("no-helmet", 0.5, "CAM-01")
+        self.assertEqual(inference.event_label(payload), "no-helmet")
+        self.assertEqual(inference.event_label({"alert_type": "FALL"}), "FALL")
+        self.assertEqual(inference.event_label({"kind": "SIGHTING"}), "SIGHTING")
+
+    def test_recording_outbox_writes_time_and_forwards(self):
+        import json
+        import tempfile
+
+        class Inner:
+            def __init__(self):
+                self.queued = []
+
+            def enqueue(self, payload, snapshot=None):
+                self.queued.append(payload)
+
+            def stats(self):
+                return {"pending": len(self.queued)}
+
+            def close(self):
+                pass
+
+        inner = Inner()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = f"{tmp}/events.jsonl"
+            rec = inference.RecordingOutbox(inner, path, lambda: 12.3456)
+            rec.enqueue(inference.ppe_payload("no-vest", 0.7, "CAM-01", "SSW1:ali"))
+            self.assertEqual(rec.stats(), {"pending": 1})
+            rec.close()
+            (line,) = open(path).read().splitlines()
+        record = json.loads(line)
+        self.assertEqual((record["t"], record["event"], record["badge"]), (12.346, "no-vest", "SSW1:ali"))
+
+    def test_video_clock_needs_a_file_and_no_loop(self):
+        for argv in (["--video-clock", "--source", "0"], ["--video-clock", "--loop", "--source", __file__]):
+            with patch.object(sys, "argv", ["inference.py", *argv]):
+                with redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit):
+                        inference.parse_args()
+        with patch.object(sys, "argv", ["inference.py", "--video-clock", "--source", __file__]):
+            self.assertTrue(inference.parse_args().video_clock)
+
     def test_ppe_conf_rejects_out_of_range_value(self):
         with patch.object(sys, "argv", ["inference.py", "--ppe-conf", "1.1"]):
             with redirect_stderr(io.StringIO()):

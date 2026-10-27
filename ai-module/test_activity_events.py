@@ -48,6 +48,9 @@ class ActivityEventTests(unittest.TestCase):
     def test_wall_clock(self):
         perf = time.perf_counter()
         self.assertAlmostEqual(inference.wall_clock(perf - 10), time.time() - 10, delta=0.05)
+        # With --video-clock the pipeline's time is the clip position: an event
+        # 30 s before the current frame happened 30 s before now.
+        self.assertAlmostEqual(inference.wall_clock(12.0, 42.0), time.time() - 30, delta=0.05)
 
     def test_inactivity_reports_resumed_movement(self):
         tracker = inactivity.InactivityTracker(timeout_seconds=5, movement_threshold=10)

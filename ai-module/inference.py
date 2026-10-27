@@ -8,7 +8,10 @@ Run from ai-module/: python inference.py
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import re
+import signal
 import sys
 import time
 from pathlib import Path
@@ -165,6 +168,11 @@ def is_network_source(source: int | str) -> bool:
     return isinstance(source, str)
 
 
+def is_file_source(source: int | str) -> bool:
+    """A recorded video on disk, which ``--loop`` can rewind."""
+    return isinstance(source, str) and Path(source).is_file()
+
+
 def api_url(*parts: str) -> str:
     base = API_BASE.rstrip("/")
     return base + "/" + "/".join(parts)
@@ -238,9 +246,15 @@ def make_sender(session: requests.Session):
 SIGHTING_INTERVAL_SECONDS = 60
 
 
-def wall_clock(perf_time: float) -> float:
-    """Convert a perf_counter() timestamp from this run to Unix time."""
-    return time.time() - (time.perf_counter() - perf_time)
+def wall_clock(t: float, now: float | None = None) -> float:
+    """Unix time of pipeline time ``t``.
+
+    ``now`` is the pipeline's current time on the same clock: perf_counter()
+    when live (the default), or the clip position with --video-clock, where
+    an event's real-world time is when this run observed it.
+    """
+    now = time.perf_counter() if now is None else now
+    return time.time() - (now - t)
 
 
 def activity_payload(kind: str, badge: str, camera_id: str, unix_time: float) -> dict:
@@ -268,6 +282,52 @@ class SightingThrottle:
             self.last[badge] = now
             return True
         return False
+
+
+PPE_CLASS_IN_DESCRIPTION = re.compile(r"^Missing PPE: (\S+)")
+
+
+def event_label(payload: dict) -> str:
+    """What an event reports: the missing item for PPE, else its alert type or activity kind."""
+    if payload.get("alert_type") == "PPE_VIOLATION":
+        match = PPE_CLASS_IN_DESCRIPTION.match(payload.get("description", ""))
+        if match:
+            return match.group(1)
+    return payload.get("alert_type") or payload.get("kind") or "UNKNOWN"
+
+
+class RecordingOutbox:
+    """An outbox that also appends every queued event to a JSON-lines file.
+
+    ``clock`` gives the pipeline's current time, so with ``--video-clock``
+    each record carries the position in the clip where the event fired;
+    tools/measure/evaluate_clip.py scores these records against annotations.
+    """
+
+    def __init__(self, outbox: EventOutbox, path: str, clock):
+        self._outbox = outbox
+        self._file = open(path, "a", encoding="utf-8")
+        self._clock = clock
+
+    def enqueue(self, payload: dict, snapshot: bytes | None = None):
+        record = {
+            "t": round(self._clock(), 3),
+            "event": event_label(payload),
+            "alert_type": payload.get("alert_type"),
+            "badge": payload.get("badge_code"),
+            "confidence": payload.get("confidence"),
+            "description": payload.get("description"),
+        }
+        self._file.write(json.dumps(record) + "\n")
+        self._file.flush()
+        return self._outbox.enqueue(payload, snapshot)
+
+    def close(self):
+        self._file.close()
+        return self._outbox.close()
+
+    def __getattr__(self, name):
+        return getattr(self._outbox, name)
 
 
 def open_outbox(camera_id: str, session: requests.Session) -> EventOutbox:
@@ -619,6 +679,30 @@ def parse_args() -> argparse.Namespace:
         "single-frame detection noise.",
     )
     parser.add_argument(
+        "--loop",
+        action="store_true",
+        help="Restart a video file from the beginning when it ends, for "
+        "demonstrations and long-running tests. Ignored for cameras and streams.",
+    )
+    parser.add_argument(
+        "--video-clock",
+        action="store_true",
+        help="Time every tracker by the video file's own timestamps instead of "
+        "the wall clock, so a recorded clip behaves as it did live (for evaluation).",
+    )
+    parser.add_argument(
+        "--events-out",
+        metavar="FILE",
+        help="Also append every queued event, with the pipeline's time, to this "
+        "JSON-lines file (read by tools/measure/evaluate_clip.py).",
+    )
+    parser.add_argument(
+        "--no-display",
+        action="store_true",
+        help="Run without the preview window (keyboard controls are then "
+        "unavailable; stop with Ctrl+C or SIGTERM, which still prints the summary).",
+    )
+    parser.add_argument(
         "--ppe-persistence",
         type=float,
         default=ppe_episodes.DEFAULT_PERSISTENCE_SECONDS,
@@ -721,6 +805,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--fire-conf must be between zero and one")
     if args.fire_persistence <= 0:
         parser.error("--fire-persistence must be greater than zero")
+    if args.video_clock and args.loop:
+        parser.error("--video-clock cannot be combined with --loop (time would restart each loop)")
+    if args.video_clock and not is_file_source(resolve_camera_source(args.source)):
+        parser.error("--video-clock needs a video file as --source")
     return args
 
 
@@ -753,6 +841,9 @@ def main() -> None:
         print(f"[{camera_id}] could not load alert rules; all alert types enabled", file=sys.stderr)
     rules.start()
     outbox = open_outbox(camera_id, session)
+    t_now = 0.0  # the pipeline's clock; set per frame below
+    if args.events_out:
+        outbox = RecordingOutbox(outbox, args.events_out, lambda: t_now)
     outbox.start()
     pending = outbox.stats()["pending"]
     if pending:
@@ -875,6 +966,19 @@ def main() -> None:
         sys.exit(1)
 
     window_title = f"Site-Safe Inference [{camera_id}]"
+    looping = args.loop and is_file_source(source)
+    loops = 0
+
+    def show(image) -> None:
+        if not args.no_display:
+            cv2.imshow(window_title, image)
+
+    def stop_on_sigterm(signum, frame):  # noqa: ARG001
+        raise KeyboardInterrupt
+
+    # A stop request from a test harness or service manager still runs the
+    # finally block below, so queued events are kept and the summary prints.
+    signal.signal(signal.SIGTERM, stop_on_sigterm)
     last_alert_time: dict[str, float] = {}
     ppe_episodes_tracker = ppe_episodes.EpisodeTracker(
         persistence_seconds=args.ppe_persistence, clear_seconds=args.ppe_clear_seconds
@@ -895,13 +999,17 @@ def main() -> None:
     last_fire: list = []
     t_start = time.perf_counter()
     fps_smooth = 0.0
-    t_prev = time.perf_counter()
+    t_prev = 0.0 if args.video_clock else time.perf_counter()
 
     print("Controls: Q quit | S force test alert | P pause/unpause")
 
     try:
         while True:
             ok, frame = cap.read()
+            if not ok and looping and consecutive_read_failures == 0:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                loops += 1
+                ok, frame = cap.read()
             if not ok:
                 consecutive_read_failures += 1
                 # A single dropped frame is routine on a phone/RTSP stream
@@ -920,12 +1028,12 @@ def main() -> None:
                 continue
             consecutive_read_failures = 0
             total_frames += 1
-            t_now = time.perf_counter()
+            t_now = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0 if args.video_clock else time.perf_counter()
             dt = max(t_now - t_prev, 1e-6)
             t_prev = t_now
             fps_smooth = 0.9 * fps_smooth + 0.1 * (1.0 / dt)
 
-            key = cv2.waitKey(1) & 0xFF
+            key = -1 if args.no_display else cv2.waitKey(1) & 0xFF
             if key == ord("q"):
                 break
             if key == ord("p"):
@@ -969,7 +1077,7 @@ def main() -> None:
                     cv2.LINE_AA,
                 )
                 draw_fps(frame, fps_smooth)
-                cv2.imshow(window_title, frame)
+                show(frame)
                 continue
 
             # Keep detector inputs free of visual overlays.  ``plot_detections``
@@ -1024,13 +1132,13 @@ def main() -> None:
                     # Attendance evidence: identified people currently in view.
                     for track in identity_tracker.tracks:
                         if track.badge and track.last_seen == t_now and sightings.due(track.badge, t_now):
-                            outbox.enqueue(activity_payload("SIGHTING", track.badge, camera_id, wall_clock(t_now)))
+                            outbox.enqueue(activity_payload("SIGHTING", track.badge, camera_id, wall_clock(t_now, t_now)))
                     if inactivity_tracker is not None:
                         for moved in inactivity_tracker.resumed:
                             badge = identity_tracker.identify_box(moved["person_box"])
                             if badge:
                                 outbox.enqueue(
-                                    activity_payload("IDLE_END", badge, camera_id, wall_clock(moved["resumed_at"]))
+                                    activity_payload("IDLE_END", badge, camera_id, wall_clock(moved["resumed_at"], t_now))
                                 )
 
             # The pose model is an independent forward pass with its own
@@ -1085,9 +1193,9 @@ def main() -> None:
                     print(f"[ALERT] {vname}{who} detected ({vconf:.2f}, episode {episode['track_id']}) → queued")
 
             if confirmed_proximity is not None:
-                last_t = last_alert_time.get("VEHICLE_PROXIMITY", 0.0)
-                if time.time() - last_t >= COOLDOWN_SECONDS:
-                    last_alert_time["VEHICLE_PROXIMITY"] = time.time()
+                last_t = last_alert_time.get("VEHICLE_PROXIMITY", float("-inf"))
+                if t_now - last_t >= COOLDOWN_SECONDS:
+                    last_alert_time["VEHICLE_PROXIMITY"] = t_now
                     if queue_event(
                         outbox, rules, with_model(proximity_payload(confirmed_proximity, camera_id), coco_version), snapshot
                     ):
@@ -1103,7 +1211,7 @@ def main() -> None:
                 if badge:
                     # Idle time is recorded even if INACTIVITY alerts are switched off.
                     outbox.enqueue(
-                        activity_payload("IDLE_START", badge, camera_id, wall_clock(event["stationary_since"]))
+                        activity_payload("IDLE_START", badge, camera_id, wall_clock(event["stationary_since"], t_now))
                     )
                 payload = with_model(with_badge(inactivity.alert_payload(event, camera_id), badge), coco_version)
                 if queue_event(outbox, rules, payload, snapshot):
@@ -1128,7 +1236,9 @@ def main() -> None:
                     alerts_sent += 1
                     print(f"[ALERT] {fire_detection.describe(event)} → queued")
 
-            cv2.imshow(window_title, display_frame)
+            show(display_frame)
+    except KeyboardInterrupt:
+        print(f"[{camera_id}] stopped")
     finally:
         cap.release()
         cv2.destroyAllWindows()
@@ -1152,6 +1262,8 @@ def main() -> None:
         if delivery["last_error"]:
             print(f"  Last delivery error:    {delivery['last_error']}")
         print(f"  Session duration:       {duration:.1f}s")
+        if looping:
+            print(f"  Times the clip looped:  {loops}")
 
 
 if __name__ == "__main__":

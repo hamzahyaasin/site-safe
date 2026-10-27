@@ -1,0 +1,8 @@
+event,start_s,end_s,badge,person,notes
+# One row per true episode: when the condition starts and when it ends, in seconds from the start of the clip.
+# event: no-helmet, no-vest, no-gloves, no-boots, no-goggles, FALL, INACTIVITY, VEHICLE_PROXIMITY, FIRE or SMOKE.
+# badge: the QR payload (SSW1:...) if the person wears a printed badge, else leave empty.
+no-helmet,3.0,41.5,,Person A,walks in without a helmet
+no-vest,3.0,41.5,SSW1:replace-me,Person A,
+INACTIVITY,45.0,110.0,,Person B,stands still (run with -- --inactivity-timeout 30)
+FALL,62.0,70.0,,Person C,staged fall on a mattress
