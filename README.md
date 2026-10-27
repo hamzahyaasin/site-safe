@@ -236,6 +236,26 @@ npm test
 
 Reports come in Word or PDF. Each report covers whole calendar days in the requesting user's time zone. The safety performance report gives counts, time to resolve and days without a recorded PPE violation per zone. It gives no compliance percentage, because the system records detected violations, not compliant observations, so there is no denominator. Its method section states each definition.
 
+**Evidence snapshots.** Reports include the camera frames captured when alerts were raised, unless **Include evidence snapshots** is cleared on the Reports page. Each figure is captioned with:
+
+- its label, type, severity and status
+- the time, camera and zone
+- the worker, or "not identified"
+- the description
+- the model version and confidence
+
+| Report | Snapshots included |
+|---|---|
+| Incident report | The 24 most severe incidents, critical first, then newest. The incident log's **Figure** column points to each one (E1, E2, …). |
+| Safety performance report | Up to two per zone, under **Evidence by Zone**. |
+
+The report service fetches each snapshot from `/api/alerts/<id>/snapshot/` with the requesting user's token. It only fetches from the API's own host, so the token never goes anywhere else. Gaps are stated rather than hidden:
+
+- **No snapshot:** camera incidents whose snapshot was switched off or removed after the retention period (`ALERT_SNAPSHOT_RETENTION_DAYS`).
+- **Could not be loaded:** snapshots that failed to fetch. The report is still produced.
+
+Snapshots can show people, so the report says so, and the report history records which reports contain them.
+
 ### Backend environment variables
 
 Copy `backend/.env.example` to `backend/.env`:
@@ -517,7 +537,7 @@ Run them on the demo machine with the configuration you will present. Prefer a s
 | `POST` | `/api/v1/vests/telemetry/` | Vest gateway token | Vest GPS/battery/SOS telemetry |
 | `POST` | `/api/v1/camera-events/` | Camera token | Idempotent camera event (`event_id`, optional `badge_code`, `model_version`, base64 JPEG `snapshot`) |
 | `GET/POST` | `/api/workers/{id}/badge/` | Safety Officer | Badge payload to print / reissue (revokes the old one) |
-| `POST` | `/api/v1/reports/generate/` | Safety Officer | `report_type`, `date_from`, `date_to`, `file_format` (DOCX/PDF), `tz` |
+| `POST` | `/api/v1/reports/generate/` | Safety Officer | `report_type`, `date_from`, `date_to`, `file_format` (DOCX/PDF), `tz`, `include_evidence` (default true) |
 | `GET` | `/api/v1/camera-config/?camera_id=` | Camera token | Effective alert rules and active danger areas for a camera |
 | `GET/POST/PATCH/DELETE` | `/api/v1/camera-areas/?camera_id=` | JWT read, Admin write | Danger areas (`camera_id`, `name`, `polygon` as `[[x, y], …]` fractions, `severity`, `is_active`) |
 | `POST` | `/api/v1/camera-frames/?camera_id=` | Camera token | Live-view JPEG (`image/jpeg` body, max 256 KB); relayed, not stored |

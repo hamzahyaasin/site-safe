@@ -41,7 +41,7 @@ def _error_body(upstream):
         return {"detail": (upstream.text or "Report service error.")[:1000]}
 
 
-def proxy_generate_report(request, report_type, date_from, date_to, file_format, tz=""):
+def proxy_generate_report(request, report_type, date_from, date_to, file_format, tz="", include_evidence=True):
     """
     Ask the Node report service for a document, store it, then return it.
 
@@ -60,6 +60,7 @@ def proxy_generate_report(request, report_type, date_from, date_to, file_format,
         "date_to": date_to.isoformat(),
         "format": file_format,
         "tz": tz,
+        "include_evidence": include_evidence,
         "api_token": api_token,
     }
 
@@ -92,6 +93,7 @@ def proxy_generate_report(request, report_type, date_from, date_to, file_format,
         file_format=file_format,
         date_from=date_from,
         date_to=date_to,
+        includes_evidence=include_evidence,
         created_by=request.user,
     )
     report.file.save(filename, ContentFile(content), save=True)

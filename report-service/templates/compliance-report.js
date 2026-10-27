@@ -1,4 +1,5 @@
 const { UNATTRIBUTED, computeComplianceMetrics } = require('../lib/metrics')
+const { evidenceSection, zoneEvidence } = require('../lib/evidence')
 const { formatDate, formatDuration, formatLabel, plural, was } = require('../lib/format')
 
 const METHOD = [
@@ -9,8 +10,10 @@ const METHOD = [
   'Time to resolve runs from when an incident was raised to when it was marked resolved in the dashboard.',
 ]
 
-function buildComplianceReport({ alerts, zones, workers, dailyActivity = [], dateFrom, dateTo, tz, generatedAt = new Date() }) {
+/** ``evidence`` is { images } of loaded snapshots, or null when they were not requested. */
+function buildComplianceReport({ alerts, zones, workers, dailyActivity = [], evidence = null, dateFrom, dateTo, tz, generatedAt = new Date() }) {
   const m = computeComplianceMetrics({ alerts, zones, workers, dailyActivity, dateFrom, dateTo, tz })
+  const ev = evidenceSection({ evidence, selected: zoneEvidence(alerts, zones, workers), alerts, tz, scope: 'zone' })
   const clock = (mins) => (mins === null ? '—' : `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(Math.round(mins % 60)).padStart(2, '0')}`)
 
   return {
@@ -59,6 +62,7 @@ function buildComplianceReport({ alerts, zones, workers, dailyActivity = [], dat
           },
         ],
       },
+      { heading: 'Evidence by Zone', blocks: ev.blocks },
       {
         heading: 'Incident Types',
         blocks: [

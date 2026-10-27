@@ -20,7 +20,7 @@ Kept since 27 October 2026. Update this file whenever something is skipped or de
 |---|---|---|
 | B1 | An **unidentified person** (no readable badge) in a **restricted zone**: raise an alert, or only count them? Today they are counted in the zone's head count (visible on the map) but raise nothing. Since 27 Oct a danger area drawn over the restricted part of a camera's picture alerts anyone, badge or not, so this decision only concerns zones without such an area. | Counted only; no alert until decided |
 | B2 | Does any camera on your site look at **two zones**? A camera id belongs to one zone only (the API refuses a second). Since 27 Oct a hazardous part of its view can be drawn as a danger area instead (FR-32). Counting people separately for two zones seen by one camera would be a further change; say if you need it. | One zone per camera; danger areas for parts of a view |
-| B3 | Snapshot **retention period** and whether snapshots are allowed on site at all | 30 days, snapshots on |
+| B3 | Snapshot **retention period** and whether snapshots are allowed on site at all. Since 27 Oct reports can also carry snapshots (FR-34); each report can leave them out, and the history shows which include them | 30 days, snapshots on, included in reports unless unticked |
 | B4 | Revoke the **WEBCAM-TEST** device token in Django admin after testing | Left active |
 
 ## C. Needs your hardware, accounts, people or signatures

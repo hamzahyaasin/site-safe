@@ -114,6 +114,9 @@ CORS_ALLOWED_ORIGINS = [
     if o.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
+# The dashboard runs on its own origin; without this the browser hides the
+# report file name and every download is saved under a generic name.
+CORS_EXPOSE_HEADERS = ["Content-Disposition"]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (

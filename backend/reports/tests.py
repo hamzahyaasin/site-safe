@@ -54,6 +54,26 @@ class GenerateReportTests(APITestCase):
         self.assertEqual(d["Content-Type"], "application/pdf")
         self.assertEqual(d.content, PDF)
 
+    def test_dashboard_origin_can_read_the_file_name(self):
+        with mock.patch("reports.proxy.requests.post", return_value=upstream()):
+            r = self.client.post(self.url, self.body, format="json", HTTP_ORIGIN="http://localhost:5173")
+        self.assertIn("Content-Disposition", r["Access-Control-Expose-Headers"])
+
+    def test_evidence_is_included_by_default_and_recorded(self):
+        with mock.patch("reports.proxy.requests.post", return_value=upstream()) as post:
+            self.client.post(self.url, self.body, format="json")
+        self.assertIs(post.call_args.kwargs["json"]["include_evidence"], True)
+        report = Report.objects.get()
+        self.assertTrue(report.includes_evidence)
+        listed = self.client.get("/api/v1/reports/").data[0]
+        self.assertIs(listed["includes_evidence"], True)
+
+    def test_evidence_can_be_left_out(self):
+        with mock.patch("reports.proxy.requests.post", return_value=upstream()) as post:
+            self.client.post(self.url, {**self.body, "include_evidence": False}, format="json")
+        self.assertIs(post.call_args.kwargs["json"]["include_evidence"], False)
+        self.assertFalse(Report.objects.get().includes_evidence)
+
     def test_upstream_error_body_is_relayed_and_nothing_saved(self):
         with mock.patch(
             "reports.proxy.requests.post",

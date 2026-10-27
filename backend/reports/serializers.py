@@ -9,6 +9,7 @@ class ReportGenerateSerializer(serializers.Serializer):
     date_to = serializers.DateField()
     file_format = serializers.ChoiceField(choices=Report.Format.choices, default=Report.Format.DOCX)
     tz = serializers.CharField(required=False, allow_blank=True, default="", max_length=64)
+    include_evidence = serializers.BooleanField(required=False, default=True)
 
     def validate_tz(self, value):
         from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -41,6 +42,7 @@ class ReportSerializer(serializers.ModelSerializer):
             "file_format",
             "date_from",
             "date_to",
+            "includes_evidence",
             "filename",
             "download_url",
             "created_at",

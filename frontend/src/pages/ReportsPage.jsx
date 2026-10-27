@@ -67,6 +67,7 @@ function ReportsWorkspace() {
   const [reportType, setReportType] = useState('INCIDENT')
   const [{ date_from, date_to }, setDateRange] = useState(defaultDateRange)
   const [fileFormat, setFileFormat] = useState('PDF')
+  const [includeEvidence, setIncludeEvidence] = useState(true)
   const [formError, setFormError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
@@ -87,6 +88,7 @@ function ReportsWorkspace() {
         date_to,
         file_format: fileFormat,
         tz: browserTimeZone(),
+        include_evidence: includeEvidence,
       })
       setSuccessMsg(`Report generated: ${filename}`)
     } catch (err) {
@@ -96,11 +98,22 @@ function ReportsWorkspace() {
 
   const columns = [
     { key: 'created_at', header: 'Generated', render: (row) => formatDate(row.created_at) },
-    { key: 'type', header: 'Type', render: (row) => row.report_type_label || row.report_type },
-    { key: 'format', header: 'Format', render: (row) => row.file_format || 'DOCX' },
+    {
+      key: 'type',
+      header: 'Report',
+      render: (row) => (
+        <>
+          {row.report_type_label || row.report_type}
+          <span className="block text-[11px] text-zinc-500">
+            {row.file_format || 'DOCX'} · {row.includes_evidence ? 'with snapshots' : 'no snapshots'}
+          </span>
+        </>
+      ),
+    },
     {
       key: 'period',
       header: 'Period',
+      cellClassName: 'whitespace-nowrap',
       render: (row) => `${row.date_from} → ${row.date_to}`,
     },
     {
@@ -199,6 +212,24 @@ function ReportsWorkspace() {
                 Days run midnight to midnight in your time zone ({browserTimeZone() || 'UTC'}).
               </p>
             </fieldset>
+
+            <label className="flex items-start gap-2 text-sm text-zinc-300">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={includeEvidence}
+                onChange={(e) => setIncludeEvidence(e.target.checked)}
+              />
+              <span>
+                Include evidence snapshots
+                <span className="block text-[11px] text-zinc-500">
+                  {reportType === 'INCIDENT'
+                    ? 'The camera frames of the most severe incidents (up to 24), each captioned and referenced from the incident log.'
+                    : 'Up to two camera frames per zone, its most severe incidents first.'}{' '}
+                  Frames can show people; leave them out for a report shared widely.
+                </span>
+              </span>
+            </label>
 
             {formError ? (
               <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">

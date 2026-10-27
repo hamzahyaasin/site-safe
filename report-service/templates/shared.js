@@ -94,6 +94,58 @@ function tableCell(text, options = {}) {
   }
 }
 
+const NO_BORDER = { style: 'none', size: 0, color: 'FFFFFF' }
+const NO_BORDERS = { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER }
+
+/**
+ * Evidence figures two to a row: each image scaled to ``imageWidth`` pixels
+ * wide (Word's 96 per inch) keeping its shape, captioned underneath. A row
+ * is never split across pages.
+ */
+function figureGrid(items, columnTwips, imageWidth) {
+  const { ImageRun, Table, TableRow, TableCell } = require('docx')
+
+  const cell = (item) =>
+    new TableCell({
+      borders: NO_BORDERS,
+      width: { size: columnTwips, type: WidthType.DXA },
+      margins: { top: 80, bottom: 160, left: 60, right: 60 },
+      children: item
+        ? [
+            new Paragraph({
+              children: [
+                new ImageRun({
+                  type: 'jpg',
+                  data: item.image,
+                  transformation: { width: imageWidth, height: Math.round((imageWidth * item.height) / item.width) },
+                  altText: { name: item.label, title: item.label, description: item.alt },
+                }),
+              ],
+              spacing: { after: 60 },
+            }),
+            ...item.caption.map(
+              (line, i) =>
+                new Paragraph({
+                  children: [run(line, { size: 16, bold: i === 0 })],
+                  spacing: { after: 20 },
+                }),
+            ),
+          ]
+        : [new Paragraph({ children: [] })],
+    })
+
+  const rows = []
+  for (let i = 0; i < items.length; i += 2) {
+    rows.push(new TableRow({ cantSplit: true, children: [cell(items[i]), cell(items[i + 1])] }))
+  }
+  return new Table({
+    width: { size: columnTwips * 2, type: WidthType.DXA },
+    columnWidths: [columnTwips, columnTwips],
+    borders: { ...NO_BORDERS, insideHorizontal: NO_BORDER, insideVertical: NO_BORDER },
+    rows,
+  })
+}
+
 function dataTable(headers, rows, columnWidths) {
   const { Table, TableRow, TableCell } = require('docx')
 
@@ -126,4 +178,5 @@ module.exports = {
   bodyText,
   bulletItem,
   dataTable,
+  figureGrid,
 }

@@ -15,6 +15,9 @@ class Report(models.Model):
     file_format = models.CharField(max_length=8, choices=Format.choices, default=Format.DOCX)
     date_from = models.DateField()
     date_to = models.DateField()
+    # Camera snapshots embedded as evidence (FR-34). They can show people, so
+    # the history says which reports carry them.
+    includes_evidence = models.BooleanField(default=False)
     file = models.FileField(upload_to="reports/")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

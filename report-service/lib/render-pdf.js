@@ -67,6 +67,48 @@ function drawTable(doc, { headers, rows, widths }) {
   doc.moveDown(0.8)
 }
 
+const FIGURE_GAP = 14
+const CAPTION = 8
+
+/** Evidence figures two to a row, each image the column's width, captioned underneath. */
+function drawFigures(doc, { items }) {
+  const left = doc.page.margins.left
+  const usable = doc.page.width - left - doc.page.margins.right
+  const col = (usable - FIGURE_GAP) / 2
+
+  const captionHeight = (item) => {
+    let h = 0
+    item.caption.forEach((line, i) => {
+      doc.font(i === 0 ? BOLD : FONT).fontSize(CAPTION)
+      h += doc.heightOfString(pdfSafe(line), { width: col })
+    })
+    return h
+  }
+  const figureHeight = (item) => (col * item.height) / item.width + 4 + captionHeight(item)
+
+  for (let i = 0; i < items.length; i += 2) {
+    const pair = items.slice(i, i + 2)
+    const rowHeight = Math.max(...pair.map(figureHeight))
+    ensureSpace(doc, rowHeight)
+    const top = doc.y
+    pair.forEach((item, j) => {
+      const x = left + j * (col + FIGURE_GAP)
+      const imageHeight = (col * item.height) / item.width
+      doc.image(item.image, x, top, { width: col, height: imageHeight })
+      doc.rect(x, top, col, imageHeight).lineWidth(0.5).stroke('#999999')
+      let y = top + imageHeight + 4
+      item.caption.forEach((line, k) => {
+        doc.fillColor('#000000').font(k === 0 ? BOLD : FONT).fontSize(CAPTION)
+        doc.text(pdfSafe(line), x, y, { width: col })
+        y = doc.y
+      })
+    })
+    doc.x = left
+    doc.y = top + rowHeight + 12
+  }
+  doc.moveDown(0.4)
+}
+
 function renderPdf(model) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
@@ -106,6 +148,8 @@ function renderPdf(model) {
             doc.moveDown(0.4)
           } else if (block.type === 'table') {
             drawTable(doc, block)
+          } else if (block.type === 'figures') {
+            drawFigures(doc, block)
           }
         }
       }

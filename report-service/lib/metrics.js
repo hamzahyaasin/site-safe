@@ -217,4 +217,5 @@ module.exports = {
   daysInPeriod,
   percentile,
   resolutionMinutes,
+  zoneResolver,
 }

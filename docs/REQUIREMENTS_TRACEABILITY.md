@@ -52,6 +52,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-31 | Worker location and zone head counts without a vest (camera-based, zones with several cameras) | S | A badge read by a camera places the worker in that camera's zone within seconds and as last seen after a minute; zone head counts never double-count overlapping cameras; one over-capacity alert per sustained crossing; a restricted-zone entry by an unassigned badge holder raises one breach | `workers/location.py` (place, zone_occupancy, check_capacity with hysteresis, sweeps), `Worker.location_*`, `Zone.camera_views_overlap`, `sitemap.Camera`, `CameraCountView` (`/api/v1/camera-counts/`), sightings every 15 s and people counts (`ai-module/latest_sender.py`); Workers page and mobile location, Zones page counts and overlap setting, live map labels (`zone_updated`) | `workers/test_location.py` (28), `test_activity_events.py` people counts (3); e2e 27 Oct (see ledger) | Integrated (**test videos with a printed test badge; no physical camera or real badge yet**) |
 | FR-32 | Danger areas drawn on the live camera picture | S | An Admin draws an area on a camera's live view and it takes effect within 15 s without a restart; a person whose feet stay inside an active area for 1 s raises one alert with a snapshot (named if badged); walking past raises nothing; the area shows red in the live view while occupied; Safety Officers see areas but cannot change them | `sitemap.CameraArea`, `CameraAreaSerializer`, `CameraAreaViewSet` (`/api/v1/camera-areas/`), areas in `CameraConfigView`; `AlertType.DANGER_AREA` and its seeded rule; `ai-module/danger_areas.py` (foot point, `DangerAreaTracker`), `inference.py` (rules refresh 15 s, `draw_danger_areas`, banner); `components/cameras/DangerAreas.jsx` on the Cameras page; incident filter, simulate button, report-service type list, mobile label | `sitemap/test_camera_areas.py` (7), `test_danger_areas.py` (14), mobile label (1 assertion); e2e 27 Oct (see ledger) | Integrated (**test video; no physical camera yet**) |
 | FR-33 | Cameras on the site map | S | An Admin places a camera (position, facing, view angle, range) and its view cone appears at once; every user sees cameras live, offline, or red for a minute after an alert; Safety Officers and Admins get a live thumbnail and a link to the camera's live view, Viewers no picture | `sitemap.Camera` placement fields, `CameraPlacementSerializer`, `sitemap/camera_map.py`, `CameraMapView` (`/api/v1/camera-map/`), `CameraPlacementView` (`PUT/DELETE /api/v1/camera-map/{id}/`), `camera_updated` event (placement, changed people count), `CameraLatestFrameView` (`/api/v1/camera-frames/latest/`); `components/map/CameraLayer.jsx`, `CameraPlacementPanel.jsx`, `hooks/useCameraMap.js`, `lib/geo.js`, dashboard `SiteMapCard.jsx`, Cameras page `?camera=` | `sitemap/test_camera_map.py` (11); e2e 27 Oct (see ledger) | Integrated (**test video; real camera positions pending, C13**) |
+| FR-34 | Evidence snapshots in the incident and safety reports | S | Reports show the camera frames of the most severe incidents, each captioned with type, severity, time, camera, zone, worker, description and model version, and the incident log points to them; missing or unloadable snapshots are stated; the user can leave snapshots out, and the report history records which reports contain them | `report-service/lib/evidence.js` (selection, captions, loading), `lib/jpeg.js`, `fetchSnapshot` (user's token, API host only), `figures` blocks in `render-docx.js` / `render-pdf.js`, Evidence (incident) and Evidence by Zone (safety) sections, log Figure column; `include_evidence` on `/api/v1/reports/generate/`, `Report.includes_evidence`; Reports page option and history | `report-service/test/evidence.test.js` (9), `app.test.js` (2 new), `reports/tests.py` (3 new); e2e 27 Oct (see ledger) | Integrated (**test video frames**) |
 
 ## Non-functional requirements
 
@@ -63,7 +64,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. With the fire model (27 Oct, commit `fae1367`, clean tree): mps 15.8 and 16.1 FPS, cpu 10.4 and 10.2 FPS; fire stage p50 18 ms (mps) every 5th frame | **Met on mps with all detectors** (cpu marginal) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 232 (SQLite and PostgreSQL), ai-module 144, fire tools 7, report-service 13, mobile 17, vest simulator 8, measurement and clip scoring 21 = 442 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 235 (SQLite and PostgreSQL), ai-module 144, fire tools 7, report-service 23, mobile 17, vest simulator 8, measurement and clip scoring 21 = 455 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
 
 ## Progress ledger
 
@@ -590,4 +591,36 @@ Tests (27 Oct): backend 232 OK on SQLite and PostgreSQL (11 new); ai-module 144;
 Known limitations: the cone is what the Admin enters, not the camera's real field of view; live status
   follows a 10 s refresh; a camera that sends nothing stays grey but keeps its position
 Migrations: sitemap 0006 (camera placement); the dev database still needs `migrate`
+```
+
+```text
+Phase / task IDs: Phase 2 item 4 — FR-34 evidence snapshots in the incident and safety reports
+Status: Integrated on a throwaway database with test-video frames
+Design: the report service picks the evidence (incident report: the 24 most severe incidents with a snapshot,
+  critical first then newest; safety report: up to 2 per zone in zone order, Unattributed last), fetches each
+  JPEG from /api/alerts/<id>/snapshot/ with the requesting user's token (4 at a time, API host only, JPEG of at
+  most 1 MB, size read from its frame header), and lays them out two to a row with a caption: label, type,
+  severity, status; time, camera (zone); worker or "not identified"; description; model version and
+  confidence. Figures are E1, E2, ... in order and the incident log gains a Figure column pointing to them.
+  The section states how many camera incidents had no snapshot (switched off or past retention) and how many
+  could not be loaded; a failed image never fails the report. include_evidence (default true) lets the user
+  leave snapshots out; Report.includes_evidence records it and the history shows "with/no snapshots".
+Also fixed: the API did not expose Content-Disposition to the dashboard's origin (CORS), so every report was
+  saved as "incident_report.pdf" / "compliance_report.docx"; it now keeps its dated name
+  (CORS_EXPOSE_HEADERS), with a test.
+E2E (27 Oct, throwaway SQLite database with the FR-32/33 runs' alerts; worktree report service): as the test
+  Safety Officer, Incident Report PDF with snapshots, 27 Sep - 27 Oct: 14 pages, 1.2 MB; Evidence states "The
+  24 most severe of 185 camera snapshots ... 5 camera incidents had no snapshot", 24 figures six to a page,
+  captions with camera (Bay 1), badge holder where identified and model yolo11n.pt@0ebbc80d4a76; the log's
+  Figure column points to E2, E3, ... Safety Performance Report DOCX with snapshots (213 KB): Evidence by Zone
+  with E1-E2 from CAM-01 (Bay 1) and E3-E4 from CAM-09 (Crane), two to a row in LibreOffice's rendering.
+  History lists both as "with snapshots"; downloads keep their dated file names. Fixed during the run: the
+  log's "Evidence" header wrapped mid-word (now "Figure"); the history table overflowed with an extra column
+  (format and snapshots now under the report type).
+Tests (27 Oct): report-service 23 (10 new); backend 235 OK on SQLite and PostgreSQL (3 new); frontend lint
+  clean, build OK — 455 in total
+Known limitations: images are embedded at the camera's resolution (640 px), about 50 KB each; frames show
+  people (decision B3 covers whether snapshots are allowed on site); Word itself not yet opened on the
+  generated file (LibreOffice used)
+Migrations: reports 0003 (includes_evidence); the dev database still needs `migrate`
 ```

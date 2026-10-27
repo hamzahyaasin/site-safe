@@ -34,6 +34,7 @@ class GenerateReportView(APIView):
             data["date_to"],
             data["file_format"],
             data["tz"],
+            data["include_evidence"],
         )
         if error_body is not None:
             return Response(error_body, status=status_code)

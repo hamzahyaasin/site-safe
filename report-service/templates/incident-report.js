@@ -1,13 +1,17 @@
 const { ALERT_TYPES, SEVERITIES, computeIncidentMetrics } = require('../lib/metrics')
+const { evidenceSection, incidentEvidence } = require('../lib/evidence')
 const { formatDate, formatDuration, formatLabel, plural, was } = require('../lib/format')
 
 // A report never silently drops rows: beyond this the log is cut and the
 // report says so.
 const MAX_LOG_ROWS = 1000
 
-function buildIncidentReport({ alerts, dateFrom, dateTo, tz, generatedAt = new Date() }) {
+/** ``evidence`` is { images } of loaded snapshots, or null when they were not requested. */
+function buildIncidentReport({ alerts, evidence = null, dateFrom, dateTo, tz, generatedAt = new Date() }) {
   const m = computeIncidentMetrics({ alerts, tz })
   const shown = m.log.slice(0, MAX_LOG_ROWS)
+  const ev = evidenceSection({ evidence, selected: incidentEvidence(alerts), alerts, tz, scope: 'incident' })
+  const withEvidence = ev.labels !== null
 
   return {
     title: 'Site-Safe Incident Report',
@@ -67,6 +71,7 @@ function buildIncidentReport({ alerts, dateFrom, dateTo, tz, generatedAt = new D
           },
         ],
       },
+      { heading: 'Evidence', blocks: ev.blocks },
       {
         heading: 'Incident Log',
         blocks: [
@@ -79,8 +84,8 @@ function buildIncidentReport({ alerts, dateFrom, dateTo, tz, generatedAt = new D
           },
           {
             type: 'table',
-            headers: ['Time', 'Type', 'Severity', 'Worker', 'Camera / Source', 'Status', 'Description'],
-            widths: [1.6, 1.3, 0.9, 1.2, 1.2, 0.8, 2.6],
+            headers: ['Time', 'Type', 'Severity', 'Worker', 'Camera / Source', 'Status', 'Description', ...(withEvidence ? ['Figure'] : [])],
+            widths: [1.6, 1.3, 0.9, 1.2, 1.2, 0.8, 2.6, ...(withEvidence ? [0.9] : [])],
             rows: shown.length
               ? shown.map((a) => [
                   formatDate(a.timestamp, tz),
@@ -90,8 +95,9 @@ function buildIncidentReport({ alerts, dateFrom, dateTo, tz, generatedAt = new D
                   a.source === 'SIMULATED' ? 'Simulated' : a.camera_id || formatLabel(a.source),
                   a.is_resolved ? 'Resolved' : 'Open',
                   a.description ? String(a.description).slice(0, 160) : '—',
+                  ...(withEvidence ? [ev.labels.get(a.id) || '—'] : []),
                 ])
-              : [['—', '—', '—', '—', '—', '—', 'No incidents in period']],
+              : [['—', '—', '—', '—', '—', '—', 'No incidents in period', ...(withEvidence ? ['—'] : [])]],
           },
         ],
       },

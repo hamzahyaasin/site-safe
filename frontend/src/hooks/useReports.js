@@ -42,13 +42,13 @@ export function useReports() {
   }, [api])
 
   const generateReport = useCallback(
-    async ({ report_type, date_from, date_to, file_format = 'DOCX', tz }) => {
+    async ({ report_type, date_from, date_to, file_format = 'DOCX', tz, include_evidence = true }) => {
       setGenerating(true)
       setError(null)
       try {
         const response = await api.post(
           'v1/reports/generate/',
-          { report_type, date_from, date_to, file_format, tz },
+          { report_type, date_from, date_to, file_format, tz, include_evidence },
           { responseType: 'blob' },
         )
         const filename =

@@ -29,4 +29,9 @@ const dailyActivity = [
   { worker: 10, worker_name: 'Ali Raza', date: '2026-10-15', first_check_in: t('2026-10-15T04:00:00Z'), last_check_out: t('2026-10-15T10:00:00Z'), on_site_minutes: 360, idle_minutes: 60, zone_minutes: {}, sessions: 1, still_open: false },
   { worker: 11, worker_name: 'Sara Khan', date: '2026-10-15', first_check_in: t('2026-10-15T06:00:00Z'), last_check_out: null, on_site_minutes: 120, idle_minutes: 0, zone_minutes: {}, sessions: 1, still_open: true },
 ]
-module.exports = { zones, workers, alerts, dailyActivity }
+// A 64x48 camera snapshot (JPEG), as served by /api/alerts/<id>/snapshot/.
+const JPEG = Buffer.from(
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAAwAEADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDhKKK9XqMwzD6ny+7e9+ttreT7k4XC+3vrax5RRXq9FeZ/b/8A07/H/gHZ/Zn9/wDD/gnlFFer15nq3/IYvf8Ar4k/9CNejgMy+uSceW1vO/6I5MThPYJO97lSiiivVOIK9XryivV6+Zz/AP5d/P8AQ9jLPt/L9Qooor5k9cK8z1b/AJDF7/18Sf8AoRr0yvM9W/5DF7/18Sf+hGvoch/iT9Dy8y+CJUooor6s8QK9Xryirf8Aa2pf9BC6/wC/zf415WZYCWM5eV2tf8bf5HbhMSqF7q9z0yivM/7W1L/oIXX/AH+b/Gj+1tS/6CF1/wB/m/xryf7Bqfzo7v7Sh/KemV5nq3/IYvf+viT/ANCNH9ral/0ELr/v83+NVXdpHZ3YszHLMTkk+tenl2XTwk5SlK9zjxWKjXiklawlFFFewcB//9k=',
+  'base64',
+)
+module.exports = { zones, workers, alerts, dailyActivity, JPEG }

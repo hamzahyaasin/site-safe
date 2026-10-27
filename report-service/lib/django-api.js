@@ -1,7 +1,13 @@
 const DEFAULT_API_BASE = 'http://localhost:8000/api/'
+// The API refuses snapshots over 512 KB; anything much larger is not one.
+const MAX_SNAPSHOT_BYTES = 1024 * 1024
+
+function apiBase() {
+  return (process.env.DJANGO_API_URL || DEFAULT_API_BASE).replace(/\/?$/, '/')
+}
 
 async function djangoFetch(path, apiToken, params = {}) {
-  const base = (process.env.DJANGO_API_URL || DEFAULT_API_BASE).replace(/\/?$/, '/')
+  const base = apiBase()
   const url = new URL(path.replace(/^\//, ''), base)
   for (const [key, value] of Object.entries(params)) {
     if (value) url.searchParams.set(key, value)
@@ -62,4 +68,26 @@ async function fetchDailyActivity(apiToken, dateFrom, dateTo, tz) {
   return rows
 }
 
-module.exports = { fetchAlerts, fetchZones, fetchWorkers, fetchDailyActivity }
+/**
+ * An alert's evidence JPEG, from the API path in its ``snapshot`` field
+ * (``/api/alerts/<id>/snapshot/``), with the requesting user's token, so
+ * the report shows only what that user may see. The path must stay on the
+ * API's own host: the token is never sent anywhere else.
+ */
+async function fetchSnapshot(apiToken, path) {
+  const base = new URL(apiBase())
+  const url = new URL(path, base)
+  if (url.origin !== base.origin) throw new Error('Snapshot path is not on the API host')
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${apiToken}`, Accept: 'image/jpeg' } })
+  if (!response.ok) {
+    const error = new Error(`Snapshot not available (${response.status})`)
+    error.status = response.status
+    throw error
+  }
+  if ((response.headers.get('content-type') || '').split(';')[0] !== 'image/jpeg') throw new Error('Snapshot is not a JPEG')
+  const data = Buffer.from(await response.arrayBuffer())
+  if (data.length > MAX_SNAPSHOT_BYTES) throw new Error('Snapshot is too large')
+  return data
+}
+
+module.exports = { fetchAlerts, fetchZones, fetchWorkers, fetchDailyActivity, fetchSnapshot }
