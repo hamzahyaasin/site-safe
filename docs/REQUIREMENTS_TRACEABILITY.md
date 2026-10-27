@@ -60,7 +60,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. With the fire model (27 Oct, commit `fae1367`, clean tree): mps 15.8 and 16.1 FPS, cpu 10.4 and 10.2 FPS; fire stage p50 18 ms (mps) every 5th frame | **Met on mps with all detectors** (cpu marginal) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 183, ai-module 76, report-service 13, mobile 16, tools 16 pass (20 Oct); build OK; lint clean | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 194 (SQLite and PostgreSQL), ai-module 98, fire tools 7, report-service 13, mobile 16, vest simulator 8, measurement and clip scoring 19 = 355 pass (27 Oct, merged stage branch); frontend lint clean, build OK; mobile lint and tsc clean | Met |
 
 ## Progress ledger
 
@@ -408,4 +408,30 @@ Known limitations: every frame goes through the API process (about 5 x 30-60 KB/
   for a few cameras on a LAN, not a replacement for an NVR; no recording or playback; the main checkout has
   uncommitted inference.py changes (video source, --no-display) that will need merging with this change
 Human inputs still needed: run with the real webcam and, ideally, a second machine as a camera
+```
+
+```text
+Phase / task IDs: Phase 0 — one clean codebase (27 Oct)
+Status: all work merged on stage-0-1-security-events; every suite passes on the merged branch
+What was consolidated:
+  - main checkout's uncommitted work from 22 Oct, reviewed and committed in five commits: clip evaluation
+    (inference --video-clock/--events-out/--loop/--no-display, tools/measure/evaluate_clip.py), soak --pids
+    and MEDIA_ROOT, fire dataset tools (Parquet unpacker, local trainer), model evidence folders now tracked
+    (weights ignored), and the 22 Oct completion plan
+  - claude/beautiful-mclaren-ab41fd (fire model and Kaggle notebook, live camera grid FR-30, FR-03/FR-25
+    checks) and claude/competent-moore-5fa363 (V8 report: requirements, workflow, front matter, appendices)
+Found and fixed during review: with --video-clock, worker activity events were dated about a day in the past
+  (rejected by the API); wall_clock() now takes the pipeline's current time. The Parquet unpacker needed
+  pyarrow, which was not declared; it is now in ai-module/requirements-vision.txt and its test runs in CI,
+  as does the clip-scoring test. Clip evaluation runs with --no-live.
+Conflict resolution: show() presents the operator's view in the preview window (unless --no-display) and
+  the dashboard live view, so a headless camera still streams
+Tests (27 Oct 2026, merged branch): backend 194 OK on SQLite and PostgreSQL; ai-module 98; fire tools 7;
+  vest simulator 8; measurement and clip scoring 19; report-service 13; mobile 16 (lint, tsc clean);
+  frontend lint clean, build OK — 355 in total
+Housekeeping: 14 alert snapshots written while the stack ran from a worktree were moved to the main
+  checkout's backend/media; all 37 snapshots referenced by the dev database are present
+Not done in Phase 0: docs/SiteSafe_FYP_Report_V8.docx/.pdf are the build from commit f1d917f; the merged
+  report_v8_content.py also carries the reworded FR-05 evidence line. The report is rebuilt (in Word) in
+  Phase 4 together with the fire, evidence, live-grid and zoning updates.
 ```
