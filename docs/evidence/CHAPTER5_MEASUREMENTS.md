@@ -61,14 +61,16 @@ Source: 517 images from images. Latest run: Apple M4, 16.0 GB RAM, Darwin 27.0.0
 
 ### Soak test (NFR-05)
 
-0.1 h with the stack running and a probe every 2.0 s; processes monitored: api. Apple M4, 16.0 GB RAM, Darwin 27.0.0; commit `c79cc95` (uncommitted changes); recorded 2026-10-20 12:21 UTC.
+2.0 h with the stack running and a probe every 5.0 s; processes monitored: api, camera, presence_monitor. Apple M4, 16.0 GB RAM, Darwin 27.0.0; commit `d1bb33f` (uncommitted changes); recorded 2026-10-22 14:47 UTC.
 
 | Probes | Missed | Latency p50 (ms) | p95 (ms) | Unexpected socket drops | Forced reconnect (s) | Errors |
 |---:|---:|---:|---:|---:|---:|---:|
-| 146 | 0 | 35.9 | 41.1 | 0 | 1.2 | 0 |
+| 1431 | 0 | 24.4 | 39.7 | 0 | 1.1 | 0 |
 
 | Process | Memory start (MB) | End (MB) | Max (MB) | Change (MB) |
 |---|---:|---:|---:|---:|
-| api | 63.6 | 91.6 | 109.8 | 28.0 |
+| api | 85.2 | 67.2 | 141.1 | -18.0 |
+| presence_monitor | 27.4 | 25.4 | 30.7 | -2.0 |
+| camera | 382.5 | 276.3 | 829.4 | -106.2 |
 
-Target: 2 h with no missed probes, stable memory, reconnect after the forced disconnect (proposed NFR-05). Result: **validation run only** (5 min); the 2 h soak has not been run yet.
+Target: 2 h with no missed probes, stable memory, reconnect after the forced disconnect (proposed NFR-05). Result: **PASS**.

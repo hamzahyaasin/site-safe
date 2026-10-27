@@ -1,7 +1,7 @@
 """Text, tables and figures for report V8 (used by build_report_v8.py).
 
 Every number here comes from the repository: test counts from running the
-suites on 20 October 2026, measurements from docs/evidence/
+suites on 27 October 2026, measurements from docs/evidence/
 CHAPTER5_MEASUREMENTS.md, model figures from ai-module/models/
 sitesafe_v5_export/, statuses from docs/REQUIREMENTS_TRACEABILITY.md and
 dataset findings from ai-module/audit_dataset.py.
@@ -17,8 +17,8 @@ Block kinds: ("h2", text), ("h3", text), ("p", text),
 
 ABSTRACT = (
     "Construction sites need evidence that safety controls were followed, yet manual inspections and passive CCTV provide only intermittent oversight. Site-Safe is a camera-first safety compliance system that detects hazards from site cameras, identifies the workers involved, alerts supervisors on web and mobile clients in real time and keeps an auditable per-worker record. This report describes its design, implementation and evaluation, and separates what was measured from what remains to be verified.",
-    "The implemented system combines a ten-class YOLO11-medium PPE detector, QR badge identification of workers, pose-based fall detection, image-plane vehicle proximity warnings, camera inactivity tracking and a fire and smoke stage whose severity follows hot-work permits. Camera events are buffered in a local outbox and posted with per-camera device tokens to a Django REST and WebSocket backend on PostgreSQL, which provides role-based access control, configurable alert rules, push and e-mail notification, automatic attendance and idle timelines, and DOCX and PDF reports. A React command centre with a site map and a React Native (Expo) mobile application are the clients. The Smart Vest's software path is implemented and exercised with a labelled simulator; the physical vest was moved to future work.",
-    "All 318 automated tests pass. On a single Apple M4 host, events reached the dashboard with a 95th-percentile latency of 42 ms, all 100 events queued during a five-minute outage were stored exactly once about 30 s after the API returned, and the full detector set ran at 15.7 frames per second on the laptop GPU. The PPE model measured mAP@0.5 of 0.562 on the held-out split, but missing-equipment classes remain weak (no-gloves 0.062, no-boots 0.130) and the published split places near-duplicate images in both training and test data, so the score is an upper bound. Fire detection awaits a trained model, and the two-hour soak test, physical QR range tests and push delivery to a phone are outstanding.",
+    "The implemented system combines a ten-class YOLO11-medium PPE detector that raises one alert per person per violation, QR badge identification that also places workers in a camera's zone, pose-based fall detection, per-person vehicle proximity warnings, danger areas drawn on the live camera picture, inactivity tracking and a trained fire and smoke detector whose severity follows hot-work permits. Camera events, with their evidence frame and model version, are buffered in a local outbox and posted with per-camera device tokens to a Django REST and WebSocket backend on PostgreSQL, which provides role-based access control, configurable alert rules, push and e-mail notification, zone head counts, automatic attendance and idle timelines, and DOCX and PDF reports that carry the evidence. A React command centre with a live camera grid and a site map showing every camera, and a React Native (Expo) mobile application with the same map and live pictures, are the clients. The Smart Vest's software path is implemented and exercised with a labelled simulator; the physical vest was moved to future work.",
+    "All 470 automated tests pass. On a single Apple M4 host, events reached the dashboard with a 95th-percentile latency of 42 ms, all 100 events queued during a five-minute outage were stored exactly once about 30 s after the API returned, a two-hour soak missed none of 1,431 probes, and the full detector set, including fire, ran at 16 frames per second on the laptop GPU. The PPE model measured mAP@0.5 of 0.562 on the held-out split, but missing-equipment classes remain weak (no-gloves 0.062, no-boots 0.130) and the published split places near-duplicate images in both training and test data, so the score is an upper bound; the fire and smoke model reached 0.787. The camera features were verified end to end with test videos; QR range tests, push delivery to a phone and footage from a real site are outstanding.",
 )
 
 # (prefix of the V7 paragraph, replacement text). The prefix must match
@@ -52,7 +52,7 @@ CHAPTER_1_TO_3_EDITS = [
     ("The vision module uses a YOLOv11-M model",
      "The vision module uses a YOLOv11-M model to continuously inspect camera frames for ten detection classes covering helmets, high-visibility vests, boots, gloves and goggles, each in a worn and a missing state. Frames are captured from IP cameras over RTSP or HTTP streams, resized to 640×640 and passed through the model on the edge device. Detections below a candidate confidence threshold (0.15 in the prototype, pending per-class calibration) are discarded. OpenCV’s QRCodeDetector scans sampled frames for QR codes on worker helmets, linking a detected person to their registered identity. A worker without required PPE triggers a violation event logged with worker identity (from QR, when readable), timestamp, camera ID, zone and detection confidence, creating an auditable per-worker compliance record."),
     ("Administrators define Red Zones",
-     "Administrators define Red Zones by drawing polygon boundaries directly on the site map in the dashboard, and the polygons are stored in the database. Worker positions are checked against active zone polygons with a point-in-polygon test; in the prototype the positions come from vest GPS, because a single camera gives no ground coordinates. An incursion into a restricted zone triggers an immediate alert on the dashboard and a push notification to the safety officer through the mobile app."),
+     "Administrators define Red Zones by drawing polygon boundaries directly on the site map in the dashboard, and the polygons are stored in the database. A camera that reads a worker's QR badge places the worker in that camera's zone, and vest GPS positions are checked against the zone polygons with a point-in-polygon test. An incursion into a restricted zone triggers an immediate alert on the dashboard and a push notification to the safety officer through the mobile app. Hazards smaller than a zone are drawn as danger areas on a camera's picture (Section 4.3.8)."),
     ("The Django REST Framework backend provides the API layer",
      "The Django REST Framework backend provides the API layer that edge devices write to and both the dashboard and mobile app read from. A separate MQTT consumer process handles incoming vest telemetry, and critical alerts are routed to WebSocket clients and to the FCM push notification service. Notifications are sent from a background thread pool after each alert is committed, and PDF and DOCX reports are produced by a separate Node.js report service, so neither blocks API response times."),
     ("The mobile application is built with React Native",
@@ -115,7 +115,7 @@ TABLE_34 = [
     ("FR-04", "Detect missing PPE (10 classes) from a camera", "M", "Event precision ≥ 90% and episode recall ≥ 85% on a sealed target-camera set"),
     ("FR-05", "One alert per person per violation episode", "M", "Two people give two alerts; a one-frame flicker gives none"),
     ("FR-06", "Detect falls from camera pose", "M", "Fall and hard-negative videos meet the AI event targets"),
-    ("FR-07", "Warn when a worker is too close to a vehicle", "M", "Calibrated distance threshold evaluated on video"),
+    ("FR-07", "Warn when a worker is too close to a vehicle", "M", "One alert per person per encounter; threshold evaluated on video"),
     ("FR-08", "Detect prolonged inactivity with a dashboard-set timeout", "M", "A changed rule changes the camera timeout within 60 s"),
     ("FR-09", "Fire and smoke detection governed by hot-work permits", "M", "Fixture videos pass; a permitted fire is downgraded, never dropped"),
     ("FR-10", "Identify workers by the QR badge on the helmet", "M", "Association, unknown and wrong-person rates measured at stated distance and light"),
@@ -136,8 +136,13 @@ TABLE_34 = [
     ("FR-25", "Incident list, detail, resolve and CSV export", "M", "Resolution is broadcast; filters cover every alert type"),
     ("FR-26", "Dashboard shows recorded data only", "M", "Every figure reconciles to the API"),
     ("FR-27", "Incident and safety-performance reports in DOCX and PDF", "M", "Fixtures reconcile exactly; no unsupported percentages"),
-    ("FR-28", "Mobile app: sign-in, alerts, resolve, workers, push", "M", "An Android build receives a push and resolves an alert seen on the web"),
+    ("FR-28", "Mobile app: alerts, resolve, workers, site map, cameras, push", "M", "An Android build receives a push and resolves an alert seen on the web"),
     ("FR-29", "Alert evidence: snapshot, confidence, model version", "S", "Each AI alert is traceable to its frame and model"),
+    ("FR-30", "Live camera grid for monitoring", "S", "Running cameras appear live to Safety Officers and Admins within seconds; Viewers see no video"),
+    ("FR-31", "Locate workers and count people per zone by camera", "S", "A badge read places the worker in the camera's zone; overlapping cameras never double-count"),
+    ("FR-32", "Danger areas drawn on the camera picture", "S", "A person inside an active area for 1 s raises one alert; walking past raises none"),
+    ("FR-33", "Cameras on the site map", "S", "Placed cameras show their coverage and live, offline or alerting state"),
+    ("FR-34", "Evidence snapshots in reports", "S", "Reports show captioned frames of the most severe incidents and state what is missing"),
 ]
 
 TABLE_35 = [
@@ -146,9 +151,9 @@ TABLE_35 = [
     ("UC-2 Trigger SOS alert", "Worker", "Presses the vest SOS button (Table 3.7)", "FR-20–23"),
     ("UC-3 Detect PPE violations", "IP Camera, Safety Officer", "Camera raises a violation; officer responds (Table 3.6)", "FR-04, 05, 29"),
     ("UC-4 Identify workers via QR", "IP Camera", "Badge decoded and linked to the person's box", "FR-10"),
-    ("UC-5 Monitor zone breaches", "Safety Officer, Admin", "Restricted entry or over-occupancy raises an alert", "FR-19, 20"),
+    ("UC-5 Monitor zone breaches", "Safety Officer, Admin", "Restricted entry, over-occupancy or a danger-area entry raises an alert", "FR-19, 20, 31, 32"),
     ("UC-6 Track workforce activity", "Safety Officer", "Attendance, idle time and timelines per worker", "FR-08, 24"),
-    ("UC-7 View dashboard and alerts", "Safety Officer, Admin", "Live alerts, incidents, reports on web and mobile", "FR-13, 25–28"),
+    ("UC-7 View dashboard and alerts", "Safety Officer, Admin", "Live alerts, cameras, site map, incidents and reports on web and mobile", "FR-13, 25–28, 30, 33, 34"),
     ("UC-8 Configure alert thresholds", "Admin", "Enable rules, set thresholds and notifications", "FR-15"),
 ]
 
@@ -190,8 +195,8 @@ TABLE_38 = [
 TABLE_39 = [
     ("Resource", "Used in the prototype", "Justification"),
     ("Development and edge computer", "Apple M4 laptop, 16 GB, built-in GPU", "Runs all detectors at 15.7 FPS (NFR-04); a Jetson-class unit is the site option"),
-    ("Training GPU", "Google Colab, Tesla T4", "Training YOLO11-medium exceeded the laptop's memory"),
-    ("Cameras", "Webcam and phone IP-camera application", "Same code path as site RTSP cameras"),
+    ("Training GPU", "Google Colab and Kaggle, Tesla T4", "Training exceeded the laptop's memory; the fire model was trained on Kaggle"),
+    ("Cameras", "Webcam, phone IP-camera application and recorded test videos", "Same code path as site RTSP cameras"),
     ("Phone", "Android phone (push test pending)", "Firebase push needs a development build on a device"),
     ("Smart Vest parts", "Not bought; simulator used", "ESP32, GPS, LoRa and button of Table 4.2 when the vest is built"),
     ("Software and data", "Open-source stack (Table 4.1); CC BY 4.0 dataset", "No licence cost; dataset licence permits reuse with attribution"),
@@ -200,7 +205,7 @@ TABLE_39 = [
 
 TABLE_310 = [
     ("Aspect", "Assessment"),
-    ("Technical", "Feasible. Every component uses mature open-source frameworks, the full detector set runs at 15.7 FPS on a laptop GPU and 318 automated tests pass. The open risk is detection of missing equipment (Section 5.5)."),
+    ("Technical", "Feasible. Every component uses mature open-source frameworks, the full detector set runs at 16 FPS on a laptop GPU and 470 automated tests pass. The open risk is detection of missing equipment (Section 5.5)."),
     ("Operational", "Feasible. Officers keep their role and receive alerts on their phones; workers need only a paper badge; zones are drawn on a map. Cameras must be placed so badges are readable."),
     ("Economic", "Low cost. The software is open source, existing IP cameras can be reused and badges cost a sheet of paper; the main expense is an edge GPU computer per site, plus optional vest hardware."),
     ("Legal and ethical", "Camera monitoring needs informed worker consent and signage. Badges carry a random code, not personal data; snapshots are visible only to signed-in users, deleted after 30 days and can be switched off. The system informs the officer and makes no disciplinary decision."),
@@ -309,6 +314,7 @@ TABLE_41 = [
     ("React / Vite / Tailwind CSS", "19.2.8 / 8.2.2 / 4.3.3", "Web command centre"),
     ("Leaflet / react-leaflet", "1.9.4 / 5.0.0", "Site map and zone editor (OpenStreetMap tiles)"),
     ("Expo SDK / React Native", "58.0.12 / 0.88.0", "Mobile application"),
+    ("react-native-webview / react-native-svg", "14.0.1 / 15.16.0", "Mobile site map (Leaflet) and danger-area outlines"),
     ("Docker Compose / GitHub Actions", "Written, not yet run", "Eight-service deployment; CI running every test suite"),
     ("Git", "2.53.0", "Version control"),
 ]
@@ -372,13 +378,17 @@ TABLE_47 = [
     ("/api/token/, /api/token/refresh/", "POST", "Sign in; renew the access token"),
     ("/api/v1/profile/, /api/v1/profile/change-password/", "GET/PATCH, POST", "Signed-in user's profile and password"),
     ("/api/dashboard/stats/", "GET", "Counts and charts from stored records"),
-    ("/api/alerts/", "GET/POST", "List or create alerts (date range, type, status filters)"),
+    ("/api/alerts/", "GET/POST", "List or create alerts (date range, type, status, camera and newest-N filters)"),
     ("/api/alerts/{id}/, /api/alerts/{id}/resolve/", "GET/PATCH, POST", "Read, update or resolve one alert"),
     ("/api/alerts/{id}/snapshot/", "GET", "Evidence frame of a camera alert; signed-in users only"),
     ("/api/alerts/simulate/", "POST", "Create a simulated alert (labelled)"),
     ("/api/v1/camera-events/", "POST", "Camera event with event_id; device token"),
     ("/api/v1/camera-activity/", "POST", "Badge sightings and idle start/end; device token"),
-    ("/api/v1/camera-config/", "GET", "Alert rules for this camera; device token"),
+    ("/api/v1/camera-config/", "GET", "Alert rules and danger areas for this camera; device token"),
+    ("/api/v1/camera-frames/ (+ /latest/)", "POST, GET", "Live-view JPEG from a camera (device token); latest frame for officers"),
+    ("/api/v1/camera-counts/", "POST", "People in a camera's view, for zone head counts; device token"),
+    ("/api/v1/cameras/, /api/v1/camera-map/ (+ /{id}/)", "GET, GET/PUT/DELETE", "Cameras with live status; site-map rows and Admin placement"),
+    ("/api/v1/camera-areas/", "GET/POST/PATCH/DELETE", "Danger areas on camera pictures; Admins write"),
     ("/api/alerts/ingest/", "POST", "Legacy edge ingest; device token"),
     ("/api/workers/, /api/workers/{id}/", "GET/POST, GET/PUT/PATCH/DELETE", "Worker registry and vest assignment"),
     ("/api/workers/{id}/badge/", "GET/POST", "Read or reissue a worker's QR badge"),
@@ -391,54 +401,58 @@ TABLE_47 = [
     ("/api/v1/hot-work-permits/ (+ /{id}/revoke/)", "GET/POST/PUT/PATCH/DELETE", "Hot-work permits and revocation"),
     ("/api/v1/fcm-tokens/, /api/v1/fcm-tokens/{token}/", "POST, DELETE", "Register or remove a phone's push token"),
     ("/api/v1/reports/ (+ /generate/, /{id}/download/)", "GET, POST, GET", "List, generate (DOCX or PDF) and download reports"),
-    ("/ws/dashboard/?token=<JWT>", "WebSocket", "Live alert, vest and worker events"),
+    ("/ws/dashboard/?token=<JWT>", "WebSocket", "Live alert, vest, worker, zone and camera events"),
+    ("/ws/cameras/?token=<JWT>", "WebSocket", "Live camera frames for Safety Officers and Admins"),
 ]
 
 TABLE_48 = [
     ("Table", "Key fields", "Relations / notes"),
     ("users", "id, email, full_name, role, is_active", "Roles: Admin, Safety Officer, Viewer"),
     ("service_tokens", "id, name, kind, key_hash, camera_ids, is_simulator, is_active", "Device tokens; only a hash of the key is stored"),
-    ("workers", "id, name, role, zone_id, badge_code, last_seen_at, is_active", "FK zones; badge_code is unique (QR payload)"),
+    ("workers", "id, name, role, zone_id, badge_code, last_seen_at, location_zone_id, location_at, is_active", "FK zones; badge_code is unique (QR payload); last located zone"),
     ("smart_vests", "id, vest_id, worker_id, battery_level, latitude, longitude, sos_active, last_seen", "One-to-one with workers; battery unknown until reported"),
-    ("zones", "id, name, risk_level, boundaries, camera_ids, max_occupancy", "Polygon boundaries and camera assignment (JSON)"),
+    ("zones", "id, name, risk_level, boundaries, camera_ids, max_occupancy, camera_views_overlap", "Polygon boundaries and camera assignment (JSON); capacity state"),
+    ("cameras", "id, camera_id, people_count, counted_at, latitude, longitude, heading, field_of_view, view_range_m", "Latest people count and site-map placement"),
+    ("camera_areas", "id, camera_id, name, polygon, severity, is_active", "Danger areas; corners as fractions of the picture"),
     ("hot_work_permits", "id, zone_id, description, starts_at, ends_at, issued_by_id, revoked_at", "FK zones, users"),
     ("alerts", "id, alert_type, severity, source, worker_id, camera_id, hot_work_permit_id, confidence, model_version, snapshot, event_id, is_resolved", "FK workers, permits; event_id unique for idempotent ingest"),
     ("alert_config", "id, zone_id, alert_type, is_enabled, threshold_seconds, notify_push, notify_email", "One rule per type and zone; SOS and FIRE always enabled"),
     ("activity_logs", "id, worker_id, zone_id, action, timestamp, metadata", "Check-in/out, idle and zone events at event time"),
     ("detections", "id, camera_id, worker_id, class_name, confidence, bbox", "FK workers"),
-    ("reports", "id, report_type, file_format, date_from, date_to, created_by_id", "FK users; stored before download"),
+    ("reports", "id, report_type, file_format, date_from, date_to, includes_evidence, created_by_id", "FK users; stored before download"),
     ("fcm_tokens, user_preferences", "user_id, token, device_name / notify_push, notify_email", "FK users; push targets and opt-outs"),
 ]
 
 TABLE_49 = [
     ("Component", "Technology", "Purpose"),
     ("Framework", "React Native 0.88 on Expo SDK 58 [21], TypeScript", "Android and iOS from one codebase"),
-    ("Navigation", "Expo Router (file-based tabs and stack)", "Alerts, Workers and Settings tabs; alert detail"),
+    ("Navigation", "Expo Router (file-based tabs and stack)", "Alerts, Map, Cameras, Workers and Settings tabs; alert and camera screens"),
+    ("Map and overlays", "Leaflet 1.9.4 in react-native-webview; react-native-svg", "Same site map as the web; danger areas over the live picture"),
     ("State", "React context and reducers", "Live alert and worker state"),
     ("HTTP client", "fetch wrapper with single-flight token refresh", "REST calls; sign-out when renewal fails"),
     ("Live updates", "WebSocket with 4401 renewal, back-off and resync", "Same live stream as the web dashboard"),
     ("Push notifications", "expo-notifications 58.1 (FCM on Android)", "Alert delivery; tap opens the alert"),
     ("Secure storage", "expo-secure-store 58.0", "Tokens in the device keychain/keystore"),
-    ("Quality checks", "jest-expo (16 tests), ESLint, TypeScript", "Run in CI"),
+    ("Quality checks", "jest-expo (25 tests), ESLint, TypeScript", "Run in CI"),
 ]
 
 CHAPTER_4 = [
     ("h2", "4.1 Development Environment"),
-    ("p", "Site-Safe was developed and measured on one Apple M4 laptop with 16 GB of memory running macOS; the versions in Table 4.1 were read from the project environments and lock files on 20 October 2026. The PPE model was trained on a Google Colab Tesla T4 GPU, because training on the laptop ran out of memory. A docker-compose file and a GitHub Actions workflow are written but have not yet been run."),
+    ("p", "Site-Safe was developed and measured on one Apple M4 laptop with 16 GB of memory running macOS; the versions in Table 4.1 were read from the project environments and lock files on 20 October 2026. The PPE model was trained on a Google Colab Tesla T4 GPU and the fire model on a Kaggle T4, because training on the laptop ran out of memory. A docker-compose file and a GitHub Actions workflow are written but have not yet been run."),
     ("table", "Table 4.1: Development Environment Summary", TABLE_41, [1.9, 1.5, 2.6], 8.5),
 
     ("h2", "4.2 QR Identification and Smart Vest"),
     ("h3", "4.2.1 QR Worker Identification"),
     ("p", "Each worker has a random badge code, created at registration and reissued from the Workers page, which prints a QR badge with the payload SSW1:<code> for the helmet. On the camera, identity.py decodes QR codes with OpenCV on the frames sampled for the person detector and associates each badge with the person box that contains it, following that person between samples by box overlap. A badge inside two person boxes, or two badges inside one box, is treated as unknown rather than guessed, so people standing close together are not misattributed."),
-    ("p", "Alerts from a person with a known badge are attributed to that worker; others are marked as not identified. The same badges feed attendance (Section 4.7), with at most one sighting per badge per minute, and unknown or revoked codes are ignored with HTTP 202 so that they cannot block a camera's queue. Thirteen camera-side tests, including decoding of real OpenCV-encoded images, and seven backend tests cover decoding, association and attribution. Reading range, angle and lighting have not yet been measured with printed badges, so the 5–10 metre range in Section 3.4.1 remains an assumption."),
+    ("p", "Alerts from a person with a known badge are attributed to that worker; others are marked as not identified. Sightings, repeated every 15 seconds while a badge stays in view, feed attendance (Section 4.7) and place the worker in the camera's zone (Section 4.4); unknown or revoked codes are ignored with HTTP 202 so that they cannot block a camera's queue. Reading range, angle and lighting have not yet been measured with printed badges, so the 5–10 metre range in Section 3.4.1 remains an assumption."),
     ("h3", "4.2.2 Smart Vest"),
-    ("p", "The physical Smart Vest (ESP32 [13], GPS module, SOS button and LoRa link [14]) has not been built. It was moved to future work through a scope-change request to the supervisor: the vest is supplementary by design (Section 3.4.2), parts and lab access were not available in the time left, and the camera functions carry the primary objectives. Figure 3.6 and Tables 4.2 and 4.3 remain the proposed hardware design."),
+    ("p", "The physical Smart Vest (ESP32 [13], GPS module, SOS button and LoRa link [14]) has not been built. It was moved to future work through a scope-change request to the supervisor: the vest is supplementary by design (Section 3.4.2), parts and lab access were not available in time, and the camera functions carry the primary objectives. Figure 3.6 and Tables 4.2 and 4.3 remain the proposed design."),
     ("p", "The software path a vest would use is implemented. A gateway posts JSON telemetry (vest, position, battery and SOS state) to /api/v1/vests/telemetry/ with a gateway token, or publishes it to sitesafe/vest/<id>/telemetry and /sos on a Mosquitto broker [15] read by the MQTT consumer. Both paths validate the payload and share one handler (Figure 4.8). A vest simulator drives this path with scripted scenarios; its token is flagged, so its alerts are labelled SIMULATED, create no attendance and are excluded from reports."),
     ("table", "Table 4.2: Proposed Smart Vest Component Specifications", TABLE_42, [1.1, 1.3, 1.1, 1.1, 1.4], 9),
     ("table", "Table 4.3: Proposed ESP32 Pin Allocation", TABLE_43, [1.4, 1.7, 1.2, 1.7], 9),
 
     ("h2", "4.3 PPE Detection Module"),
-    ("p", "The camera pipeline runs the PPE detector models/sitesafe_v5.pt, a YOLO11-medium model trained with Ultralytics [3], on every frame. Because the PPE model has no person or vehicle class, a COCO-pretrained YOLO11-nano detector supplies person and vehicle boxes on every third frame, and a YOLO11-nano pose model runs on every third frame for fall detection. All models read the same unannotated frame; boxes are drawn only on a display copy. Each missing-PPE box is tracked as one person's episode (ppe_episodes.py). Same-class boxes covering one body part are first merged (overlap of 0.4 IoU, or one centre inside the other at 0.2), because the detector can report one body part two or three times. An episode alerts once after persisting for one second in at least three frames, and again only after it has been unseen for 30 seconds, so a flicker raises nothing and two people missing helmets raise two alerts."),
+    ("p", "The camera pipeline runs the PPE detector models/sitesafe_v5.pt, a YOLO11-medium model trained with Ultralytics [3], on every frame. A COCO-pretrained YOLO11-nano detector supplies person and vehicle boxes, and a YOLO11-nano pose model keypoints, each on every third frame; all read the same unannotated frame. Each missing-PPE box is tracked as one person's episode (ppe_episodes.py): duplicate boxes for one body part are merged, and each box is matched to its wearer through the person tracker. An episode alerts once after persisting for one second in at least three frames, and again only after 30 seconds unseen, so a flicker raises nothing and two people missing helmets raise two alerts. Every camera detector follows this pattern."),
     ("h3", "4.3.1 Dataset and Classes"),
     ("p", "The training data is the Roboflow dataset ppe-detection-qlq3d (CC BY 4.0) [4]: 5,140 images in ten classes, helmet, vest, boots, gloves and goggles, each with a matching no- class, so that a violation is detected directly rather than inferred. It has no person or vehicle class, hence the second detector."),
     ("p", "The published split (Table 4.4) is not independent. The repository audit (audit_dataset.py) found 573 source groups and 30 groups of exact duplicates with members in more than one split, and 69 groups of identical images with conflicting labels. Test images therefore have near-copies in training, which inflates the scores below. A group-constrained re-split (3,598 / 771 / 771 images) has been generated but is held back until the label conflicts are resolved."),
@@ -448,49 +462,54 @@ CHAPTER_4 = [
     ("table", "Table 4.5: YOLOv11 Training Hyperparameters", TABLE_45, [1.5, 2.2, 2.3], 8.5),
     ("fig", "fig_training_pipeline.png", 6.0, "Figure 4.1: PPE Model Training and Evaluation Pipeline"),
     ("h3", "4.3.3 Model Performance"),
-    ("p", "On the held-out split the model reaches mAP@0.5 of 0.562 and mAP@0.5:0.95 of 0.345, with precision 0.467 and recall 0.728 (Table 4.6). Equipment that is worn is recognised reliably: helmet, vest and boots exceed 0.95. Missing equipment, the condition the system exists to detect, is recognised poorly: no-gloves 0.062, no-boots 0.130 and no-helmet 0.309. Absence must be inferred from where equipment would be, and the negative classes are under-represented. The larger model did not fix this, so better data for the weakest classes is the most valuable improvement, and because of the split leakage every figure is an upper bound."),
+    ("p", "On the held-out split the model reaches mAP@0.5 of 0.562 and mAP@0.5:0.95 of 0.345, with precision 0.467 and recall 0.728 (Table 4.6). Worn equipment is recognised reliably: helmet, vest and boots exceed 0.95. Missing equipment, the condition the system exists to detect, is recognised poorly (no-gloves 0.062, no-boots 0.130, no-helmet 0.309), because absence must be inferred and the negative classes are under-represented. Better data for these classes is the most valuable improvement, and the split leakage makes every figure an upper bound."),
     ("table", "Table 4.6: Per-Class Detection Performance", TABLE_46, [1.8, 1.4, 1.4, 1.4], 9),
     ("h3", "4.3.4 Fall Detection"),
     ("p", "Fall detection (fall_detection.py) runs its own pose model on every third frame, since neither the PPE nor the COCO detector gives keypoints. A posture counts as collapsed only when both signals of Section 3.3.5 agree: the confident keypoints form a box wider than tall, and the hips are at or below the knees. If either signal cannot be measured, for example with a leg out of frame, the result is not-collapsed, so missing data does not raise an alarm."),
-    ("p", "People are tracked between samples by a confidence-weighted keypoint centroid, and a fall is confirmed only after three continuous seconds of collapse. It raises one FALL alert and latches until the posture clears; brief missed detections are tolerated. The alert names a worker only when a QR badge is associated with the track. Twenty-four tests cover the geometry and the tracker, and on real pose output from photographs, standing pedestrians were read as not collapsed. The module has not been tested on fall footage, and its pixel geometry is uncalibrated per camera."),
+    ("p", "People are tracked between samples by a confidence-weighted keypoint centroid, and a fall is confirmed after three continuous seconds of collapse; it raises one FALL alert and latches until the posture clears. Twenty-four tests cover the geometry and the tracker, and standing pedestrians in real photographs were read as not collapsed. The module has not been tested on fall footage, and its pixel geometry is uncalibrated per camera."),
     ("h3", "4.3.5 Fire and Smoke Detection with Hot-Work Permits"),
     ("p", "On the camera, fire_detection.py runs on every fifth frame and confirms fire or smoke only when it persists for two seconds with gaps of at most one second, ignoring specks below 0.05 percent of the frame; after an alert it latches until the scene has been clear for 30 seconds, so a fire raises one alert, not one per frame."),
-    ("p", "Severity is set by the server (alerts/fire_policy.py) from hot-work permits, which safety officers issue for a zone and time window on the Zones page and can revoke. Without an active permit FIRE is CRITICAL and SMOKE is HIGH; within one, FIRE is MEDIUM and SMOKE LOW, and the alert is linked to the permit. Unlike the suppression proposed in Section 3.3.6, a permitted flame is still stored and broadcast, so a welding fire that spreads is not hidden, and FIRE cannot be disabled. The growth heuristic was not implemented, as no labelled footage exists to set it."),
-    ("p", "The fire model itself is not yet trained: a preparation script and a Colab notebook for a two-class YOLO11-small detector exist, but the dataset and licence must be confirmed first, and the pipeline runs without the stage until the weights exist. The permit policy was verified end to end on 20 October 2026 with injected events: a fire in a permitted zone became MEDIUM and was linked, the same fire elsewhere CRITICAL."),
+    ("p", "Severity is set by the server (alerts/fire_policy.py) from hot-work permits, which safety officers issue for a zone and time window and can revoke. Without an active permit FIRE is CRITICAL and SMOKE HIGH; within one, FIRE is MEDIUM and SMOKE LOW, and the alert is linked to the permit. Unlike the suppression proposed in Section 3.3.6, a permitted flame is still stored and broadcast, so a spreading welding fire is not hidden, and FIRE cannot be disabled."),
+    ("p", "The fire model is a two-class YOLO11-small detector trained on the D-Fire dataset on a Kaggle T4 GPU (early stop after 96 epochs, best at 76). On 4,294 held-out images it reached precision 0.775, recall 0.720 and mAP@0.5 of 0.787 (fire 0.726, smoke 0.848). The permit policy was verified end to end: a fire in a permitted zone became MEDIUM and linked, elsewhere CRITICAL. Video and hard negatives such as welding remain to be evaluated."),
     ("h3", "4.3.6 Camera Sources and Reliable Event Delivery"),
     ("p", "The camera source is a device index or a stream URL, so an RTSP camera, an NVR or a phone running an IP-camera application uses the same code path as a webcam, and up to 30 consecutive failed reads are tolerated before a stream counts as disconnected. Each pipeline has a camera identifier, and zones list their cameras, so each alert is attributed to a zone."),
-    ("p", "Every event is first written to a local SQLite outbox with a unique event identifier and delivered in the background, retrying with exponential back-off capped at 30 seconds, also after a restart. The server stores each identifier once, answering 201 for a new event, 200 for a duplicate and 202 when the alert type is disabled; a validation error moves the event to dead letters. Cameras use device tokens scoped to their identifier, and read their alert rules every 60 seconds, so a new inactivity timeout set on the dashboard applies without a restart."),
+    ("p", "Every event is first written to a local SQLite outbox under a unique event identifier and delivered in the background with back-off capped at 30 seconds, also after a restart. The server stores each identifier once (201 new, 200 duplicate, 202 type disabled) and dead-letters invalid events. Cameras use device tokens scoped to their identifier and read their rules and danger areas every 15 seconds, so dashboard changes apply without a restart."),
+    ("p", "Each pipeline also sends its annotated view, up to five frames a second from a background thread that drops stale frames, for the live camera grid (FR-30). The API relays frames to Safety Officers' and Admins' sockets and keeps only each camera's latest frame for 30 seconds; live video is never recorded."),
     ("h3", "4.3.7 Vehicle Proximity Detection"),
-    ("p", "Proximity uses the COCO detector's person and vehicle boxes. Without depth, the shortest gap between a person box and a vehicle box is divided by the person's box height, making the threshold roughly scale-invariant; one person-height is about 1.7 metres when both are at a similar distance from the camera. A breach must persist for three evaluated frames, latches until it clears, and is CRITICAL when the boxes overlap and HIGH otherwise."),
-    ("p", "Nine unit tests cover the geometry, scale invariance and persistence, and with the real detector a still image of people beside a bus produced a CRITICAL alert shown on the dashboard. COCO has no forklift class, so plant is reported as a truck or car, and a worker standing in front of a distant vehicle is over-reported. Live site footage has not been evaluated."),
+    ("p", "Proximity uses the COCO detector's person and vehicle boxes. Without depth, the gap between a person box and a vehicle box is divided by the person's box height, making the threshold roughly scale-invariant (one person-height is about 1.7 metres at similar distances). Each tracked person has one encounter, confirmed after three samples near a vehicle with no gap over one second; it raises one alert, CRITICAL if the boxes overlap and HIGH otherwise, and ends after 15 seconds away from every vehicle."),
+    ("p", "The first design re-armed whenever one sample missed the vehicle, limited only by a camera-wide 15-second cooldown: one worker beside a flickering car raised 14 alerts in three minutes, and two workers at risk shared one. Replaying the same detections, encounters cut a three-loop clip from 10 alerts to 2, one per person (Table 5.8). COCO has no forklift class, so plant is reported as a truck or car, and a worker in front of a distant vehicle is over-reported."),
+    ("h3", "4.3.8 Danger Areas"),
+    ("p", "Hazards smaller than a zone, such as a crane's swing radius, are drawn by Admins as polygons on a camera's live picture and stored as fractions of it (danger_areas.py). A person is inside when the bottom-centre of their box, their feet, lies in the polygon, so someone standing in front of an area is not flagged. One DANGER_AREA alert is raised per person per entry after one second inside, and again only after ten seconds outside; the camera fills an occupied area red. Areas can be switched off while the hazard is absent, from the web or the phone."),
 
     ("h2", "4.4 Backend Implementation"),
     ("p", "The backend is a Django 6 and Django REST Framework [10] application on PostgreSQL 18, served by Daphne so that REST and WebSocket traffic share one ASGI process through Django Channels [22]. Its five applications are accounts, alerts, workers, sitemap (zones and permits) and reports. Table 4.7 lists the endpoints, Table 4.8 the schema and Figure 4.2 the data model, drawn from the Django models."),
-    ("p", "Users receive a 30-minute JWT access token and a refresh token, which the clients renew silently, and Admin, Safety Officer and Viewer permissions are enforced on every endpoint. Producers use device tokens instead: only a hash of each key is stored, each has a kind (camera or vest gateway) and permitted cameras, and none can sign in. No write endpoint is anonymous and no credentials remain in the code. The WebSocket requires a valid user token and an allowed origin and closes with code 4401 otherwise, which tells clients to renew and reconnect."),
-    ("p", "Alert, resolution and vest changes are broadcast after the transaction commits, so clients never see a rolled-back alert, and a Redis channel layer carries them between processes. Alert rules set, per type and optionally per zone, whether an alert is enabled, its threshold and whether it notifies; SOS and FIRE cannot be disabled. Notifications go out after commit through Firebase Cloud Messaging [12] and e-mail, respecting user preferences. A presence monitor runs every 30 seconds, marking vests offline after 120 seconds of silence and closing attendance sessions."),
+    ("p", "Users receive a 30-minute JWT access token and a refresh token, renewed silently, and Admin, Safety Officer and Viewer permissions are enforced on every endpoint. Producers use device tokens instead: only a hash of each key is stored, each has a kind and permitted cameras, and none can sign in, so no write endpoint is anonymous. The WebSocket requires a valid user token and an allowed origin and otherwise closes with code 4401, telling clients to renew and reconnect."),
+    ("p", "Changes are broadcast after the transaction commits, so clients never see a rolled-back alert, through a Redis channel layer between processes. Alert rules set, per type and optionally per zone, whether an alert is enabled, its threshold and whether it notifies; SOS and FIRE cannot be disabled. Notifications go out after commit through Firebase Cloud Messaging [12] and e-mail. A presence monitor marks vests offline after 120 seconds of silence and closes attendance sessions."),
+    ("p", "Cameras also locate workers who wear no vest (workers/location.py): a badge sighting places the worker in that camera's zone, current for 60 seconds and then shown as last seen. Each camera reports how many people it sees, and a zone's head count is the larger of its identified workers and its cameras' counts, combined by the largest count when their views overlap, so nobody is counted twice. Over-capacity alerts use hysteresis, ten seconds over the limit to alert and sixty within it to re-arm, because head counts are noisy."),
     ("table", "Table 4.7: Core API Endpoints", TABLE_47, [2.5, 1.7, 1.8], 7.8),
     ("table", "Table 4.8: Database Schema Summary", TABLE_48, [1.15, 2.85, 2.0], 7.8),
     ("fig", "fig_erd.png", 6.0, "Figure 4.2: Entity Relationship Diagram"),
 
     ("h2", "4.5 Frontend Dashboard Implementation"),
     ("p", "The web command centre is a React 19 application built with Vite and Tailwind CSS, with routes for the dashboard, workers, incidents, vests, zones, reports and settings. Every dashboard figure comes from stored records; the seeded charts, vitals and compliance percentage of the earlier prototype were removed. A WebSocket adds and removes alerts live, and the client resynchronises after a reconnect."),
-    ("p", "The Zones page (Figure 4.3, left) shows a Leaflet [23] map on which administrators draw zone polygons, set risk level, occupancy limit and cameras, and manage hot-work permits; vest positions appear coloured by status. The Workers page registers and edits workers, assigns vests, prints badges and opens each worker's daily timeline (Figure 4.3, right). Controls appear only for roles that may use them. Reports are generated in DOCX or PDF for a period in the user's time zone and give counts, resolution times, violation-free days and attendance, each defined, but no compliance percentage, because the system records violations and not compliant observations, so no denominator exists."),
-    ("fig", "fig_web_interface.jpg", 6.0, "Figure 4.3: Web Command Centre: Zone Map and Worker Timeline"),
+    ("p", "The Cameras page shows every camera's annotated live view to Safety Officers and Admins; Admins draw danger areas on its enlarged view (Figure 4.3, left). On the Zones page's Leaflet [23] map, Admins draw zone polygons with risk level, occupancy limit and cameras, issue hot-work permits, and place each camera with its direction, view angle and range. The dashboard repeats the site map with live head counts, vests and cameras, which turn red for a minute after an alert (Figure 4.3, right). The Workers page registers workers, assigns vests, prints badges and shows daily timelines."),
+    ("p", "Reports are generated in DOCX or PDF for a period in the user's time zone and give counts, resolution times, violation-free days and attendance, each defined, but no compliance percentage, because the system records violations and not compliant observations, so no denominator exists. They can include the evidence frames of the most severe incidents, captioned, numbered and referenced from the incident log, and state how many incidents had no frame."),
+    ("fig", "fig_web_interface.jpg", 6.0, "Figure 4.3: Web Command Centre: Live Camera with a Danger Area, and the Site Map with Cameras"),
 
     ("h2", "4.6 Mobile Application"),
-    ("p", "The mobile application uses React Native 0.88 [11] on Expo SDK 58 in TypeScript, following Section 3.6. Expo builds Android and iOS clients without a local Xcode or Android Studio installation and supplies the FCM device token the backend supports. The app uses the same REST API and WebSocket as the web dashboard."),
+    ("p", "The mobile application uses React Native 0.88 [11] on Expo SDK 58 in TypeScript (Section 3.6). Expo builds Android and iOS clients without Xcode or Android Studio and supplies the FCM device token; the app uses the same REST API and WebSocket as the web dashboard."),
     ("h3", "4.6.1 Technology Stack"),
     ("table", "Table 4.9: Mobile Application Technology Stack", TABLE_49, [1.35, 2.5, 2.15], 8.5),
     ("h3", "4.6.2 Core Screens"),
-    ("p", "After sign-in with the server address and credentials, the Alerts tab lists open or all alerts and updates live; the detail screen shows the evidence frame, confidence and model version, and lets Safety Officers and Admins resolve the alert, which other sessions see immediately. The Workers tab shows role, zone, vest and presence, and Settings signs out (Figure 4.4). Reports, zone editing and worker registration stay on the web by design. Of the screens in Figure 3.8 and Table 3.2, the activity summary, rule configuration and shift scheduling were not built."),
-    ("fig", "fig_mobile_interface.jpg", 5.4, "Figure 4.4: Mobile Application: Alerts, Alert Detail and Workers"),
+    ("p", "After sign-in, five tabs follow (Figure 4.4). Alerts updates live; an alert shows its evidence frame, confidence and model version, links to its camera, and can be resolved by Safety Officers and Admins. Map shows the web's Leaflet site map in a WebView, so Android needs no map key. Cameras lists each camera's status and people in view; a camera's screen shows its live picture with danger areas outlined, and Admins can switch an area off. Workers shows presence and location, and Settings controls push. Reports, zone editing and worker registration stay on the web; the activity summary, rule configuration and shift scheduling of Figure 3.8 were not built."),
+    ("fig", "fig_mobile_interface.jpg", 6.0, "Figure 4.4: Mobile Application: Alerts, Site Map, Camera and Alert Detail"),
     ("h3", "4.6.3 Push Notification Flow"),
-    ("p", "On Android the app registers its FCM token after sign-in and removes it on sign-out; alerts arrive on a high-importance channel and a tap opens the alert. The backend side is tested with a mocked FCM service and the registration logic with unit tests, but delivery to a real phone needs a Firebase configuration and an Android development build and has not been verified. iOS gets no remote push and relies on the live socket. Figure 4.4 was captured from the app's web build, on which sign-in, live alerts, resolution, cross-session updates and sign-out were exercised end to end."),
+    ("p", "On Android the app registers its FCM token after sign-in and removes it on sign-out, and tapping a notification opens the alert. Both sides are tested with a mocked FCM service, but delivery to a real phone needs a Firebase configuration and a development build and has not been verified; iOS relies on the live socket. Figure 4.4 comes from the app's web build, on which every screen was exercised against a test camera; the native map and overlay modules have not yet run on a phone."),
 
     ("h2", "4.7 Workforce Activity Monitoring"),
     ("p", "Inactivity tracking (inactivity.py) follows people between samples by centroid; a track that stays within a movement threshold for the timeout set in the dashboard rules raises one INACTIVITY alert and re-arms only after moving, and brief occlusions do not drop it. Displacement is in uncalibrated pixels."),
     ("p", "Identified workers get attendance automatically (workers/activity.py). The first evidence of a worker, a badge sighting or a vest report, checks them in; idle start and end come from the inactivity tracker; and after 30 minutes without evidence the presence monitor checks them out at the time they were last seen. Late events, such as those replayed from an outbox, are merged into their session. A timeline API gives per-worker daily intervals of presence and idleness, shown on the Workers page and in the report attendance tables."),
-    ("p", "Twenty-three tests cover check-in, check-out, idleness and late events, and an end-to-end run on 20 October 2026 gave 60 minutes on site and 20 idle with check-out at the last sighting, identical in the timeline and the PDF. Records exist only when a worker is seen with a readable badge or wears a vest, and identities can swap when identified people cross; no annotated real-camera scenario has been compared yet."),
+    ("p", "Twenty-three tests cover check-in, check-out, idleness and late events; an end-to-end run gave 60 minutes on site and 20 idle, identical in the timeline and the PDF. Records exist only for workers with a readable badge or a vest, and identities can swap when identified people cross."),
 
     ("h2", "4.8 System Architecture and Deployment"),
     ("p", "Figure 4.5 shows the implemented components. The camera pipeline and the vest gateway or simulator write through authenticated HTTP or MQTT, the API is the only writer to PostgreSQL, and clients read through REST and receive changes over the WebSocket. The three tiers of Figure 3.3 remain, but notifications use an after-commit thread pool instead of Celery, documents come from a Node.js report service, and the edge runs on a laptop GPU instead of a Raspberry Pi or Jetson."),
@@ -506,25 +525,25 @@ CHAPTER_4 = [
 
     ("h2", "4.10 End-to-End Alert Flow"),
     ("p", "Figure 4.9 traces a camera alert. The tracker confirms the event, the camera queues and posts it, and the server applies the alert rule and, for fire and smoke, the permit policy before storing it under its event identifier. After commit, the alert is broadcast to web and mobile clients and notifications are sent. The camera deletes the event only after the server replies, so a network failure leaves it queued. Section 5.6 measures this path."),
-    ("p", "Each AI alert carries its evidence (FR-29): the confidence, the weights that produced it (file name and the first 12 hex digits of its SHA-256, so a retrained model under the same name is told apart) and a JPEG of the unannotated frame that confirmed it, scaled to at most 640 pixels. The snapshot is queued in the outbox with its event and sent in the same request. The server accepts only a JPEG of up to 512 KB, stores it once per event identifier and serves it only to signed-in users. Snapshots can be switched off at the camera or the server, and a daily command deletes them after a retention period (30 days by default) while keeping the alert."),
+    ("p", "Each AI alert carries its evidence (FR-29): the confidence, the weights that produced it (file name and the first 12 hex digits of its SHA-256) and a JPEG of the unannotated frame that confirmed it, at most 640 pixels wide, sent with the event from the outbox. The server accepts a JPEG of up to 512 KB, stores it once per event and serves it only to signed-in users; snapshots can be switched off, and a daily command deletes them after a retention period (30 days by default) while keeping the alert."),
     ("fig", "fig_seq_camera_event.png", 6.0, "Figure 4.9: Camera Event to Dashboard Sequence"),
 
     ("h2", "4.11 Project Timeline"),
-    ("p", "The final semester followed the completion plan: securing producers and live events first, then replacing fabricated dashboard data and adding worker, zone and breach features, then QR identification, PDF reports, the mobile application and the vest simulator, and finally PostgreSQL verification, containers and CI, fire and smoke with permits, attendance automation and the Chapter 5 measurements. Each stage was recorded with its tests in the requirements traceability matrix."),
+    ("p", "The final semester followed the completion plan: securing producers and live events, replacing fabricated dashboard data, worker, zone and breach features, QR identification, reports, the mobile application and the vest simulator, then PostgreSQL verification, CI, fire and smoke with permits, attendance and the Chapter 5 measurements. The final weeks merged the codebases, made PPE and proximity alerts per person after live runs, and added the camera features of Sections 4.3.6–4.3.8, cameras on the site map and report evidence, each verified with a test video and recorded in the traceability matrix."),
 ]
 
 # ---------------------------------------------------------------- Chapter 5
 
 TABLE_51 = [
     ("Suite", "Tests", "What it covers", "Result"),
-    ("Backend (Django)", "183", "Roles and permissions (16); camera and vest ingest, device tokens and alert rules (25); alert evidence: snapshot validation, storage, access and retention (19); fall (24), inactivity (10) and proximity (9) decision logic; WebSocket authentication and broadcasts (8); workers, vests, badges, presence and breaches (33); activity and timelines (18); zones and permits (15); reports (6)", "Pass on SQLite and PostgreSQL 18"),
-    ("Camera pipeline", "86", "PPE violation episodes (25), QR identity (13), event outbox with snapshots (11), alert evidence (8), fire confirmation (8), inference configuration (9), activity events (5), dataset audit and split tools (7)", "Pass"),
-    ("Fire dataset preparation", "4", "Label remapping, video-grouped split, negatives", "Pass"),
-    ("Report service (Node)", "13", "Metrics, DOCX and PDF rendering, attendance tables, pagination", "Pass"),
-    ("Mobile app", "16", "API client, token refresh and snapshot fetch (9), push registration (2), state reducers (5)", "Pass; lint and type check clean"),
-    ("Tools", "16", "Vest simulator (8), measurement statistics and tables (8)", "Pass"),
+    ("Backend (Django)", "241", "Roles and permissions; camera and vest ingest, device tokens and alert rules; alert evidence and retention; live camera view and camera map; camera location, head counts and capacity; danger areas; WebSocket authentication and broadcasts; workers, vests, badges, presence and breaches; activity and timelines; zones and permits; reports; demo site set-up", "Pass on SQLite and PostgreSQL 18"),
+    ("Camera pipeline", "144", "PPE episodes and person association, QR identity, event outbox, alert evidence, fire confirmation, proximity encounters, danger areas, live view and people counts, inference configuration, activity events, dataset tools", "Pass"),
+    ("Fire dataset preparation", "7", "Label remapping, video-grouped split, negatives, parquet unpacking", "Pass"),
+    ("Report service (Node)", "24", "Metrics, evidence selection and image loading, DOCX and PDF rendering, attendance tables, pagination", "Pass"),
+    ("Mobile app", "25", "API client and token refresh, push registration, live-state reducers, camera status, view cones, site-map data and messages", "Pass; lint and type check clean"),
+    ("Tools", "29", "Vest simulator, measurement statistics, tables and clip scoring", "Pass"),
     ("Web frontend", "—", "No unit tests; ESLint and production build", "Lint clean; build OK"),
-    ("Total", "318", "", "All pass (21 Oct 2026)"),
+    ("Total", "470", "", "All pass (27 Oct 2026)"),
 ]
 
 TABLE_52 = [
@@ -533,12 +552,12 @@ TABLE_52 = [
     ("FR-02", "Roles enforced by the API", "16 permission tests", "Tested"),
     ("FR-03", "UI shows only permitted actions", "Browser check as Safety Officer and Admin; Viewer not checked in the browser", "Integrated"),
     ("FR-04", "Detect missing PPE (10 classes)", "Held-out mAP@0.5 0.562 on a leaky split; no sealed target-camera set", "Coded"),
-    ("FR-05", "One alert per person per violation episode", "25 tests; still-image clip with 2 people without helmets gives 2 alerts; two live webcam runs tuned duplicate boxes", "Tested"),
+    ("FR-05", "One alert per person per violation episode", "31 tests; clip with 2 people without helmets gives 2 alerts; live webcam runs fixed duplicate-box and moving-head repeats", "Tested"),
     ("FR-06", "Falls from camera pose", "24 tests; no fall video evaluated", "Tested"),
-    ("FR-07", "Worker-vehicle proximity", "9 tests; still-image trial", "Tested"),
+    ("FR-07", "Worker-vehicle proximity", "18 tests; looped test clip 10 alerts to 2, one per person", "Tested"),
     ("FR-08", "Inactivity with dashboard-set timeout", "10 tests; rule polling tests", "Tested"),
-    ("FR-09", "Fire/smoke with hot-work permits", "20 tests; permit downgrade end to end; model not trained", "Integrated (no model)"),
-    ("FR-10", "QR worker identification", "20 tests; synthetic-frame end to end", "Integrated (synthetic)"),
+    ("FR-09", "Fire/smoke with hot-work permits", "20 tests; model trained, held-out mAP@0.5 0.787; permit downgrade end to end", "Integrated (images only)"),
+    ("FR-10", "QR worker identification", "21 tests; synthetic frames and a test video with a printed badge", "Integrated (test video)"),
     ("FR-11", "Reliable camera event delivery", "8 outbox tests; 100-event outage (Table 5.4)", "Integrated"),
     ("FR-12", "Only authorised devices submit data", "Ingest tests: anonymous, revoked, wrong-kind, wrong-camera tokens", "Tested"),
     ("FR-13", "Live updates for every change", "Realtime tests; two clients converge; browser", "Integrated"),
@@ -552,11 +571,16 @@ TABLE_52 = [
     ("FR-21", "Smart Vest GPS, SOS and link", "Simulator scenario end to end; hardware not built", "Software integrated; hardware deferred"),
     ("FR-22, 23", "Telemetry validation; vest offline", "Validation and presence tests; browser occupancy timeout", "Tested; Integrated"),
     ("FR-24", "Activity history: check-in/out, idle", "23 tests; timeline and PDF agree end to end", "Integrated"),
-    ("FR-25", "Incident list, resolve, export", "Resolve broadcast covered by FR-13", "Coded"),
+    ("FR-25", "Incident list, resolve, export", "Browser: every filter, resolve broadcast, CSV export, responsive table", "Integrated"),
     ("FR-26", "Dashboard shows recorded data only", "3 tests; browser reconciliation", "Integrated"),
     ("FR-27", "DOCX and PDF reports", "19 tests; both types and formats end to end", "Integrated"),
-    ("FR-28", "Mobile app", "13 tests; web build end to end", "Integrated on web; no device"),
-    ("FR-29", "Alert evidence (snapshot, model version)", "30 tests; outbox to API to web and mobile end to end with a synthetic frame", "Integrated (synthetic frame)"),
+    ("FR-28", "Mobile app", "25 tests; web build: alerts, map, cameras, live picture end to end", "Integrated on web; no device"),
+    ("FR-29", "Alert evidence (snapshot, model version)", "30 tests; live runs with test videos: frame and model on web, mobile and reports", "Integrated (test videos)"),
+    ("FR-30", "Live camera grid", "18 tests; test video and synthetic frames live at 5 frames/s; Viewer sees none", "Integrated (test video)"),
+    ("FR-31", "Camera-based location and head counts", "31 tests; badge clip places the worker; crowd clip head counts with hysteresis", "Integrated (test videos)"),
+    ("FR-32", "Danger areas on the camera picture", "22 tests; area drawn live, alert with snapshot and badge within 15 s", "Integrated (test video)"),
+    ("FR-33", "Cameras on the site map", "11 tests; placement; live, offline and alerting states; role checks", "Integrated (test video)"),
+    ("FR-34", "Evidence snapshots in reports", "13 tests; incident PDF with 24 figures, safety DOCX by zone", "Integrated (test video)"),
 ]
 
 TABLE_53 = [
@@ -573,16 +597,20 @@ TABLE_54 = [
 ]
 
 TABLE_55 = [
-    ("Device", "Run (UTC, 20 Oct)", "Frames", "FPS", "Frame p50 (ms)", "Frame p95 (ms)", "Result (≥ 10 FPS)"),
-    ("CPU", "11:52", "150", "9.8", "80.4", "145.5", "Fail"),
-    ("CPU", "12:15", "150", "10.1", "82.1", "147.2", "Pass (marginal)"),
-    ("GPU (mps)", "11:51", "300", "13.4", "52.1", "116.5", "Pass"),
-    ("GPU (mps)", "12:14", "300", "15.7", "46.4", "106.1", "Pass"),
+    ("Device", "Run (UTC)", "Fire model", "Frames", "FPS", "Frame p50 (ms)", "Frame p95 (ms)", "Result (≥ 10 FPS)"),
+    ("CPU", "20 Oct 11:52", "No", "150", "9.8", "80.4", "145.5", "Fail"),
+    ("CPU", "20 Oct 12:15", "No", "150", "10.1", "82.1", "147.2", "Pass (marginal)"),
+    ("CPU", "27 Oct 09:31", "Yes", "150", "10.2", "75.9", "157.6", "Pass (marginal)"),
+    ("GPU (mps)", "20 Oct 11:51", "No", "300", "13.4", "52.1", "116.5", "Pass"),
+    ("GPU (mps)", "20 Oct 12:14", "No", "300", "15.7", "46.4", "106.1", "Pass"),
+    ("GPU (mps)", "27 Oct 09:30", "Yes", "300", "15.8", "54.4", "109.1", "Pass"),
+    ("GPU (mps)", "27 Oct 09:31", "Yes", "300", "16.1", "54.0", "105.9", "Pass"),
 ]
 
 TABLE_56 = [
     ("Duration", "Probes", "Missed", "p50 (ms)", "p95 (ms)", "Socket drops", "Forced reconnect (s)", "API memory (MB)"),
-    ("5 min (validation)", "146", "0", "35.9", "41.1", "0", "1.2", "63.6 → 91.6 (max 109.8)"),
+    ("5 min (validation, 20 Oct)", "146", "0", "35.9", "41.1", "0", "1.2", "63.6 → 91.6 (max 109.8)"),
+    ("2 h (22 Oct)", "1,431", "0", "24.4", "39.7", "0", "1.1", "85.2 → 67.2 (max 141.1)"),
 ]
 
 TABLE_57 = [
@@ -599,6 +627,12 @@ TABLE_57 = [
     ("20 Oct", "Attendance", "60 min on site, 20 min idle, check-out at last sighting; timeline equals PDF", "Synthetic camera events"),
     ("20 Oct", "Alert evidence", "Snapshot sent through the outbox; one image stored, a replay stored none; frame and model version shown on web and mobile; retention removed the image and kept the alert", "Synthetic frame; no live camera run"),
     ("Earlier", "Proximity, real detector", "Still image: 4 people, 1 vehicle, CRITICAL alert stored and shown", "Still image only"),
+    ("27 Oct", "Live camera grid", "Test video and synthetic frames live at 5 frames/s; offline camera shown; Viewer saw no video", "Test video; no site camera"),
+    ("27 Oct", "Camera location and head counts", "Badge clip placed the worker in its camera's zone; one over-capacity alert per crowd period", "Test videos"),
+    ("27 Oct", "Danger area", "Area drawn on the live view; alert with snapshot and badge holder; red fill and banner; Safety Officer read-only", "Test video"),
+    ("27 Oct", "Cameras on the site map", "Placement; live, offline and alerting states; live thumbnail for officers, none for Viewers", "Test video"),
+    ("27 Oct", "Report evidence", "Incident PDF with 24 captioned figures referenced from the log; safety DOCX by zone", "Test-video frames"),
+    ("27 Oct", "Mobile map and cameras", "Map and live picture with area outline; an area switched off on the phone stopped at the camera within 15 s", "Web build at phone size"),
 ]
 
 TABLE_58 = [
@@ -615,22 +649,27 @@ TABLE_58 = [
     ("One person got repeat PPE alerts: duplicate same-class boxes became separate episodes", "Live webcam run (55 s)", "Overlapping or nested same-class boxes merged; episode close time 10 s to 30 s"),
     ("A timeline test failed before noon: its shift was partly in the future", "Re-running the suite in the morning", "Test uses yesterday's shift"),
     ("The mobile app could not load alert snapshots: the API refused Accept: image/* with 406", "End-to-end check of the mobile web build", "The snapshot endpoint ignores the Accept header"),
+    ("Every worker update closed dashboard sockets: a raw date-time in the payload", "Live camera-location run", "Times sent as ISO text; payload test"),
+    ("A noisy head count raised 5 over-capacity alerts in 4 minutes", "Live crowd-video run", "Hysteresis: 10 s to alert, 60 s within the limit to re-arm"),
+    ("One worker beside a flickering car raised 14 proximity alerts in 3 minutes", "Live danger-area run", "One encounter per person; camera-wide cooldown removed"),
+    ("A different person at the same spot 14 s later was taken for a re-found one", "Replay of the 40-scene test video", "Re-finding limited to 5 s"),
+    ("Every report downloaded under a generic file name", "Live report run", "The API exposes the file-name header to the dashboard"),
 ]
 
 CHAPTER_5 = [
     ("h2", "5.1 Testing Approach"),
-    ("p", "Testing was organised around the requirements traceability matrix kept in the repository, which links each functional (FR) and non-functional (NFR) requirement to its code, tests and evidence. A requirement's status rises through five levels, each including the previous one: Coded (the code exists), Tested (automated tests cover the behaviour), Integrated (verified end to end across real running services), Physical (verified with real hardware or a real camera scene) and Accepted (agreed with the supervisor). No requirement has reached Physical or Accepted yet, and the acceptance targets in this chapter are the team's proposals, not targets set by the university."),
+    ("p", "Testing was organised around the requirements traceability matrix in the repository, which links each functional (FR) and non-functional (NFR) requirement to its code, tests and evidence. A requirement's status rises through five levels: Coded, Tested (automated tests cover it), Integrated (verified end to end across running services), Physical (verified with real hardware or a real camera scene) and Accepted (agreed with the supervisor). No requirement has reached Physical or Accepted yet, and the acceptance targets are the team's proposals."),
     ("p", "Four kinds of evidence are used. Automated unit and integration tests run on every change. End-to-end exercises start the real services and drive them with real payloads: camera events, vest telemetry, browser sessions and app sessions. Measurement scripts in tools/measure/ produce the performance and reliability tables; each saves its raw results together with the machine, the git commit and its settings, and a table generator turns them into the tables below, so no number is copied by hand. Model evaluation uses Ultralytics on the held-out test split."),
     ("h2", "5.2 Test Environment"),
-    ("p", "All tests and measurements ran on the development machine: an Apple M4 laptop with 16 GB of memory running macOS (Darwin 27.0), with Python 3.14.3, Node.js 25.8.1 and PostgreSQL 18.3. The backend suite runs against both an isolated SQLite database and PostgreSQL 18, because several defects appeared only on PostgreSQL (Table 5.8). Measurements used a separate PostgreSQL database and simulator device tokens, so their alerts are labelled SIMULATED and never reach report figures. Everything ran on a single host; no measurement yet crosses a real network to a second device."),
+    ("p", "All tests and measurements ran on the development machine: an Apple M4 laptop with 16 GB of memory running macOS, with Python 3.14.3, Node.js 25.8.1 and PostgreSQL 18.3. The backend suite runs on both SQLite and PostgreSQL, because several defects appeared only on PostgreSQL (Table 5.8). Measurements used simulator device tokens, so their alerts are labelled SIMULATED and never reach reports, and no measurement yet crosses a network to a second device."),
     ("h2", "5.3 Automated Test Results"),
-    ("p", "Table 5.1 lists the automated suites. All 318 tests passed when they were re-run for this report on 21 October 2026, up from 59 in the previous revision. Decision logic on the camera side (PPE episodes, fall, inactivity, proximity and fire confirmation) is kept free of OpenCV and model imports, which lets it run under the backend test command without a camera, a GPU or weights. The web frontend has no unit tests; its lint check and production build are run instead, and its behaviour was checked in the browser (Table 5.7)."),
+    ("p", "Table 5.1 lists the automated suites. All 470 tests passed when they were re-run for this report on 27 October 2026, up from 59 in the previous revision. Decision logic on the camera side (PPE episodes, fall, inactivity, proximity and fire confirmation) is kept free of OpenCV and model imports, which lets it run under the backend test command without a camera, a GPU or weights. The web frontend has no unit tests; its lint check and production build are run instead, and its behaviour was checked in the browser (Table 5.7)."),
     ("table", "Table 5.1: Automated Test Suites", TABLE_51, [1.35, 0.55, 3.0, 1.1], 8),
     ("h2", "5.4 Requirement-Linked Test Cases"),
-    ("p", "Table 5.2 condenses the traceability matrix: each requirement, the evidence gathered for it and the status reached. Statuses are not rounded up. FR-04 (PPE detection) remains Coded although the model runs, because its acceptance criterion asks for event-level precision of at least 90 percent and episode recall of at least 85 percent on a sealed set from the target camera, which does not exist yet. FR-05, one alert per person per violation episode, is Tested: twenty-five tests cover its criterion (two people give two alerts, a one-frame flicker gives none, a continuous violation alerts once), and the full pipeline run headless on a still-image clip with two people without helmets (per the dataset's labels) raised one alert for each; before duplicate boxes were merged the same clip gave a third, duplicate alert, which an earlier revision of this report misread as a third person. A 55-second live webcam run then alerted one person up to four times for the same item, because the detector reported one body part as two overlapping boxes; merging such boxes and a 30-second close time fixed this on the recorded box positions (Table 5.8). A second live run still repeated one helmet alert, from a head reported as three boxes, and correctly raised a separate alert for a second person at the edge of the frame; merging nested boxes fixed the repeat on its recorded boxes. It is not Integrated, because no recorded video with annotated episodes has been scored."),
+    ("p", "Table 5.2 condenses the traceability matrix: each requirement, its evidence and the status reached, not rounded up. FR-04 (PPE detection) remains Coded although the model runs, because its criterion, event precision of at least 90 percent and episode recall of at least 85 percent, needs a sealed set from the target camera, which does not exist yet. FR-05 is Tested: live webcam runs found one person alerted repeatedly, because one body part came as overlapping boxes and a head moving towards the camera outran its episode; merging boxes and matching them to the tracked person fixed both on the recorded runs, but no annotated video has been scored. FR-30 to FR-34, added last, are Integrated on test videos, not yet on a site camera."),
     ("table", "Table 5.2: Requirements, Evidence and Status", TABLE_52, [0.6, 1.75, 2.45, 1.2], 7.5),
     ("h2", "5.5 Model Evaluation Results"),
-    ("p", "Table 4.6 gives the held-out results of the deployed YOLO11-medium weights: mAP@0.5 of 0.562, mAP@0.5:0.95 of 0.345, precision 0.467 and recall 0.728. Present-equipment classes exceed 0.95 mAP@0.5, while no-gloves (0.062), no-boots (0.130), gloves (0.276) and no-helmet (0.309) are weak. Because a missing item is the alert condition, the aggregate overstates usefulness for the core task unless the negative classes are read separately."),
+    ("p", "Table 4.6 gives the held-out results of the deployed YOLO11-medium weights: mAP@0.5 of 0.562, mAP@0.5:0.95 of 0.345, precision 0.467 and recall 0.728. Present-equipment classes exceed 0.95 mAP@0.5, while no-gloves (0.062), no-boots (0.130), gloves (0.276) and no-helmet (0.309) are weak. Because a missing item is the alert condition, the aggregate overstates usefulness for the core task unless the negative classes are read separately. The fire and smoke model (Section 4.3.5) reached mAP@0.5 of 0.787 on 4,294 held-out images, but it has not been evaluated on video or against hard negatives such as welding."),
     ("p", "These figures are an upper bound for two reasons. First, the published split is not independent (Section 4.3.1): 573 source groups and 30 exact-duplicate groups span the training and test splits, so part of the test score measures recall of near-copies. Second, image-level mAP is not alert quality. An alert also depends on the candidate threshold, the grouping of detections per person, persistence and cooldown, none of which has been evaluated on video. A defensible accuracy claim needs the group-constrained re-split and, above all, a sealed set of footage from the target camera, including hard negatives, scored per event."),
     ("h2", "5.6 Performance and Reliability Measurements"),
     ("p", "Tables 5.3 to 5.6 report the non-functional measurements. Each table states its sample size and settings, and every run is kept, including failures, so a result can be traced to the commit and machine that produced it."),
@@ -638,49 +677,49 @@ CHAPTER_5 = [
     ("table", "Table 5.3: Event-to-Dashboard Latency (NFR-01)", TABLE_53, [1.6, 0.6, 0.95, 0.95, 0.95, 0.95], 8.5),
     ("p", "Outage recovery (NFR-02): 100 events were sent while the API was unreachable for five minutes, simulated by switching off a proxy, and the camera's sender process was restarted midway. The target is that every event is stored exactly once within 60 seconds of the API returning. The first run stored all 100 exactly once but took 60.3 seconds, a failure caused by the 60-second retry ceiling; the ceiling was lowered to 30 seconds and two further runs recovered in 30.0 and 30.2 seconds with nothing lost or duplicated (Table 5.4)."),
     ("table", "Table 5.4: Outage Recovery, 100 Events over a 5-Minute Outage (NFR-02)", TABLE_54, [0.95, 0.75, 0.75, 0.75, 0.65, 0.5, 0.75, 0.9], 8),
-    ("p", "Throughput (NFR-04): the full detector set (PPE every frame; person/vehicle, pose and QR every third frame) was timed on the 517 test images at 1280×720, measuring detection and decoding without capture or display, so camera frame rates are at most these figures. On the laptop GPU the pipeline reached 13.4 and 15.7 FPS against a target of 10; on the CPU it was 9.8 and 10.1 FPS, which led to the GPU becoming the default (Table 5.5). On the GPU the PPE model takes a median of 44.8 ms per frame, and the person/vehicle, pose and QR stages 15–17 ms each on the frames they run. The fire stage is not included because its model is not yet trained, so the figure must be re-measured when it is."),
-    ("table", "Table 5.5: Inference Throughput with All Available Detectors (NFR-04)", TABLE_55, [0.85, 0.95, 0.65, 0.55, 0.95, 0.95, 1.1], 8),
-    ("p", "Soak (NFR-05): the target is a two-hour run of the full stack with a forced disconnect. Only a five-minute validation run of the script has been made so far (Table 5.6): 146 probes with none missed, no unexpected socket drops and a 1.2-second reconnect after the forced disconnect. API memory rose from 64 to 92 MB in those five minutes, which may be warm-up but cannot be distinguished from a leak without the full run, so NFR-05 is not yet met."),
+    ("p", "Throughput (NFR-04): the full detector set was timed on the 517 test images at 1280×720, detection and decoding only, so camera frame rates are at most these figures. On the laptop GPU the pipeline reached 13.4 and 15.7 FPS against a target of 10, and 15.8 and 16.1 FPS once the trained fire model was added on 27 October; on the CPU it managed about 10 FPS, so the GPU became the default (Table 5.5). On the GPU the PPE model takes a median of 44.8 ms per frame, and the person/vehicle, pose, QR and fire stages 15–18 ms on the frames they run."),
+    ("table", "Table 5.5: Inference Throughput with All Detectors (NFR-04)", TABLE_55, [0.8, 0.9, 0.55, 0.55, 0.45, 0.85, 0.85, 1.05], 8),
+    ("p", "Soak (NFR-05): the stack ran for two hours on 22 October with the API, a camera pipeline and the presence monitor, a probe every five seconds and a forced disconnect (Table 5.6). None of 1,431 probes was missed, the 95th percentile stayed at 39.7 ms, there were no unexpected socket drops, and the client reconnected 1.1 seconds after the forced disconnect. API memory ended lower than it started (85 to 67 MB, peak 141 MB), so the rise seen in the five-minute validation run was warm-up, and NFR-05 is met on a single host."),
     ("table", "Table 5.6: Soak Validation Run (NFR-05)", TABLE_56, [1.0, 0.6, 0.6, 0.6, 0.6, 0.7, 0.85, 1.05], 8),
     ("h2", "5.7 End-to-End Verification"),
-    ("p", "Table 5.7 records the end-to-end exercises, each against real running services. They show that the parts exchange real payloads correctly, but each has a stated boundary: none used a physical camera scene, a phone receiving push or an assembled vest."),
+    ("p", "Table 5.7 records the end-to-end exercises, each against real running services. They show that the parts exchange real payloads correctly, but each has a stated boundary: the camera features used test videos rather than a site camera, and none used a phone receiving push or an assembled vest."),
     ("table", "Table 5.7: End-to-End Verification Record", TABLE_57, [0.6, 1.4, 2.5, 1.5], 7.8),
     ("h2", "5.8 Defects Found by Testing"),
     ("p", "Testing and measurement found the defects in Table 5.8 before they reached a demonstration. Three of them appeared only when the backend ran on PostgreSQL instead of the SQLite test database, which is why both now run, and two came from the measurements, which is why each measurement keeps its failed runs."),
     ("table", "Table 5.8: Defects Found by Testing", TABLE_58, [2.6, 1.6, 1.8], 8),
     ("h2", "5.9 Discussion and Threats to Validity"),
     ("p", "The software results are strong within their scope. Producers can no longer write anonymously, events survive outages and restarts exactly once, live updates reach clients in tens of milliseconds, and the attendance and report figures reconcile with the stored records. The detection results are weaker. The PPE model is good at confirming that equipment is worn and poor at noticing that it is missing, and the held-out score is inflated by the dataset split, so the system's core detection claim is the least proven part of the project."),
-    ("p", "Several threats limit how far the results generalise. All measurements ran on one machine, so network effects between camera, server and clients are absent. Camera behaviour was exercised with still images, synthetic frames and injected events rather than footage of a real site, and QR range, fall detection on real falls and fire detection have not been measured at all. The vest path was driven by a simulator. Push delivery to a phone, the two-hour soak and the containerised deployment are untested. The acceptance targets were set by the team. The evidence therefore supports an integrated prototype whose software reliability has been measured and whose detection accuracy still has to be established in the field; it does not support a production-readiness claim."),
+    ("p", "Several threats limit how far the results generalise. All measurements ran on one machine, so network effects are absent. Camera behaviour was exercised with test videos, a webcam, still images and injected events, not footage of a real site; QR range and real falls have not been measured, and fire detection only on images. The vest was simulated, push to a phone and the containerised deployment are untested, and the team set the targets. The evidence supports an integrated prototype whose software reliability is measured and whose detection accuracy must still be established in the field, not a production-ready system."),
 ]
 
 # ---------------------------------------------------------------- Chapter 6
 
 TABLE_61 = [
     ("Objective (Section 1.3)", "Delivered", "Evidence reached", "Outstanding"),
-    ("1. PPE detection model", "YOLO11m, 10 classes, every frame; one alert per person per episode", "Offline evaluation, upper bound (mAP@0.5 0.562)", "Sealed target-camera set; data for negative classes"),
-    ("2. QR worker identification", "Badges, decoding, attribution, sightings", "Integrated on synthetic frames", "Physical range, angle and lighting test"),
-    ("3. Geofencing", "Map polygons; automatic breach and over-occupancy", "Integrated with simulated GPS", "Real GPS; camera-derived positions"),
-    ("4. Web command centre", "Live dashboard, map, permits, reports", "Integrated in the browser", "Viewer role browser check"),
-    ("5. Mobile application", "Alerts, resolve, workers, push registration", "Integrated on the web build", "Android build and push delivery; rule configuration"),
+    ("1. PPE detection model", "YOLO11m, 10 classes, every frame; one alert per person per episode", "Offline evaluation, upper bound (mAP@0.5 0.562); live webcam runs", "Sealed target-camera set; data for negative classes"),
+    ("2. QR worker identification", "Badges, decoding, attribution, zone placement", "Integrated on test videos", "Physical range, angle and lighting test"),
+    ("3. Geofencing", "Map polygons; breach and capacity from GPS and cameras; danger areas on camera pictures", "Integrated with test videos and simulated GPS", "Real GPS; site cameras"),
+    ("4. Web command centre", "Live dashboard, camera grid, site map with cameras, permits, reports with evidence", "Integrated in the browser", "Use on a site network"),
+    ("5. Mobile application", "Alerts, resolve, workers, site map, cameras, push registration", "Integrated on the web build", "Android build and push delivery; rule configuration"),
     ("6. Workforce activity", "Inactivity, automatic check-in/out, idle, timelines", "Integrated with synthetic events", "Annotated real-camera scenario"),
     ("7. Incident logging and reports", "DOCX and PDF with defined metrics and attendance", "Integrated", "Supervisor sign-off on the metrics"),
     ("8. Smart Vest", "Telemetry API, MQTT consumer, simulator", "Software integrated; hardware moved to future work", "Build and field-test the vest"),
     ("9. Fall detection", "Pose geometry with 3 s persistence", "Tested", "Evaluation on fall video"),
-    ("10. Fire and smoke detection", "Confirmation logic and permit policy", "Integrated without a trained model", "Train the model; evaluate on video"),
+    ("10. Fire and smoke detection", "Trained model, confirmation logic and permit policy", "Integrated; image-level evaluation (mAP@0.5 0.787)", "Evaluate on video with hard negatives"),
 ]
 
 CHAPTER_6 = [
     ("h2", "6.1 Conclusion"),
-    ("p", "This project set out to replace intermittent manual safety oversight on construction sites with a continuous, camera-first system that identifies the workers involved and keeps an auditable record. The delivered prototype does this end to end in software. Cameras run PPE, person and vehicle, pose and QR models and post events with their own device tokens through an outbox that survives outages. A Django backend applies alert rules and hot-work permits, keeps per-worker attendance and idle time, notifies supervisors and produces DOCX and PDF reports. A React command centre and a React Native mobile application show the results live."),
-    ("p", "The measurements support the reliability of that software on a single host: a 95th-percentile event-to-dashboard latency of 42 ms, exactly-once delivery of 100 events across a five-minute outage with recovery in about 30 seconds, 15.7 frames per second for the full detector set on the laptop GPU, and 318 passing automated tests. They do not yet support a claim about detection accuracy on a real site. The PPE model recognises missing equipment poorly, its test score is inflated by a leaking dataset split, and fall, fire and QR detection have not been evaluated on real footage. Table 6.1 compares each objective with what was delivered."),
+    ("p", "This project set out to replace intermittent manual safety oversight on construction sites with a continuous, camera-first system that identifies the workers involved and keeps an auditable record, and the prototype does this end to end in software. Cameras run PPE, person and vehicle, pose, fire and QR models, watch danger areas drawn on their picture, place identified workers in zones, and post events with their evidence through an outbox that survives outages. A Django backend applies alert rules and hot-work permits, keeps attendance, notifies supervisors and produces DOCX and PDF reports, and web and mobile clients show the results live, with every camera on the site map."),
+    ("p", "The measurements support the reliability of that software on a single host: a 95th-percentile event-to-dashboard latency of 42 ms, exactly-once delivery of 100 events across a five-minute outage with recovery in about 30 seconds, 16 frames per second for the full detector set on the laptop GPU, a two-hour soak without a missed probe, and 470 passing automated tests. They do not yet support a claim about detection accuracy on a real site. The PPE model recognises missing equipment poorly, its test score is inflated by a leaking dataset split, and fall, fire and QR detection have not been evaluated on real footage. Table 6.1 compares each objective with what was delivered."),
     ("h2", "6.2 Objectives and Outcomes"),
     ("p", "All ten objectives have working software. Eight are integrated or tested end to end, one (the PPE model) is evaluated offline only, and the physical Smart Vest of objective 8 was moved to future work. The remaining gaps are evaluation with real cameras and devices rather than missing features."),
     ("table", "Table 6.1: Objectives and Outcomes", TABLE_61, [1.35, 1.65, 1.5, 1.5], 7.8),
     ("h2", "6.3 Limitations"),
-    ("p", "The main limitations follow from the evidence. Detection quality is bounded by a public dataset that does not represent the target cameras, and its split leaks. Proximity and inactivity are measured in pixels on uncalibrated cameras. Worker identity depends on a readable badge and can swap when identified people cross. Notifications are sent from an in-process thread pool, so a crash between storing an alert and sending its notification loses that notification, although the alert itself is kept. The system serves a single site, the site map needs internet access for its tiles, and iOS receives no remote push. All measurements come from one machine."),
+    ("p", "The main limitations follow from the evidence. Detection quality is bounded by a public dataset that does not represent the target cameras, and its split leaks. Proximity and inactivity are measured in pixels on uncalibrated cameras, danger areas assume people stand on the ground the area was drawn on, and a camera's cone on the map is entered by hand. Worker identity depends on a readable badge and can swap when identified people cross. A crash between storing an alert and sending its notification loses the notification, though not the alert. The system serves one site, the map needs internet access for its tiles, iOS receives no remote push, and all measurements come from one machine."),
     ("h2", "6.4 Future Work"),
-    ("p", "The first priority is the data behind detection. The 69 conflicting label groups should be resolved so the group-constrained split can be used, footage should be collected from the target cameras with hard negatives and the weakest classes, per-class thresholds calibrated, and alerts scored per event and episode on a sealed set, which would also measure the episode tracking of FR-05 on video. The fire and smoke model should be trained on a licence-checked dataset and evaluated on recorded clips, including welding and other hard negatives."),
-    ("p", "The second priority is physical verification: a QR range and lighting test with printed badges, an Android development build receiving push notifications, the two-hour soak test, latency to a second device over a LAN, a staged fall recording, and a run of the docker-compose deployment and the CI workflow. The measurement scripts already exist, so each of these is a matter of running them on the demonstration setup."),
+    ("p", "The first priority is the data behind detection. The 69 conflicting label groups should be resolved so the group-constrained split can be used, footage should be collected from the target cameras with hard negatives and the weakest classes, per-class thresholds calibrated, and alerts scored per event and episode on a sealed set, which would also measure the episode tracking of FR-05 on video. The fire and smoke model should be evaluated on recorded clips, including welding and other hard negatives."),
+    ("p", "The second priority is physical verification: a QR range and lighting test with printed badges, an Android development build receiving push notifications and showing the map and camera screens, latency to a second device over a LAN, a staged fall recording, and a run of the docker-compose deployment and the CI workflow. The measurement scripts already exist, so each of these is a matter of running them on the demonstration setup."),
     ("p", "Beyond the FYP, the Smart Vest can be built against the existing gateway interface: an ESP32 with GPS and an SOS button, a point-to-point LoRa link to a USB receiver that bridges to MQTT, and field tests of range, delivery delay and battery life. Other extensions are a durable queue for notifications, alert-rule configuration in the mobile app, and support for more than one site."),
 ]
 
@@ -700,14 +739,17 @@ MOVED_TABLES = {
 TABLE_I1 = [
     ("Task", "Role", "Steps"),
     ("Sign in", "All", "Open the dashboard address; enter e-mail and password. The session renews itself while in use."),
-    ("Monitor the site", "All", "Dashboard: counts and charts from recorded data, live alerts and worker status."),
+    ("Monitor the site", "All", "Dashboard: counts and charts from recorded data, live alerts, worker status and the site map with every camera."),
+    ("Watch cameras", "Safety Officer, Admin", "Cameras: live view of every camera with its detections; click a camera to enlarge it."),
+    ("Draw a danger area", "Admin", "Cameras → open a camera → Draw a danger area: click the corners where people stand, name it, choose a severity, Save area. On/Off and Delete beside each area."),
     ("Register a worker and print a badge", "Safety Officer, Admin", "Workers → Add worker: full name, trade, phone, assigned zone and smart vest. Edit the worker → Print badge; print at 100% (60 mm) and fix it to the helmet front. Reissue badge revokes earlier prints."),
     ("Follow a worker's day", "All", "Workers → open a worker → timeline of time on site and idle time for a chosen day."),
     ("Manage vests", "Safety Officer, Admin", "Vest Management: register a vest, assign it to a worker, see battery and online state."),
-    ("Draw a zone", "Admin", "Zones: draw the polygon on the map, then set name, risk level, maximum occupancy and cameras."),
+    ("Draw a zone", "Admin", "Zones: draw the polygon on the map, then set name, risk level, maximum occupancy, cameras and whether their views overlap."),
+    ("Place a camera on the map", "Admin", "Zones → Cameras → Place: click where it is mounted; set facing, view angle and range; Save position."),
     ("Issue a hot-work permit", "Safety Officer, Admin", "Zones → select the zone → Hot-work permits: description, start and end (up to 12 hours). Revoke ends it early."),
     ("Review and resolve incidents", "Safety Officer, Admin", "Incidents: filter by type, status and date; open an alert to see snapshot, confidence and model version; Resolve. Export CSV saves the list."),
-    ("Generate a report", "Safety Officer, Admin", "Reports: choose incident or safety-performance report, period and DOCX or PDF; Generate, then download."),
+    ("Generate a report", "Safety Officer, Admin", "Reports: choose incident or safety-performance report, period and DOCX or PDF; Include evidence snapshots adds the frames of the most severe incidents; Generate, then download."),
     ("Configure alert rules", "Admin", "Settings → Alert Configuration → edit a rule: enabled, threshold in seconds, push and e-mail. SOS and FIRE stay enabled."),
     ("Notifications and password", "All", "Settings → Notifications to opt out of push or e-mail; Settings → Profile to change the password."),
 ]
@@ -717,6 +759,8 @@ TABLE_I2 = [
     ("Sign in", "Enter the server's address on the site network (for example 192.168.1.20:8000), e-mail and password."),
     ("See alerts", "Alerts tab: open or all alerts, updated live."),
     ("Resolve an alert", "Tap an alert to see its snapshot, confidence and model version; Resolve (Safety Officer and Admin)."),
+    ("See the site map", "Map tab: zones with head counts, vests and cameras; tap a camera to open it."),
+    ("Watch a camera", "Cameras tab → a camera: live picture with its danger areas (Safety Officer and Admin); Admins can switch an area off."),
     ("Check workers", "Workers tab: role, zone, vest and presence."),
     ("Receive push", "Android: allow notifications at first sign-in; tapping a notification opens the alert."),
     ("Sign out", "Settings tab → Sign out; the phone stops receiving push."),
@@ -735,11 +779,12 @@ TABLE_II1 = [
     ("9", "Mobile app", "cd mobile; npm ci; npx expo start; sign in with the server's LAN address. Push needs a Firebase project and an Android development build"),
     ("10", "Vest simulator", "python manage.py create_service_token vest-sim --kind VEST_GATEWAY --simulator; SITESAFE_DEVICE_KEY=<key> python tools/vest_simulator.py tools/vest_scenarios/demo.json --speedup 5"),
     ("11", "Docker (alternative)", "cp .env.docker.example .env.docker; docker compose --env-file .env.docker up --build (dashboard on port 8080, API on 8000); not yet run"),
+    ("12", "Demo site", "python manage.py setup_demo: demo accounts, zones, workers with badges, vests, device keys and a placed camera, no alerts; docs/DEMO_SCRIPT.md walks through a demonstration"),
 ]
 
 APPENDICES = [
     ("I", "User Manual", [
-        ("p", "This appendix explains how each role uses Site-Safe once it is installed (Appendix II). The web command centre is used for set-up and monitoring (Table I.1) and the mobile app for responding on site (Table I.2). Controls appear only for the roles that may use them."),
+        ("p", "This appendix explains how each role uses Site-Safe once it is installed (Appendix II). The web command centre is used for set-up and monitoring (Table I.1) and the mobile app for responding on site (Table I.2). Controls appear only for the roles that may use them. The full manual, with screenshots, is docs/USER_MANUAL.md in the repository."),
         ("table", "Table I.1: Web Command Centre Tasks", TABLE_I1, [1.45, 1.1, 3.45], 8.5),
         ("table", "Table I.2: Mobile Application Tasks", TABLE_I2, [1.45, 4.55], 8.5),
     ]),

@@ -1,6 +1,10 @@
 # Site-Safe
 
-Site-Safe is a construction site safety monitoring system. It combines a **Django REST API** and **PostgreSQL** backend, a **React** dashboard, and a **YOLOv10** computer-vision module that detects PPE violations from a webcam and pushes alerts into the platform.
+Site-Safe is a construction site safety monitoring system. Cameras running a **YOLO11** pipeline detect missing PPE, falls, people near vehicles, people entering danger areas, inactivity, fire and smoke, and read workers' QR badges. They send alerts with their evidence frame to a **Django REST and WebSocket** backend on **PostgreSQL**. A **React** command centre (live camera grid, site map, incidents, reports) and a **React Native** mobile app show everything live.
+
+- **Using it:** [docs/USER_MANUAL.md](docs/USER_MANUAL.md), by role, with screenshots.
+- **Demonstrating it:** [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md), with `python manage.py setup_demo` for a demo site.
+- **What is verified, and how:** [docs/REQUIREMENTS_TRACEABILITY.md](docs/REQUIREMENTS_TRACEABILITY.md).
 
 ## Architecture
 
@@ -482,6 +486,18 @@ docker compose exec backend python manage.py create_service_token CAM-01 --kind 
 ```
 
 This starts PostgreSQL, Redis, Mosquitto, the API, the MQTT consumer, the presence monitor, the report service and the dashboard. The dashboard is at http://localhost:8080 and the API at http://localhost:8000. The camera pipeline runs natively on the host, because it needs webcam access, and points `SITESAFE_API_BASE` at the API. The admin site's styling is not served when `DEBUG=False`.
+
+### Demo site
+
+`python manage.py setup_demo` (in `backend/`) creates a demo site on an empty database:
+
+- the accounts demo-admin, demo-officer and demo-viewer;
+- the zones **Site** and **Crane** around the default map centre;
+- three workers with QR badges, two of them wearing vests VEST-001 and VEST-002, as the vest simulator's `tools/vest_scenarios/demo.json` expects;
+- camera CAM-01 placed on the map;
+- a camera key and a vest-simulator key.
+
+It creates no alerts or readings. Passwords and keys are printed once. Running it again keeps what exists. Use a separate database for demonstrations, for example `DB_NAME=sitesafe_demo`. [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) gives the start-up order and a 12-minute walk-through.
 
 ### Continuous integration
 

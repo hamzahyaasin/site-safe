@@ -8,6 +8,9 @@ import { cn, formatAlertType } from '../lib/utils.js'
 import { useSettings } from '../hooks/useSettings.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
+// Fire is never suppressed and SOS is the last resort: the API keeps both enabled.
+const ALWAYS_ENABLED = new Set(['SOS', 'FIRE'])
+
 const TABS = [
   { id: 'alerts', label: 'Alert Configuration' },
   { id: 'notifications', label: 'Notifications' },
@@ -149,6 +152,9 @@ export default function SettingsPage() {
     }
   }
 
+  // The server refuses to disable these (alerts/rules.py ALWAYS_ENABLED).
+  const alwaysOn = (row) => ALWAYS_ENABLED.has(row.alert_type) && row.is_enabled
+
   const configColumns = [
     { key: 'zone', header: 'Zone', render: (row) => row.zone_name || 'Global' },
     { key: 'alert_type', header: 'Alert Type', render: (row) => formatAlertType(row.alert_type) },
@@ -156,10 +162,13 @@ export default function SettingsPage() {
       key: 'enabled',
       header: 'Enabled',
       render: (row) =>
-        isAdmin && !(row.alert_type === 'SOS' && row.is_enabled) ? (
+        isAdmin && !alwaysOn(row) ? (
           <Toggle checked={row.is_enabled} onChange={() => handleToggleEnabled(row)} />
         ) : (
-          <span className="text-xs text-zinc-400" title={row.alert_type === 'SOS' ? 'SOS alerts cannot be disabled' : undefined}>
+          <span
+            className="text-xs text-zinc-400"
+            title={alwaysOn(row) ? `${formatAlertType(row.alert_type)} alerts cannot be disabled` : undefined}
+          >
             {row.is_enabled ? 'On' : 'Off'}
           </span>
         ),

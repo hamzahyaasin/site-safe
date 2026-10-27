@@ -232,7 +232,10 @@ ERD_FIELDS = {
     "Alert": ("alerts", ["id", "alert_type", "severity", "source", "worker_id", "camera_id", "hot_work_permit_id", "confidence", "event_id", "is_resolved"]),
     "AlertConfig": ("alert_config", ["id", "zone_id", "alert_type", "is_enabled", "threshold_seconds", "notify_push", "notify_email"]),
     "Detection": ("detections", ["id", "camera_id", "worker_id", "class_name", "confidence", "bbox"]),
-    "Report": ("reports", ["id", "report_type", "file_format", "date_from", "date_to", "created_by_id"]),
+    "Report": ("reports", ["id", "report_type", "file_format", "date_from", "date_to", "includes_evidence", "created_by_id"]),
+    # Cameras are identified by camera_id strings shared with zones and alerts, not foreign keys.
+    "Camera": ("cameras", ["id", "camera_id", "people_count", "counted_at", "latitude", "longitude", "heading"]),
+    "CameraArea": ("camera_areas", ["id", "camera_id", "name", "polygon", "severity", "is_active"]),
 }
 
 
@@ -248,7 +251,7 @@ def erd():
         ["UserPreferences", "FCMToken", "Report", "ServiceToken"],
         ["User", "HotWorkPermit", "Alert"],
         ["Zone", "Worker", "ActivityLog"],
-        ["AlertConfig", "SmartVest", "Detection"],
+        ["AlertConfig", "SmartVest", "Detection", "Camera", "CameraArea"],
     ]
     width, gap_x, gap, row = 1.36, 0.3, 0.26, 0.145
     col_x = [0.05 + i * (width + gap_x) for i in range(len(columns))]
@@ -309,7 +312,7 @@ def erd():
               (a["x"] + a["w"] - 0.05, y_from + 0.045), "right")
     bottom = max(bx["y"] + bx["h"] for bx in boxes.values())
     d.ax.text(0.05, bottom + 0.2, "Generated from the Django models. Arrows run from a foreign key to the table it references; "
-              "N:1 many-to-one, 1:1 one-to-one.", fontsize=5.6, style="italic", color=LINE)
+              "N:1 many-to-one, 1:1 one-to-one. Cameras are matched by camera_id.", fontsize=5.6, style="italic", color=LINE)
     d.ax.set_ylim(bottom + 0.3, 0)
     d.fig.set_size_inches(6.4, bottom + 0.3)
     d.save("fig_erd.png")
@@ -626,7 +629,31 @@ def dfd_level0():
     d.save("fig_dfd_level0.png")
 
 
+def interface_figures():
+    """Figures 4.3 and 4.4 from the user manual's screenshots (docs/manual/), side by side."""
+    from PIL import Image
+
+    manual = OUT.parent / "manual"
+
+    def row(names, height, gap):
+        images = [Image.open(manual / n).convert("RGB") for n in names]
+        images = [im.resize((round(im.width * height / im.height), height), Image.LANCZOS) for im in images]
+        canvas = Image.new("RGB", (sum(im.width for im in images) + gap * (len(images) - 1), height), "white")
+        x = 0
+        for im in images:
+            canvas.paste(im, (x, 0))
+            x += im.width + gap
+        return canvas
+
+    row(["web_area_live.jpg", "web_sitemap.jpg"], 500, 16).save(OUT / "fig_web_interface.jpg", quality=90)
+    row(["mobile_alerts.jpg", "mobile_map.jpg", "mobile_camera.jpg", "mobile_alert.jpg"], 1100, 24).save(
+        OUT / "fig_mobile_interface.jpg", quality=88
+    )
+    print("  wrote fig_web_interface.jpg, fig_mobile_interface.jpg")
+
+
 if __name__ == "__main__":
+    interface_figures()
     activity_workflow()
     dfd_level0()
     component_view()

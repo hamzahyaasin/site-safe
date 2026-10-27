@@ -62,9 +62,9 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-02 | Outage tolerance | No lost or duplicated events across a 5-minute API outage and sender restart | `tools/measure/recovery.py`: first run 60.3 s (FAIL, 60 s ceiling) → ceiling lowered to 30 s → 30.0 s and 30.2 s, 100/100 stored once, 0 lost, 0 duplicated | **Met** |
 | NFR-03 | Security of producers | No anonymous write endpoints; no credentials in source | `alerts/test_ingest.py`, `test_inference_config.py` | Tested |
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. With the fire model (27 Oct, commit `fae1367`, clean tree): mps 15.8 and 16.1 FPS, cpu 10.4 and 10.2 FPS; fire stage p50 18 ms (mps) every 5th frame | **Met on mps with all detectors** (cpu marginal) |
-| NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
+| NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py`: 5-min validation 20 Oct (146 probes, 0 missed); **2 h run 22 Oct** (commit `d1bb33f` with uncommitted changes; API, camera and presence monitor running): 1,431 probes, 0 missed, latency p50 24.4 ms / p95 39.7 ms, 0 unexpected socket drops, forced reconnect 1.1 s, 0 errors; memory start→end (max): API 85→67 MB (141), camera 382→276 MB (829), presence monitor 27→25 MB (31); `docs/evidence/CHAPTER5_MEASUREMENTS.md` | **Met** (single host) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 237 (SQLite and PostgreSQL), ai-module 144, fire tools 7, report-service 23, mobile 25, vest simulator 8, measurement and clip scoring 21 = 465 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 241 (SQLite and PostgreSQL), ai-module 144, fire tools 7, report-service 24, mobile 25, vest simulator 8, measurement and clip scoring 21 = 470 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
 
 ## Progress ledger
 
@@ -658,4 +658,32 @@ Not done: an Android emulator could not boot here (the installed Android 37.1 pr
 Tests (27 Oct): mobile 25 (8 new), lint and tsc clean; backend 237 OK on SQLite and PostgreSQL (2 new) — 465
   in total
 Dependencies: react-native-webview 14.0.1 and react-native-svg 15.16.0 (npx expo install, SDK 58 versions)
+```
+
+```text
+Phase / task IDs: Phase 4 — documentation end to end (user manual, demo script, report text)
+Status: written and checked against the running system; the report's Word render and page-number pass wait on
+  Word automation permission (A4)
+User manual: docs/USER_MANUAL.md, by role (roles table, dashboard, alert rules table, incidents, cameras and
+  danger areas, zones and camera placement, permits, workers and badges, vests, reports with evidence,
+  settings, mobile, privacy, troubleshooting), with 15 screenshots in docs/manual/ taken 27 Oct from a demo
+  site (setup_demo, a test video as CAM-01, the vest simulator; simulated alerts labelled). Every label and
+  field was read from the code; the manual's claims were checked against it (e.g. SOS and FIRE always on).
+Demo script: docs/DEMO_SCRIPT.md: kit, rehearsal the day before (separate demo database, badges, fallback clip
+  with record_clip.py), start-up order, a 12-minute walk-through with what to say, fallbacks and likely
+  questions with the evidence for each answer.
+setup_demo: backend/workers/management/commands/setup_demo.py, configuration only (users, zones, workers with
+  badges and vests, camera and simulator keys, CAM-01 placed), idempotent, secrets printed once; 4 tests,
+  including that its zones match tools/vest_scenarios/demo.json and that it creates no alerts.
+Report: report_v8_content.py covers Phases 0-2 (abstract, 3.3.2, Table 3.4 FR-30 to FR-34, 4.3 to 4.6 with a
+  new 4.3.8, Chapter 5 tables with 470 tests, the fire model and the 2 h soak, Chapter 6, appendices); Figures
+  4.3 and 4.4 are new screenshots and the ERD gains cameras and camera_areas. Body text held at the length
+  limit (9,704 words before, 9,705 after, same counting method). Built with build_report_v8.py and checked in a
+  LibreOffice render; docs/SiteSafe_FYP_Report_V8.docx/.pdf are not replaced until the Word render.
+Measurements: docs/evidence/CHAPTER5_MEASUREMENTS.md regenerated with the 22 Oct two-hour soak (PASS); NFR-05 Met.
+Found and fixed while writing: the Settings page offered a switch for FIRE, which the API refuses to disable
+  (now shown as always on, like SOS); worker initials showed "A(" for names ending in "(demo)"; reports said
+  "8 entrys" (plural helper takes an irregular form, test added); the README still described YOLOv10.
+Tests (27 Oct): backend 241 OK on SQLite and PostgreSQL (4 new); report-service 24 (1 new); frontend lint
+  clean, build OK — 470 in total
 ```

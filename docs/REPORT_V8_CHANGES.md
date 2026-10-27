@@ -12,6 +12,25 @@ Body text of Chapters 1–6, excluding headings, captions, tables, front matter,
 
 Tables 4.7, 4.8, 5.2, 5.7 and 5.8 (1,309 words) moved to Appendices III and IV on 26 Oct 2026; the builder renumbers the tables left behind and rewrites every reference. The new requirements tables in Chapter 3 add 1,676 words, so if the examiners count table text, the chapters are over the cap either way; moving Table 3.4 (functional requirements, 580 words) to an appendix would be the next step.
 
+## Updated on 27 Oct 2026 (Phase 4: final features and measurements)
+
+The text now covers everything built in Phases 0–2, and the body stays within the length guideline. Counted with the same method before and after, Chapters 1–6 hold 9,704 words before the update and 9,705 after; new material was paid for by tightening older paragraphs.
+
+| Where | Change |
+|---|---|
+| Abstract | Danger areas, camera-based location, live camera grid, site map with cameras and report evidence; 470 tests; the two-hour soak; the trained fire model (mAP@0.5 0.787). |
+| 3.3.2 | Cameras place badge holders in their zone; danger areas named. |
+| Table 3.4 | FR-30 to FR-34 added; FR-07 and FR-28 criteria updated. Tables 3.5, 3.9 and 3.10 follow. |
+| 4.3 | PPE episodes matched to the tracked person; 4.3.5 the trained fire model; 4.3.6 rules every 15 s and the live view; 4.3.7 proximity encounters and the flood they fixed; new 4.3.8 Danger Areas. |
+| 4.4 | Camera-based location and zone head counts with hysteresis. |
+| 4.5, 4.6 | Cameras page, danger-area drawing, cameras on the site map, report evidence; mobile Map and Cameras tabs. Figures 4.3 and 4.4 are new screenshots from the demo site (`setup_demo`, a test video as CAM-01, the vest simulator), built by `make_figures.py` from `docs/manual/`. |
+| Figure 4.2 | The ERD gains `cameras` and `camera_areas`, and `includes_evidence` on reports. |
+| Chapter 5 | Table 5.1 with 470 tests (27 Oct); throughput with the fire model (Table 5.5); the two-hour soak, met (Table 5.6); FR-30 to FR-34 and updated statuses in Table IV.1; six end-to-end runs and five defects added to Tables IV.2 and IV.3. |
+| Chapter 6 | Outcomes, limitations (danger-area ground plane, hand-entered camera cones) and future work updated. |
+| Appendices | Table I.1/I.2 tasks for cameras, danger areas, camera placement and the mobile map; Table II.1 adds `setup_demo`; Tables III.1/III.2 add the camera endpoints and tables. The full manual is `docs/USER_MANUAL.md`. |
+
+**Not yet done:** the Word render and the `finalize` pass, which measure the contents and list page numbers. They need Word on the Mac, which asks once for automation permission (pending list, A4). Until then `docs/SiteSafe_FYP_Report_V8.docx` and `.pdf` are the 26 Oct build.
+
 ## Added on 26 Oct 2026 (SOP Appendix D gaps)
 
 | Where | Change |
@@ -84,9 +103,9 @@ Each chapter now opens on its own title page: chapter number 18 pt bold, name 22
    References [2], [7], [9], [13], [14], [18], [19] and [20] were already uncited or are cited only in tables; check that each exists as written.
 4. **Epochs.** "Stopped after 102 of 150 epochs, best at epoch 77" comes from the team's earlier notes. The exported manifest has no per-epoch results, so keep the Colab log as evidence.
 5. **Title page.** It still says LAHORE and April 2026. Update the date and confirm the campus.
-6. **Screenshots** (Figures 4.3 and 4.4) were taken from test data. The mobile screens were captured from the app's web build, as the text says.
+6. **Screenshots** (Figures 4.3 and 4.4) were taken from the demo site with a test video as the camera and simulated vests. The mobile screens were captured from the app's web build, as the text says.
 7. **Front-matter pages** are blank templates: fill in the committee names, dates, signatures and the Turnitin figures, and insert the Turnitin report. Dedication and acknowledgement (optional) are not included.
-8. **Fire model, soak, push and QR range.** These are reported as not yet done. When they are measured, re-run `tools/measure/make_tables.py`, update `report_v8_content.py` and rebuild.
+8. **Push and QR range.** These are reported as not yet done (the fire model and the two-hour soak are now reported as done). When they are measured, re-run `tools/measure/make_tables.py`, update `report_v8_content.py` and rebuild.
 9. **Task division.** Table 3.9 has a placeholder for the human effort row (task division and person-months).
 10. **Figure 3.4** (Level-1 DFD, from V7) still shows Firebase as a telemetry store; Firebase only sends push notifications. Redraw it to match Figure 3.10.
 11. **Blank pages** after the Chapter 2, 4 and 5 title pages in the Word render existed before these changes.

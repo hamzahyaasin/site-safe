@@ -31,8 +31,9 @@ function formatDuration(minutes) {
   return m ? `${h} h ${m} min` : `${h} h`
 }
 
-function plural(n, word) {
-  return `${n} ${word}${n === 1 ? '' : 's'}`
+/** "1 day", "3 days"; pass ``many`` for irregular plurals ("entries"). */
+function plural(n, word, many = `${word}s`) {
+  return `${n} ${n === 1 ? word : many}`
 }
 
 /** "was" or "were" to agree with a count. */

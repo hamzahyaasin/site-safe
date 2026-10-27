@@ -3,8 +3,9 @@ export function cn(...classes) {
 }
 
 export function initials(name) {
-  if (!name) return '?'
-  const parts = name.trim().split(/\s+/)
+  // Words that start with a letter: "Ali Raza (demo)" gives "AR", not "A(".
+  const parts = (name || '').trim().split(/\s+/).filter((w) => /^\p{L}/u.test(w))
+  if (parts.length === 0) return '?'
   if (parts.length === 1) return parts[0][0].toUpperCase()
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }

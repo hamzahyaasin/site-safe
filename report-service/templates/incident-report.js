@@ -80,7 +80,7 @@ function buildIncidentReport({ alerts, evidence = null, dateFrom, dateTo, tz, ge
             text:
               m.log.length > MAX_LOG_ROWS
                 ? `Showing the ${MAX_LOG_ROWS} most recent of ${m.log.length} entries; narrow the period for the full list.`
-                : `All ${plural(m.log.length, 'entry')}, newest first. Times are in ${tz || 'UTC'}.`,
+                : `All ${plural(m.log.length, 'entry', 'entries')}, newest first. Times are in ${tz || 'UTC'}.`,
           },
           {
             type: 'table',

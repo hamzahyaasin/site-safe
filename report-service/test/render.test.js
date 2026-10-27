@@ -56,6 +56,13 @@ test('long incident logs paginate and disclose truncation', async () => {
   assert.ok(pageCount(pdf) > 10, `expected many pages, got ${pageCount(pdf)}`)
 })
 
+test('the log count reads as English', () => {
+  const log = (n) =>
+    buildIncidentReport({ alerts: f.alerts.slice(0, n), ...period }).sections.find((s) => s.heading === 'Incident Log').blocks[0].text
+  assert.match(log(1), /^All 1 entry,/)
+  assert.match(log(3), /^All 3 entries,/)
+})
+
 test('empty period renders', async () => {
   const model = buildIncidentReport({ alerts: [], ...period })
   assert.match(model.sections[0].blocks[0].text, /No incidents/)
