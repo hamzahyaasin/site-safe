@@ -154,7 +154,7 @@ Camera events carry the time they happened, so the outbox can deliver them late 
 
 ### Fire and smoke detection, hot-work permits
 
-The camera pipeline runs a fire/smoke detector when `ai-module/models/fire_smoke.pt` exists. Train it with `ai-module/fire/train_fire_smoke_colab.ipynb` on a dataset you are licensed to use. Prepare the dataset with `ai-module/fire/prepare_fire_dataset.py`, which remaps classes, keeps clip frames in one split, keeps negatives, and leaves out images with broken labels. An alert needs fire or smoke to persist for 2 s (`--fire-persistence`). Afterwards the camera stays quiet until the scene has been clear for 30 s.
+The camera pipeline runs a fire/smoke detector when `ai-module/models/fire_smoke.pt` exists. Train it with `ai-module/fire/train_fire_smoke_colab.ipynb`, or with `ai-module/fire/train_fire_smoke_kaggle.ipynb`, which runs unattended as a Kaggle *Save & Run All* version and stops before the 12-hour session limit, on a dataset you are licensed to use. The current weights (D-Fire, YOLO11s) and their held-out metrics are in `ai-module/models/fire_smoke_v1_export/`. Prepare the dataset with `ai-module/fire/prepare_fire_dataset.py`, which remaps classes, keeps clip frames in one split, keeps negatives, and leaves out images with broken labels. An alert needs fire or smoke to persist for 2 s (`--fire-persistence`). Afterwards the camera stays quiet until the scene has been clear for 30 s.
 
 The server sets the severity:
 

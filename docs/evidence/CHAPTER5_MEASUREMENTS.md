@@ -35,23 +35,29 @@ Detection and decoding only (no capture or display), so camera FPS is at most th
 |---|---|---|---|---:|---:|---:|---:|---|---|
 | 2026-10-20 11:52 | `7bc758a`* | cpu | 1280x720 | 150 | 9.8 | 80.4 | 145.5 | not trained yet | **FAIL** |
 | 2026-10-20 12:15 | `c79cc95`* | cpu | 1280x720 | 150 | 10.1 | 82.1 | 147.2 | not trained yet | **PASS** |
+| 2026-10-27 09:30 | `fae1367` | cpu | 1280x720 | 150 | 10.4 | 75.2 | 156.6 | yes | **PASS** |
+| 2026-10-27 09:31 | `fae1367` | cpu | 1280x720 | 150 | 10.2 | 75.9 | 157.6 | yes | **PASS** |
 | 2026-10-20 11:51 | `7bc758a`* | mps | 1280x720 | 300 | 13.4 | 52.1 | 116.5 | not trained yet | **PASS** |
 | 2026-10-20 12:14 | `c79cc95`* | mps | 1280x720 | 300 | 15.7 | 46.4 | 106.1 | not trained yet | **PASS** |
+| 2026-10-27 09:30 | `fae1367` | mps | 1280x720 | 300 | 15.8 | 54.4 | 109.1 | yes | **PASS** |
+| 2026-10-27 09:31 | `fae1367` | mps | 1280x720 | 300 | 16.1 | 54.0 | 105.9 | yes | **PASS** |
 
 Per stage, latest run per device (each stage runs on its own schedule):
 
 | Device | Stage | Every n frames | n | p50 (ms) | p95 (ms) |
 |---|---|---:|---:|---:|---:|
-| cpu | ppe | 1 | 150 | 77.2 | 91.2 |
-| cpu | coco | 3 | 50 | 19.6 | 25.5 |
-| cpu | pose | 3 | 50 | 22.0 | 26.2 |
-| cpu | qr | 3 | 50 | 17.4 | 18.0 |
-| mps | ppe | 1 | 300 | 44.8 | 58.3 |
-| mps | coco | 3 | 100 | 15.2 | 28.1 |
-| mps | pose | 3 | 100 | 16.3 | 20.2 |
-| mps | qr | 3 | 100 | 16.5 | 17.6 |
+| cpu | ppe | 1 | 150 | 70.3 | 79.1 |
+| cpu | coco | 3 | 50 | 17.6 | 23.2 |
+| cpu | pose | 3 | 50 | 19.8 | 22.9 |
+| cpu | qr | 3 | 50 | 17.3 | 17.9 |
+| cpu | fire | 5 | 30 | 33.8 | 37.1 |
+| mps | ppe | 1 | 300 | 40.2 | 54.1 |
+| mps | coco | 3 | 100 | 14.8 | 27.9 |
+| mps | pose | 3 | 100 | 15.9 | 20.5 |
+| mps | qr | 3 | 100 | 16.4 | 17.0 |
+| mps | fire | 5 | 60 | 18.4 | 20.8 |
 
-Source: 517 images from images. Latest run: Apple M4, 16.0 GB RAM, Darwin 27.0.0; commit `c79cc95` (uncommitted changes); recorded 2026-10-20 12:15 UTC.
+Source: 517 images from images. Latest run: Apple M4, 16.0 GB RAM, Darwin 27.0.0; commit `fae1367`; recorded 2026-10-27 09:31 UTC.
 
 ### Soak test (NFR-05)
 

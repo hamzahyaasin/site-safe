@@ -27,7 +27,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-06 | Detect falls from camera pose | M | Positive and hard-negative videos meet the AI event targets | `ai-module/fall_detection.py` | `alerts/test_fall.py` (21) | Tested |
 | FR-07 | Warn when a worker is too close to a vehicle | M | Calibrated distance threshold; video evaluation | `ai-module/proximity.py` | `alerts/test_proximity.py` (9) | Tested |
 | FR-08 | Detect prolonged inactivity; timeout configurable from the dashboard | M | Changing the INACTIVITY rule changes the camera timeout within 60 s | `ai-module/inactivity.py`, `CameraRules` | `alerts/test_inactivity.py` (10), `test_inference_config.py` | Tested |
-| FR-09 | Fire/smoke detection with hot-work permit suppression | M | Licensed fixture videos pass; a permitted hot-work fire is downgraded, not dropped | `ai-module/fire_detection.py`, `ai-module/fire/` (prep script, Colab notebook), `alerts/fire_policy.py`, `sitemap.HotWorkPermit`, `components/zones/HotWorkPermits.jsx` | `test_fire_detection.py` (8), `fire/test_prepare_fire_dataset.py` (4), `sitemap/tests.py` permit + policy (8); e2e 20 Oct: permit issued in UI → fire in permitted zone MEDIUM + linked, elsewhere CRITICAL | Integrated (**model not yet trained; no video evaluation**) |
+| FR-09 | Fire/smoke detection with hot-work permit suppression | M | Licensed fixture videos pass; a permitted hot-work fire is downgraded, not dropped | `ai-module/fire_detection.py`, `ai-module/fire/` (prep script, Colab and Kaggle notebooks), `models/fire_smoke.pt` (YOLO11s, D-Fire, sha256 `4bdbf702…2e38d10`; evidence in `models/fire_smoke_v1_export/`), `alerts/fire_policy.py`, `sitemap.HotWorkPermit`, `components/zones/HotWorkPermits.jsx` | `test_fire_detection.py` (8), `fire/test_prepare_fire_dataset.py` (4), `sitemap/tests.py` permit + policy (8); e2e 20 Oct: permit issued in UI → fire in permitted zone MEDIUM + linked, elsewhere CRITICAL; model trained 26–27 Oct on Kaggle (T4, 96 epochs, early stop, best epoch 76); held-out test (4,294 images, never used for training or selection): P 0.775, R 0.720, mAP50 0.787, mAP50-95 0.459 (fire R 0.651 / mAP50 0.726; smoke R 0.789 / mAP50 0.848), reproduced on the Mac to 3 decimals; real detections through `FireTracker` on still images: fire image → 1 FIRE + 1 SMOKE alert after 2 s, negative image → none | Integrated (**model trained; image-level metrics only, no video or hard-negative alert evaluation**) |
 | FR-10 | QR worker identification linking camera events to a worker | M | Correct-association, unknown and wrong-person rates measured at a stated size, distance, angle and lighting | `ai-module/identity.py`, `group_violations` in `inference.py`, `Worker.badge_code`, `/workers/{id}/badge/`, `frontend/src/lib/badge.js` | `test_identity.py` (14, including real OpenCV QR encode→decode); `workers/tests.py` Badge/CameraBadgeIdentity (7); e2e 16 Oct (synthetic frame: badge decoded → alert attributed to Ali; second person unidentified) | Integrated (synthetic frames only; **physical camera test pending**) |
 | FR-11 | Camera events reach the API reliably | M | 100 events queued in a 5-minute outage arrive exactly once after recovery | `ai-module/event_outbox.py`, `CameraEventView` | `test_event_outbox.py` (8), `alerts/test_ingest.py`; e2e 16 Oct (3 queued while API down → 2 stored, 1 dead-lettered for wrong camera) | Integrated (small fixture) |
 | FR-12 | Only authorised devices can submit data | M | Anonymous, revoked, wrong-kind or wrong-camera tokens are rejected | `accounts/service_auth.py` | `alerts/test_ingest.py` | Tested |
@@ -56,7 +56,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-01 | Event-to-dashboard latency | p95 ≤ 2 s from commit on a local network | `tools/measure/latency.py`, 20 Oct: 100/100 delivered, p50 32 ms, p95 42 ms (PostgreSQL, single host) | **Met** (local host; LAN not yet measured) |
 | NFR-02 | Outage tolerance | No lost or duplicated events across a 5-minute API outage and sender restart | `tools/measure/recovery.py`: first run 60.3 s (FAIL, 60 s ceiling) → ceiling lowered to 30 s → 30.0 s and 30.2 s, 100/100 stored once, 0 lost, 0 duplicated | **Met** |
 | NFR-03 | Security of producers | No anonymous write endpoints; no credentials in source | `alerts/test_ingest.py`, `test_inference_config.py` | Tested |
-| NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. Fire model not yet included | **Met on mps** (re-measure once fire weights exist) |
+| NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. With the fire model (27 Oct, commit `fae1367`, clean tree): mps 15.8 and 16.1 FPS, cpu 10.4 and 10.2 FPS; fire stage p50 18 ms (mps) every 5th frame | **Met on mps with all detectors** (cpu marginal) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
 | NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 183, ai-module 76, report-service 13, mobile 16, tools 16 pass (20 Oct); build OK; lint clean | Met |
@@ -352,4 +352,34 @@ Known limitation: at a 1024 px window the incident table (875 px) overflows its 
   and Resolve need a sideways scroll
 Not done: report V8 Tables 5.2 and 6.1 still show the older FR-03/FR-25 wording; update them after the
   report branch (claude/competent-moore-5fa363) is merged
+```
+
+```text
+Phase / task IDs: FR-09 fire/smoke model; NFR-04 re-measure with fire
+Status: model trained and installed; FR-09 stays Integrated, now with a trained model (image-level metrics only)
+Training: ai-module/fire/train_fire_smoke_kaggle.ipynb (same recipe as the Colab notebook: YOLO11s from yolo11s.pt,
+  640 px, batch 16, AdamW lr 0.001, seed 42, deterministic, patience 20; workers 4). Ran unattended as Kaggle
+  version v1, Tesla T4, 26-27 Oct: 96 epochs in 7.0 h (early stop; best epoch 76), time guard (10 h) not
+  triggered. Split identical to the 22 Oct local and Colab runs (15,469 / 1,738 / 4,294 images, 26 skipped for
+  invalid labels). Earlier attempts: local mps run 22 Oct stopped in epoch 1 (process ended); Colab free tier
+  disconnected around epoch 46 (no checkpoint saved); neither produced weights.
+Notebook fixes found by local dry runs and the first Kaggle attempt: Path.rglob does not follow Kaggle's
+  symlinked inputs on Python < 3.13 (now os.walk followlinks); copied images kept read-only mode so truncated
+  JPEGs were dropped instead of repaired; reading ~43k files serially from Kaggle's input storage was too slow
+  (now a parallel copy to local disk first)
+Model: models/fire_smoke.pt, sha256 4bdbf70218da49dac240720a4c9928f2853b954262d2a4ef12c3b0eee2e38d10;
+  models/fire_smoke_v1_export/ holds args.yaml, results.csv, dataset manifest, run manifest, held-out metrics.
+  The 22 Oct aborted local run's manifest was kept as models/fire_smoke_v1_local_aborted_export/
+Held-out test (once): P 0.775, R 0.720, mAP50 0.787, mAP50-95 0.459; fire P 0.720 R 0.651 mAP50 0.726;
+  smoke P 0.831 R 0.789 mAP50 0.848. Re-evaluated on the Mac (mps): identical to 3 decimals
+Alert path: real detections through FireTracker at the pipeline's sampling (every 5th frame at 30 FPS) on
+  still images: fire image -> FIRE CRITICAL and SMOKE HIGH once each after 2.0 s; negative image -> none
+NFR-04 (27 Oct, all detectors incl. fire, 1280x720, 517 PPE test images): mps 15.8 / 16.1 FPS, cpu 10.4 /
+  10.2 FPS; docs/evidence/CHAPTER5_MEASUREMENTS.md regenerated (throughput section only)
+Known limitations: fire recall 0.651 at image level; D-Fire is not construction footage; no video, hard-negative
+  (sunset, orange vest, welding sparks, dust) or alert-level evaluation yet
+Human inputs still needed: confirm D-Fire's licence and cite it; record or collect licensed clips including
+  hard negatives to evaluate alerts; report V8 Chapters 4-6 still describe fire as untrained
+Not included: the 22 Oct 2 h soak result in tools/measure/results/ (soak_20261022T144721Z.json, PASS) was run
+  with uncommitted soak.py changes in the main checkout; its tables and NFR-05 status are left to that work
 ```
