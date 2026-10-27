@@ -2,7 +2,7 @@
 
 `docs/SiteSafe_FYP_Report_V8.docx` is built from the submitted V7 (left unchanged) by `docs/build_report_v8.py`. The text lives in `docs/report_v8_content.py` and the figures come from `docs/figures/make_figures.py`. Edit those files and rebuild; don't hand-edit the .docx, or the next build will overwrite the edits. The build, render and page-number commands are in the docstring of `build_report_v8.py`.
 
-The rendered PDF (`docs/SiteSafe_FYP_Report_V8.pdf`, 93 pages) is exported from Microsoft Word, and the contents and list page numbers were measured from that Word render (all 146 entries match).
+The rendered PDF (`docs/SiteSafe_FYP_Report_V8.pdf`, 95 pages) is exported from Microsoft Word, and the contents and list page numbers were measured from that Word render (all 147 entries match, re-checked against the final render on 27 Oct 2026).
 
 Fixed on 21 Oct 2026: the shared table helper in `update_fyp_report.py` wrote widths in EMUs where Word expects twips, so 18 tables claimed to be about 3,800 inches wide. Word laid them out off the page, which made Table 4.1 look broken and pushed later chapters out of view. LibreOffice had silently clamped the widths, so this didn't show in the earlier checks. V7 already had five such tables from the same helper.
 
@@ -29,7 +29,7 @@ The text now covers everything built in Phases 0–2, and the body stays within 
 | Chapter 6 | Outcomes, limitations (danger-area ground plane, hand-entered camera cones) and future work updated. |
 | Appendices | Table I.1/I.2 tasks for cameras, danger areas, camera placement and the mobile map; Table II.1 adds `setup_demo`; Tables III.1/III.2 add the camera endpoints and tables. The full manual is `docs/USER_MANUAL.md`. |
 
-**Not yet done:** the Word render and the `finalize` pass, which measure the contents and list page numbers. They need Word on the Mac, which asks once for automation permission (pending list, A4). Until then `docs/SiteSafe_FYP_Report_V8.docx` and `.pdf` are the 26 Oct build.
+Rebuilt and rendered in Word on 27 Oct 2026: 95 pages; every one of the 147 contents and list entries matches the page it lands on in the final render.
 
 ## Added on 26 Oct 2026 (SOP Appendix D gaps)
 

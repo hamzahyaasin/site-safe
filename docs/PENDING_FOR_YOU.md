@@ -11,7 +11,6 @@ Kept since 27 October 2026. Update this file whenever something is skipped or de
 | A1 | **Record and score a webcam clip for PPE episodes** | 27 Oct (Phase 1) | 60 s of you in front of the webcam without helmet/vest/goggles: sit, lean in and out, turn, move left and right, step out of view for about 3 s and come back. Record with `python tools/measure/record_clip.py --out tools/measure/results/clips/webcam_one_person_01.mp4 --seconds 60` from your own Terminal (it has camera permission), then say which PPE items you were missing. Scoring is automatic. | FR-05 scored on real video (target: one alert per missing item), Chapter 5 evidence |
 | A2 | **Record today's real-webcam run in the matrix** | 27 Oct ("not yet") | Nothing new: the 27 Oct run is already in the dev database (14 webcam alerts with snapshot and model version; live grid at 5 frames/s). Say when to write it up. | FR-29 and FR-30 move from "synthetic only" to a real camera |
 | A3 | **Push the branch so CI runs** | 27 Oct (Phase 0 and 1) | Your go-ahead to push `stage-0-1-security-events` to GitHub. | CI runs every suite on GitHub; first step of NFR-06 |
-| A4 | **Render the V8 report in Word** | 27 Oct | The text is updated (Phase 4). What remains is the Word render and page-number pass: Word opens on your Mac and asks once for automation permission. | `docs/SiteSafe_FYP_Report_V8.docx/.pdf` match the code; until then they are the 26 Oct build |
 | A5 | **Gas detection** | 27 Oct | Supervisor approval of a scope change. If approved: a scope-change note (offered), then software with a labelled simulator, then optional demo sensors (ESP32 + MQ-series, not certified). | A visible gas-monitoring feature |
 
 ## B. Decisions waiting on you
@@ -46,6 +45,7 @@ Kept since 27 October 2026. Update this file whenever something is skipped or de
 
 | Item | Done | Evidence |
 |---|---|---|
+| V8 report rendered in Word (was A4) | 27 Oct | `docs/SiteSafe_FYP_Report_V8.docx/.pdf`, 95 pages, all 147 contents and list entries match the render; text covers Phases 0–2 |
 | Fire/smoke model trained (was a deferred human input) | 27 Oct | Kaggle v1, held-out mAP50 0.787; matrix FR-09 |
 | Dev database migrated for FR-29 | before 27 Oct | `backups/sitesafe_db_before_fr29_20261020_1943.dump`; no migrations pending on 27 Oct |
 | 2-hour soak run | 22 Oct | `tools/measure/results/soak_20261022T144721Z.json` (PASS); Chapter 5 tables regenerated and NFR-05 marked Met on 27 Oct |

@@ -662,8 +662,8 @@ Dependencies: react-native-webview 14.0.1 and react-native-svg 15.16.0 (npx expo
 
 ```text
 Phase / task IDs: Phase 4 — documentation end to end (user manual, demo script, report text)
-Status: written and checked against the running system; the report's Word render and page-number pass wait on
-  Word automation permission (A4)
+Status: written and checked against the running system; report rendered in Word 27 Oct (95 pages, all 147
+  contents and list entries match the final render)
 User manual: docs/USER_MANUAL.md, by role (roles table, dashboard, alert rules table, incidents, cameras and
   danger areas, zones and camera placement, permits, workers and badges, vests, reports with evidence,
   settings, mobile, privacy, troubleshooting), with 15 screenshots in docs/manual/ taken 27 Oct from a demo
@@ -678,8 +678,8 @@ setup_demo: backend/workers/management/commands/setup_demo.py, configuration onl
 Report: report_v8_content.py covers Phases 0-2 (abstract, 3.3.2, Table 3.4 FR-30 to FR-34, 4.3 to 4.6 with a
   new 4.3.8, Chapter 5 tables with 470 tests, the fire model and the 2 h soak, Chapter 6, appendices); Figures
   4.3 and 4.4 are new screenshots and the ERD gains cameras and camera_areas. Body text held at the length
-  limit (9,704 words before, 9,705 after, same counting method). Built with build_report_v8.py and checked in a
-  LibreOffice render; docs/SiteSafe_FYP_Report_V8.docx/.pdf are not replaced until the Word render.
+  limit (9,704 words before, 9,705 after, same counting method). Built with build_report_v8.py, rendered in Word,
+  page numbers measured and written (finalize), rendered again; docs/SiteSafe_FYP_Report_V8.docx/.pdf replaced.
 Measurements: docs/evidence/CHAPTER5_MEASUREMENTS.md regenerated with the 22 Oct two-hour soak (PASS); NFR-05 Met.
 Found and fixed while writing: the Settings page offered a switch for FIRE, which the API refuses to disable
   (now shown as always on, like SOS); worker initials showed "A(" for names ending in "(demo)"; reports said
