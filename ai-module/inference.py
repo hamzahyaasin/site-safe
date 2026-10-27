@@ -69,9 +69,6 @@ SNAPSHOTS_ENV = "SITESAFE_SNAPSHOTS"
 LIVE_ENV = "SITESAFE_LIVE"
 # Rules and danger areas saved in the dashboard reach the camera within this long.
 RULES_REFRESH_SECONDS = 15
-# Minimum gap between VEHICLE_PROXIMITY alerts. PPE alerts use per-person
-# episodes instead (ppe_episodes.py).
-COOLDOWN_SECONDS = 15
 # Temporary global PPE candidate threshold.  It is exposed through the CLI so
 # Phase 4 can calibrate it without editing source; the clean validation work
 # will replace this with per-class thresholds.
@@ -753,9 +750,10 @@ def parse_args() -> argparse.Namespace:
         "--proximity-persistence",
         type=int,
         default=proximity.DEFAULT_PERSISTENCE,
-        help="Consecutive evaluated frames a breach must hold before an alert "
-        f"is raised (default: {proximity.DEFAULT_PERSISTENCE}). Filters out "
-        "single-frame detection noise.",
+        help="Evaluated frames a person must be near a vehicle, with no gap over "
+        f"{proximity.DEFAULT_MAX_GAP_SECONDS:g}s, before an alert is raised "
+        f"(default: {proximity.DEFAULT_PERSISTENCE}). Filters out single-frame "
+        "detection noise.",
     )
     parser.add_argument(
         "--loop",
@@ -980,7 +978,8 @@ def main() -> None:
                 print(
                     f"[{camera_id}] vehicle proximity enabled "
                     f"(threshold {args.proximity_threshold} person-heights, "
-                    f"confirm after {args.proximity_persistence} frames)"
+                    f"confirm after {args.proximity_persistence} samples, "
+                    f"one alert per person until {proximity.DEFAULT_CLEAR_SECONDS:g}s clear)"
                 )
             if not args.no_inactivity:
                 # A timeout saved in the dashboard's INACTIVITY rule overrides
@@ -1096,7 +1095,6 @@ def main() -> None:
     # A stop request from a test harness or service manager still runs the
     # finally block below, so queued events are kept and the summary prints.
     signal.signal(signal.SIGTERM, stop_on_sigterm)
-    last_alert_time: dict[str, float] = {}
     ppe_episodes_tracker = ppe_episodes.EpisodeTracker(
         persistence_seconds=args.ppe_persistence, clear_seconds=args.ppe_clear_seconds
     )
@@ -1165,6 +1163,8 @@ def main() -> None:
                     fall_tracker.reset()
                 if danger_tracker is not None:
                     danger_tracker.reset()
+                if proximity_tracker is not None:
+                    proximity_tracker.reset()
                 if identity_tracker is not None:
                     identity_tracker.reset()
                 if fire_tracker is not None:
@@ -1224,7 +1224,7 @@ def main() -> None:
             # The shared COCO detector runs on a sampled subset of frames;
             # between samples the previous proximity result is reused for its
             # overlay, while inactivity timing uses the actual sample times.
-            confirmed_proximity = None
+            confirmed_proximity: list[dict] = []
             confirmed_inactivity: list[dict] = []
             confirmed_danger: list[dict] = []
             if coco_model is not None and total_frames % PROXIMITY_FRAME_INTERVAL == 0:
@@ -1240,11 +1240,6 @@ def main() -> None:
                 if people_counts is not None:
                     people_counts.offer((len(last_persons), wall_clock(t_now, t_now)))
 
-                if proximity_tracker is not None:
-                    confirmed_proximity = proximity_tracker.update(last_persons, last_vehicles)
-                    last_proximity_event = proximity.closest_proximity(
-                        last_persons, last_vehicles, args.proximity_threshold
-                    )
                 if inactivity_tracker is not None:
                     confirmed_inactivity = inactivity_tracker.update(
                         last_persons, now=t_now
@@ -1252,14 +1247,18 @@ def main() -> None:
                 if identity_tracker is not None:
                     badges = qr_decoder.decode(raw_frame) if qr_decoder is not None else []
                     identity_tracker.update(last_persons, badges, now=t_now)
+                    in_view = [t for t in identity_tracker.tracks if t.last_seen == t_now]
+                    if proximity_tracker is not None:
+                        confirmed_proximity = proximity_tracker.update(
+                            [(t.track_id, t.box) for t in in_view], last_vehicles, now=t_now
+                        )
+                        last_proximity_event = proximity.closest_proximity(
+                            last_persons, last_vehicles, args.proximity_threshold
+                        )
                     if danger_tracker is not None:
                         fh, fw = raw_frame.shape[:2]
-                        in_view = [
-                            (t.track_id, danger_areas.foot_point(t.box, fw, fh))
-                            for t in identity_tracker.tracks
-                            if t.last_seen == t_now
-                        ]
-                        confirmed_danger = danger_tracker.update(in_view, rules.areas, now=t_now)
+                        feet = [(t.track_id, danger_areas.foot_point(t.box, fw, fh)) for t in in_view]
+                        confirmed_danger = danger_tracker.update(feet, rules.areas, now=t_now)
                     # Attendance evidence: identified people currently in view.
                     for track in identity_tracker.tracks:
                         if track.badge and track.last_seen == t_now and sightings and sightings.due(track.badge, t_now):
@@ -1331,16 +1330,16 @@ def main() -> None:
                     who = f" [{badge}]" if badge else ""
                     print(f"[ALERT] {vname}{who} detected ({vconf:.2f}, episode {episode['track_id']}) → queued")
 
-            if confirmed_proximity is not None:
-                last_t = last_alert_time.get("VEHICLE_PROXIMITY", float("-inf"))
-                if t_now - last_t >= COOLDOWN_SECONDS:
-                    last_alert_time["VEHICLE_PROXIMITY"] = t_now
-                    if queue_event(
-                        outbox, rules, with_model(proximity_payload(confirmed_proximity, camera_id), coco_version), snapshot
-                    ):
-                        alerts_sent += 1
-                        proximity_alerts_sent += 1
-                        print(f"[ALERT] {proximity.describe(confirmed_proximity)} → queued")
+            # One alert per person per encounter (proximity.ProximityTracker);
+            # a camera-wide cooldown would drop a second worker at risk.
+            for event in confirmed_proximity:
+                badge = next((t.badge for t in identity_tracker.tracks if t.track_id == event["person"]), None)
+                payload = with_model(with_badge(proximity_payload(event, camera_id), badge), coco_version)
+                if queue_event(outbox, rules, payload, snapshot):
+                    alerts_sent += 1
+                    proximity_alerts_sent += 1
+                    who = f" [{badge}]" if badge else ""
+                    print(f"[ALERT] {proximity.describe(event)}{who} → queued")
 
             # The tracker itself latches each temporary person track until
             # movement re-arms it, so a second global cooldown would suppress

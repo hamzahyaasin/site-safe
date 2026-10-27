@@ -25,7 +25,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-04 | Detect missing PPE (10 classes) from a camera | M | Event precision ≥90% and episode recall ≥85% per retained class, on a sealed target-camera set | `ai-module/inference.py`, `models/sitesafe_v5.pt` | Held-out mAP50 0.562 on a leaky split (not a valid claim) | Coded |
 | FR-05 | One alert per person per violation episode | M | Two people with the same violation give two alerts; a single-frame flicker gives none | `ai-module/ppe_episodes.py`, `badged_violations` + episode loop in `inference.py`, `--ppe-persistence`, `--ppe-clear-seconds`, person ids from `identity.IdentityTracker` (badge, then person, then distance) | `test_ppe_episodes.py` (25); headless pipeline run on a still-image clip: the dataset labels 2 people without helmets and 1 without gloves; 20 Oct (before the duplicate merge) it gave 3 helmet alerts, misread at the time as 3 people (one was a duplicate box, IoU 0.68); 22 Oct with `tools/measure/evaluate_clip.py`: 2 of 2 helmet episodes, gloves missed, 1 goggles alert not in the labels; live webcam run 21 Oct (55 s, one person) found duplicate-box episodes → fixed, replay of its recorded boxes gives one alert per item; 27 Oct live webcam run showed one person re-alerted within seconds (head box moving more than its size); 6 person-association tests reproduce and cover it; test video re-run before/after identical (8 alerts) | Tested (**no annotated video scored yet**) |
 | FR-06 | Detect falls from camera pose | M | Positive and hard-negative videos meet the AI event targets | `ai-module/fall_detection.py` | `alerts/test_fall.py` (21) | Tested |
-| FR-07 | Warn when a worker is too close to a vehicle | M | Calibrated distance threshold; video evaluation | `ai-module/proximity.py` | `alerts/test_proximity.py` (9) | Tested |
+| FR-07 | Warn when a worker is too close to a vehicle | M | Calibrated distance threshold; video evaluation; one alert per person per encounter | `ai-module/proximity.py` (`ProximityTracker`: per-person encounters on `identity.IdentityTracker` tracks, 15 s clear, re-found person within 5 s), badge on the alert | `ai-module/test_proximity.py` (18, moved from the backend); pipeline on test videos 27 Oct: a 60 s clip looped 3 times gave 10 alerts for one worker beside a flickering car, now 2 (one per person, the badge holder named); the 40-scene video gave 2, now 5 (four people beside cars in one street scene, one in a later scene); other alerts unchanged | Tested (**threshold not calibrated against measured distances**) |
 | FR-08 | Detect prolonged inactivity; timeout configurable from the dashboard | M | Changing the INACTIVITY rule changes the camera timeout within 60 s | `ai-module/inactivity.py`, `CameraRules` | `alerts/test_inactivity.py` (10), `test_inference_config.py` | Tested |
 | FR-09 | Fire/smoke detection with hot-work permit suppression | M | Licensed fixture videos pass; a permitted hot-work fire is downgraded, not dropped | `ai-module/fire_detection.py`, `ai-module/fire/` (prep script, Colab and Kaggle notebooks), `models/fire_smoke.pt` (YOLO11s, D-Fire, sha256 `4bdbf702…2e38d10`; evidence in `models/fire_smoke_v1_export/`), `alerts/fire_policy.py`, `sitemap.HotWorkPermit`, `components/zones/HotWorkPermits.jsx` | `test_fire_detection.py` (8), `fire/test_prepare_fire_dataset.py` (4), `sitemap/tests.py` permit + policy (8); e2e 20 Oct: permit issued in UI → fire in permitted zone MEDIUM + linked, elsewhere CRITICAL; model trained 26–27 Oct on Kaggle (T4, 96 epochs, early stop, best epoch 76); held-out test (4,294 images, never used for training or selection): P 0.775, R 0.720, mAP50 0.787, mAP50-95 0.459 (fire R 0.651 / mAP50 0.726; smoke R 0.789 / mAP50 0.848), reproduced on the Mac to 3 decimals; real detections through `FireTracker` on still images: fire image → 1 FIRE + 1 SMOKE alert after 2 s, negative image → none | Integrated (**model trained; image-level metrics only, no video or hard-negative alert evaluation**) |
 | FR-10 | QR worker identification linking camera events to a worker | M | Correct-association, unknown and wrong-person rates measured at a stated size, distance, angle and lighting | `ai-module/identity.py`, `group_violations` in `inference.py`, `Worker.badge_code`, `/workers/{id}/badge/`, `frontend/src/lib/badge.js` | `test_identity.py` (14, including real OpenCV QR encode→decode); `workers/tests.py` Badge/CameraBadgeIdentity (7); e2e 16 Oct (synthetic frame: badge decoded → alert attributed to Ali; second person unidentified) | Integrated (synthetic frames only; **physical camera test pending**) |
@@ -62,7 +62,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. With the fire model (27 Oct, commit `fae1367`, clean tree): mps 15.8 and 16.1 FPS, cpu 10.4 and 10.2 FPS; fire stage p50 18 ms (mps) every 5th frame | **Met on mps with all detectors** (cpu marginal) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 230 (SQLite and PostgreSQL), ai-module 125, fire tools 7, report-service 13, mobile 17, vest simulator 8, measurement and clip scoring 21 = 421 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 221 (SQLite and PostgreSQL), ai-module 144, fire tools 7, report-service 13, mobile 17, vest simulator 8, measurement and clip scoring 21 = 431 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
 
 ## Progress ledger
 
@@ -529,4 +529,32 @@ Known limitations: the foot point assumes the person stands on the ground plane 
   redrawn after re-aiming it
 Migrations: alerts 0013 (DANGER_AREA type), alerts 0014 (seeds the global rule), sitemap 0005 (CameraArea);
   the dev database still needs `migrate`
+```
+
+```text
+Phase / task IDs: FR-07 vehicle proximity over-alerting (found in the FR-32 live run)
+Status: fix tested (unit tests, pipeline runs on two test videos); no live camera run yet
+Finding: in the FR-32 live run (27 Oct) one worker beside a car in the test clip raised 14 proximity alerts in
+  about 3 minutes. The tracker re-armed on the first sample without a breach, and the car's detection drops
+  out for up to 4 s at a time, so only the camera-wide 15 s cooldown limited it. The cooldown also merged
+  two workers at risk into one alert.
+Fix: proximity.ProximityTracker now keeps one encounter per person (identity.IdentityTracker track ids,
+  badge or not): confirmed after 3 samples near a vehicle with no gap over 1 s, one alert at its closest
+  point so far, ended only after 15 s not near any vehicle. A person re-found under a new track id within
+  5 s, within one person-height, continues their encounter. The camera-wide cooldown (COOLDOWN_SECONDS) is
+  removed; the alert carries the badge holder like the other person alerts.
+Also fixed: danger areas (FR-32) and proximity both continued an entry for "a re-found person" with no time
+  limit, so a different person at the same spot 14 s later raised nothing (seen on the 40-scene video at
+  28.7 s). Both now only re-find within 5 s (REFOUND_SECONDS); a test for each.
+Evidence (headless pipeline, --video-clock, all detectors, same settings before and after):
+  - test clip with a printed badge, 60 s looped 3 times (180 s): VEHICLE_PROXIMITY 10 -> 2 (the badge
+    holder, CRITICAL, named; the second person, HIGH); PPE 2 -> 2
+  - 40-scene test video (40 s): VEHICLE_PROXIMITY 2 -> 5 (13.7 s: four people beside two cars in one street
+    scene, each alerted; 28.7 s: one person in a later scene); PPE 5 -> 5, smoke 1 -> 1
+  Replays of the recorded detector output through old and new logic give the same counts; with a clear time
+  of 5 s the looped clip re-alerts (8), from 10 s on it does not (2).
+Tests (27 Oct): ai-module 144 (test_proximity 18, moved from backend/alerts and rewritten for encounters;
+  danger areas 15); backend 221 (the 9 moved tests leave it) — 431 in total
+Known limitations: proximity is measured in the image (person-heights), not in metres, so a worker in front of
+  a distant vehicle can read as close (unchanged); a busy scene gives one alert per person near a vehicle
 ```

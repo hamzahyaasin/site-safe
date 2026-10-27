@@ -12,7 +12,8 @@ no gap longer than ``max_gap_seconds``, so walking past a corner raises
 nothing. They can be alerted for that area
 again only after ``clear_seconds`` outside it. If the person detector loses
 someone and finds them again under a new track id near where an alerted
-person was, the open entry continues instead of alerting twice.
+person was, within a few seconds, the open entry continues instead of
+alerting twice.
 
 This module has no camera or model imports, so it is tested without OpenCV
 or weights.
@@ -28,8 +29,11 @@ DEFAULT_MIN_HITS = 2
 # An unconfirmed entry restarts if the person is out of the area longer than this.
 DEFAULT_MAX_GAP_SECONDS = 1.0
 DEFAULT_CLEAR_SECONDS = 10.0
-# A new track id this close (image fractions) to a lost alerted person continues their entry.
+# A new track id this close (image fractions) to a lost alerted person, within
+# REFOUND_SECONDS of their last sample inside, continues their entry. Later it is
+# someone else (identity drops a track after 3 s unseen).
 REFOUND_DISTANCE = 0.15
+REFOUND_SECONDS = 5.0
 
 Point = tuple[float, float]
 Box = tuple[float, float, float, float]
@@ -150,6 +154,7 @@ class DangerAreaTracker:
                 entry.area_id == area_id
                 and entry.alerted
                 and entry.person not in present
+                and now - entry.last_seen <= REFOUND_SECONDS
                 and math.dist(entry.point, point) <= REFOUND_DISTANCE
             ):
                 del self.entries[key]

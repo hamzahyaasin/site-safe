@@ -379,7 +379,18 @@ SITESAFE_DEVICE_KEY=ss_... python inference.py --camera-id CAM-01
 
 **Controls:** `Q` quit · `P` pause/unpause · `S` queue a test alert
 
-Confirmed events are written to a local outbox (`ai-module/outbox/<camera>.sqlite3`) and delivered by a background thread with retries, so capture never waits on the network. Events queued while the API is down are delivered when it returns, including after a restart. Each event has an ID, so a retry is never stored twice. The camera also polls its alert rules from the dashboard every 60 seconds. A disabled alert type is not sent, and the INACTIVITY rule's `threshold_seconds` sets the stationary timeout.
+Confirmed events are written to a local outbox (`ai-module/outbox/<camera>.sqlite3`) and delivered by a background thread with retries, so capture never waits on the network. Events queued while the API is down are delivered when it returns, including after a restart. Each event has an ID, so a retry is never stored twice. The camera also polls its alert rules from the dashboard every 15 seconds, together with its danger areas. A disabled alert type is not sent, and the INACTIVITY rule's `threshold_seconds` sets the stationary timeout.
+
+**When a camera raises an alert.** Every detector waits for a condition to persist before alerting, then raises one alert for that person (or, for fire and smoke, for the scene) until the condition has cleared. Someone who stays in the same situation is not alerted again and again. People are followed between frames by the person detector, and a QR badge read on a person names them on every person alert below.
+
+| Alert | Confirmed after | Raised again only after |
+|---|---|---|
+| PPE violation | the missing item is seen on the person for 1 s (at least 3 frames, no gap over 0.5 s) | that item has been unseen on them for 30 s |
+| Vehicle proximity | the person is within 1 person-height of a car, truck, bus or motorbike in 3 samples, with no gap over 1 s | they have not been near any vehicle for 15 s |
+| Danger area | the person's feet are inside the area for 1 s | they have been outside it for 10 s |
+| Inactivity | the person has not moved more than 15 px for 5 min (the INACTIVITY rule) | they move again |
+| Fall | a collapsed posture for 3 s | the posture clears |
+| Fire / smoke | seen for 2 s, no gap over 1 s | the scene has been clear for 30 s |
 
 A lower-level webcam script without API integration is also available:
 
@@ -534,7 +545,7 @@ Train a model or place weights at the path set in `MODEL_PATH` inside `ai-module
 Try a different `CAMERA_INDEX` (e.g. `1` or `2`). Close other apps using the webcam.
 
 **No alerts from the AI module**  
-Check the session summary printed on exit. *Still queued* means the API was unreachable or the device key was missing or rejected (`HTTP 401`). *Rejected by the API* means the payload failed validation, for example because the token is not allowed for that `camera_id`. Also check that the alert type is enabled in **Settings**. Alerts respect a cooldown period per violation type.
+Check the session summary printed on exit. *Still queued* means the API was unreachable or the device key was missing or rejected (`HTTP 401`). *Rejected by the API* means the payload failed validation, for example because the token is not allowed for that `camera_id`. Also check that the alert type is enabled in **Settings**. A camera raises one alert per person per episode (a missing PPE item, a vehicle encounter, a danger-area entry), so a person who stays in the same situation is not alerted again until it has cleared.
 
 ---
 

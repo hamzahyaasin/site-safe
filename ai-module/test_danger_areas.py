@@ -82,6 +82,12 @@ class EntryTests(unittest.TestCase):
         events += run(t, [[(9, (0.42, 0.81))]] * 10, start=3.0)
         self.assertEqual(len(events), 1)
 
+    def test_someone_at_the_same_spot_later_is_someone_else(self):
+        t = da.DangerAreaTracker()
+        run(t, [[(1, INSIDE)]] * 10)  # inside until 1.8 s, then lost
+        events = run(t, [[(9, (0.42, 0.81))]] * 10, start=1.8 + da.REFOUND_SECONDS + 1)
+        self.assertEqual([e["person"] for e in events], [9])
+
     def test_a_different_person_nearby_is_alerted(self):
         # Person 1 is still tracked, so person 2 next to them is someone else.
         t = da.DangerAreaTracker()

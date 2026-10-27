@@ -20,6 +20,7 @@ the principal limitation of single-camera proximity estimation.
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass, field
 
 # COCO class ids from the pretrained detector that stand in for site vehicles.
 # COCO has no forklift class; forklifts and similar plant typically register as
@@ -33,7 +34,19 @@ VEHICLE_CLASS_IDS = {
 }
 
 DEFAULT_THRESHOLD = 1.0  # in person-heights
-DEFAULT_PERSISTENCE = 3  # consecutive evaluated frames before confirming
+DEFAULT_PERSISTENCE = 3  # evaluated frames (samples) near a vehicle before confirming
+# An unconfirmed encounter restarts if the person is not near a vehicle for longer than this.
+DEFAULT_MAX_GAP_SECONDS = 1.0
+# An encounter ends once the person has not been near any vehicle for this long;
+# only then can they be alerted again. A small or partly hidden vehicle drops out
+# of detection for seconds at a time (up to 4 s in the 27 Oct test clip).
+DEFAULT_CLEAR_SECONDS = 15.0
+# A new track this soon after an alerted person was last near a vehicle, within one
+# of their person-heights, is that person re-found (identity drops a track after 3 s
+# unseen). Later, or farther, it is someone else.
+REFOUND_SECONDS = 5.0
+
+Box = tuple[float, float, float, float]
 
 
 def bbox_gap(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
@@ -98,39 +111,93 @@ def describe(event: dict) -> str:
     return f"Worker within proximity of {event['vehicle_label']} ({distance})"
 
 
-class ProximityTracker:
-    """Confirms a proximity condition only after it persists across frames.
+@dataclass
+class _Encounter:
+    person: int
+    first_seen: float
+    last_seen: float
+    box: Box
+    closest: dict
+    hits: int = 0
+    alerted: bool = False
 
-    A single frame of detection noise — a spurious box, a momentary
-    mis-classification — should not raise an alert, so a breach must hold for
-    `persistence` consecutive evaluated frames before it is confirmed. Once
-    confirmed, the tracker will not fire again until the condition clears,
-    which prevents one worker standing beside a parked vehicle from
-    generating a continuous stream of alerts.
+
+def _centre(box: Box) -> tuple[float, float]:
+    return ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+
+
+@dataclass
+class ProximityTracker:
+    """One alert per person per encounter with a vehicle.
+
+    People are followed between frames by identity.IdentityTracker; this
+    tracker is fed each sample's (track id, person box) pairs. A person near
+    a vehicle (within ``threshold`` person-heights) starts an encounter,
+    which is confirmed after ``persistence`` samples near one with no gap
+    longer than ``max_gap_seconds``, so a single spurious box never alerts.
+    A confirmed encounter raises exactly one alert, reported at its closest
+    point so far, and stays open while the person keeps coming near
+    vehicles. It ends once they have not been near any vehicle for
+    ``clear_seconds``; only then can the same person be alerted again.
+
+    Vehicle detections flicker, so the earlier design (re-arm on the first
+    sample without a breach, one camera-wide cooldown) alerted one worker
+    beside one parked car every cooldown period, and merged two workers at
+    risk into one alert. If the person detector loses someone and finds them
+    again close by under a new track id, an alerted encounter continues
+    instead of alerting twice; someone appearing there later than
+    ``REFOUND_SECONDS`` is treated as a different person.
     """
 
-    def __init__(
-        self,
-        threshold: float = DEFAULT_THRESHOLD,
-        persistence: int = DEFAULT_PERSISTENCE,
-    ) -> None:
-        self.threshold = threshold
-        self.persistence = max(1, persistence)
-        self._streak = 0
-        self._armed = True
+    threshold: float = DEFAULT_THRESHOLD
+    persistence: int = DEFAULT_PERSISTENCE
+    max_gap_seconds: float = DEFAULT_MAX_GAP_SECONDS
+    clear_seconds: float = DEFAULT_CLEAR_SECONDS
+    encounters: dict[int, _Encounter] = field(default_factory=dict)
 
-    def update(self, persons: list, vehicles: list) -> dict | None:
-        """Feed one evaluated frame. Returns a confirmed event, or None."""
-        event = closest_proximity(persons, vehicles, self.threshold)
-        if event is None:
-            self._streak = 0
-            self._armed = True
-            return None
+    def __post_init__(self) -> None:
+        self.persistence = max(1, self.persistence)
 
-        self._streak += 1
-        if self._streak >= self.persistence and self._armed:
-            self._armed = False
-            return event
+    def reset(self) -> None:
+        self.encounters.clear()
+
+    def update(self, people: list[tuple[int, Box]], vehicles: list, now: float) -> list[dict]:
+        """Feed one sample; return newly confirmed encounters.
+
+        Each event is ``closest_proximity``'s dict plus ``person`` (track id).
+        """
+        present = {pid for pid, _ in people}
+        events = []
+        for pid, box in people:
+            near = closest_proximity([box], vehicles, self.threshold)
+            if near is None:
+                continue
+            enc = self.encounters.get(pid) or self._refound(pid, box, present, now)
+            if enc is None or (not enc.alerted and now - enc.last_seen > self.max_gap_seconds):
+                enc = _Encounter(pid, first_seen=now, last_seen=now, box=box, closest=near)
+            self.encounters[pid] = enc
+            enc.last_seen, enc.box = now, box
+            enc.hits += 1
+            if near["normalised_gap"] < enc.closest["normalised_gap"]:
+                enc.closest = near
+            if not enc.alerted and enc.hits >= self.persistence:
+                enc.alerted = True
+                events.append({**enc.closest, "person": pid})
+        self.encounters = {p: e for p, e in self.encounters.items() if now - e.last_seen < self.clear_seconds}
+        return events
+
+    def _refound(self, pid: int, box: Box, present: set[int], now: float) -> _Encounter | None:
+        """A recent alerted encounter of someone no longer tracked, within one person-height of ``box``."""
+        for key, enc in list(self.encounters.items()):
+            if (
+                enc.alerted
+                and enc.person not in present
+                and now - enc.last_seen <= REFOUND_SECONDS
+                and math.dist(_centre(enc.box), _centre(box)) <= box_height(enc.box)
+            ):
+                del self.encounters[key]
+                enc.person = pid
+                return enc
         return None
 
 
