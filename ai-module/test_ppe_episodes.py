@@ -28,8 +28,8 @@ def run(tracker, frames, start=0.0):
     return events
 
 
-def seen(box, cls="no-helmet", conf=0.6, badge=None):
-    return (cls, conf, box, badge)
+def seen(box, cls="no-helmet", conf=0.6, badge=None, person=None):
+    return (cls, conf, box, badge, person)
 
 
 class AcceptanceTests(unittest.TestCase):
@@ -218,3 +218,50 @@ class ValidationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PersonAssociationTests(unittest.TestCase):
+    """Violations are tied to the tracked person whose box contains them (live webcam, 27 Oct)."""
+
+    def test_head_box_jumping_within_one_person_alerts_once(self):
+        # A webcam head box moved more than its own size as the person leaned:
+        # by box distance alone this became a second episode and a second alert.
+        t = ppe_episodes.EpisodeTracker()
+        moved = shifted(LEFT, 70)
+        frames = [[seen(LEFT, person=1)]] * (2 * FPS) + [[seen(moved, person=1)]] * (3 * FPS)
+        self.assertEqual(len(run(t, frames)), 1)
+
+    def test_without_person_the_jump_is_a_new_episode(self):
+        # Documents the fallback: with no person detector, box distance decides.
+        t = ppe_episodes.EpisodeTracker()
+        frames = [[seen(LEFT)]] * (2 * FPS) + [[seen(shifted(LEFT, 70))]] * (3 * FPS)
+        self.assertEqual(len(run(t, frames)), 2)
+
+    def test_two_people_side_by_side_still_alert_twice(self):
+        t = ppe_episodes.EpisodeTracker()
+        near = shifted(LEFT, 30)  # within one box size of LEFT
+        events = run(t, [[seen(LEFT, person=1), seen(near, person=2)]] * (2 * FPS))
+        self.assertEqual(len(events), 2)
+
+    def test_two_boxes_of_one_class_on_one_person_are_one_violation(self):
+        # e.g. both hands without gloves: one person, one episode, one alert.
+        t = ppe_episodes.EpisodeTracker()
+        right_hand = shifted(LEFT, 200)
+        frames = [[seen(LEFT, "no-gloves", person=1), seen(right_hand, "no-gloves", person=1)]] * (2 * FPS)
+        self.assertEqual(len(run(t, frames)), 1)
+
+    def test_episode_of_another_present_person_is_not_taken_by_distance(self):
+        t = ppe_episodes.EpisodeTracker()
+        run(t, [[seen(LEFT, person=1)]] * (2 * FPS))
+        # Person 2 appears right where person 1's box was; person 1 is still tracked.
+        events = run(t, [[seen(LEFT, person=1), seen(shifted(LEFT, 10), person=2)]] * (2 * FPS), start=2.0)
+        self.assertEqual(len(events), 1, "person 2 gets their own episode")
+
+    def test_new_person_id_near_a_lost_persons_episode_continues_it(self):
+        # The person detector lost the worker for a moment and re-found them
+        # as a new track: same place, same violation, no second alert.
+        t = ppe_episodes.EpisodeTracker()
+        events = run(t, [[seen(LEFT, person=1)]] * (2 * FPS))
+        events += run(t, [[]] * (2 * FPS), start=2.0)
+        events += run(t, [[seen(shifted(LEFT, 5), person=7)]] * (2 * FPS), start=4.0)
+        self.assertEqual(len(events), 1)

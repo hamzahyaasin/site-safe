@@ -111,12 +111,12 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
     {
       key: 'worker_name',
       header: 'Worker',
-      render: (row) => row.worker_name || '—',
-    },
-    {
-      key: 'vest_id',
-      header: 'Vest ID',
-      render: (row) => <span className="font-mono text-xs">{row.vest_id || '—'}</span>,
+      render: (row) => (
+        <div className="min-w-0">
+          <div className="truncate">{row.worker_name || '—'}</div>
+          {row.vest_id ? <div className="font-mono text-[11px] text-zinc-500">{row.vest_id}</div> : null}
+        </div>
+      ),
     },
     {
       key: 'alert_type',
@@ -131,6 +131,9 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
     {
       key: 'camera',
       header: 'Camera',
+      // Shown on wide screens; the expanded detail and the CSV always include it.
+      className: 'hidden xl:table-cell',
+      cellClassName: 'hidden xl:table-cell',
       render: (row) => (
         <span className="font-mono text-xs text-zinc-500">{displayCameraId(row)}</span>
       ),
@@ -249,6 +252,7 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
         expandedRowId={expandedId}
         onRowClick={(row) => setExpandedId((id) => (id === row.id ? null : row.id))}
         renderExpanded={(row) => <IncidentDetail alert={row} />}
+        minWidthClass="min-w-[640px]"
         rowKey={(row) => row.id}
       />
 

@@ -14,6 +14,8 @@ export default function DataTable({
   expandedRowId,
   renderExpanded,
   onRowClick,
+  // Below this width the table scrolls inside its card instead of squeezing columns.
+  minWidthClass = 'min-w-[720px]',
 }) {
   if (loading) {
     return (
@@ -36,7 +38,7 @@ export default function DataTable({
   return (
     <div className="overflow-hidden rounded-lg border border-zinc-800 bg-[#151821]">
       <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+        <table className={cn('w-full border-collapse text-left text-sm', minWidthClass)}>
           <thead className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur-sm">
             <tr className="border-b border-zinc-800">
               {columns.map((col) => (

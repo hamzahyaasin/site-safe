@@ -12,6 +12,9 @@ attributed to a worker only when that is unambiguous:
   seconds without seeing the badge again.
 
 Anything else stays unidentified; the API never guesses a worker.
+
+Every followed person also gets a stable ``track_id``, badge or not, so
+other trackers (PPE episodes) can tell people apart without a badge.
 """
 
 from __future__ import annotations
@@ -86,6 +89,7 @@ class QrDecoder:
 class _Track:
     box: Box
     last_seen: float
+    track_id: int = 0
     badge: str | None = None
     badge_seen: float = 0.0
 
@@ -99,6 +103,7 @@ class IdentityTracker:
         self.identity_ttl = identity_ttl
         self.track_ttl = track_ttl
         self.tracks: list[_Track] = []
+        self._next_id = 1
 
     def reset(self) -> None:
         self.tracks = []
@@ -123,7 +128,8 @@ class IdentityTracker:
             used_tracks.add(i)
             unmatched.remove(j)
         for j in unmatched:
-            self.tracks.append(_Track(box=person_boxes[j], last_seen=now))
+            self.tracks.append(_Track(box=person_boxes[j], last_seen=now, track_id=self._next_id))
+            self._next_id += 1
 
         # 2. Drop lost people and stale identities.
         self.tracks = [t for t in self.tracks if now - t.last_seen <= self.track_ttl]
@@ -153,3 +159,16 @@ class IdentityTracker:
 
     def identify_box(self, box: Box) -> str | None:
         return self.identify(box_center(box))
+
+    def person_at(self, box: Box) -> int | None:
+        """track_id of the one followed person containing ``box``'s centre, else None.
+
+        The top margin admits a helmet or head box that reaches above the
+        person box. Two people containing the point is ambiguous: None.
+        """
+        holders = [t for t in self.tracks if contains(t.box, box_center(box), TOP_MARGIN)]
+        return holders[0].track_id if len(holders) == 1 else None
+
+    def people(self) -> set[int]:
+        """track_ids of everyone currently followed."""
+        return {t.track_id for t in self.tracks}

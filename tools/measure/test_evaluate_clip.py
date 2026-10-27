@@ -68,3 +68,25 @@ class FileTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RecordClipTests(unittest.TestCase):
+    def test_metadata_reports_timing_error(self):
+        from datetime import datetime, timezone
+
+        import record_clip
+
+        meta = record_clip.metadata(0, Path("c.mp4"), 900, 60.0, (1280, 720), datetime.now(timezone.utc), 15.0)
+        self.assertEqual((meta["fps_achieved"], meta["fps_in_file"], meta["timing_error_pct"]), (15.0, 15.0, 0.0))
+        slow = record_clip.metadata(0, Path("c.mp4"), 600, 60.0, (1280, 720), datetime.now(timezone.utc), 15.0)
+        self.assertEqual(slow["timing_error_pct"], 50.0)
+
+    def test_rejects_bad_arguments(self):
+        import contextlib
+        import io
+
+        import record_clip
+
+        for argv in (["--out", "clip.avi"], ["--out", "c.mp4", "--seconds", "0"]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                record_clip.main(argv)

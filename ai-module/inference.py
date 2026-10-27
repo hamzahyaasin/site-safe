@@ -206,13 +206,19 @@ def violation_boxes(names, boxes_xyxy, confs, clss) -> list[tuple[str, float, tu
 def badged_violations(
     detections: list[tuple[str, float, tuple]],
     tracker: identity.IdentityTracker | None,
-) -> list[tuple[str, float, tuple, str | None]]:
-    """Attach the wearer's QR badge (or None) to each violation box.
+) -> list[ppe_episodes.Violation]:
+    """Attach the wearer's QR badge and tracked person id (or None) to each violation box.
 
     Boxes are kept apart, not merged per class, so that the episode tracker
-    can tell two unidentified people with the same violation apart.
+    can tell two people with the same violation apart; the person id keeps
+    one person's moving box in one episode.
     """
-    return [(name, conf, box, tracker.identify_box(box) if tracker else None) for name, conf, box in detections]
+    return [
+        ppe_episodes.Violation(
+            name, conf, box, tracker.identify_box(box) if tracker else None, tracker.person_at(box) if tracker else None
+        )
+        for name, conf, box in detections
+    ]
 
 
 def is_violation_class(name: str) -> bool:
@@ -771,7 +777,8 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Disable QR badge identification. When enabled (the default) it "
         "needs the person detector, so it is also off with both "
-        "--no-proximity and --no-inactivity.",
+        "--no-proximity and --no-inactivity. People are still followed "
+        "(for one PPE alert per person) whenever the person detector runs.",
     )
     parser.add_argument(
         "--no-fire",
@@ -982,13 +989,15 @@ def main() -> None:
                 file=sys.stderr,
             )
 
+    # People are followed whenever the person detector runs: their ids keep
+    # one person's PPE violations in one episode. QR badges, when enabled,
+    # add who each person is.
     qr_decoder = None
-    identity_tracker = None
+    identity_tracker = identity.IdentityTracker() if coco_model is not None else None
     sightings = None
     if not args.no_qr:
         if coco_model is not None:
             qr_decoder = identity.QrDecoder()
-            identity_tracker = identity.IdentityTracker()
             sightings = SightingThrottle()
             print(f"[{camera_id}] QR badge identification enabled")
         else:
@@ -1174,10 +1183,11 @@ def main() -> None:
                         last_persons, now=t_now
                     )
                 if identity_tracker is not None:
-                    identity_tracker.update(last_persons, qr_decoder.decode(raw_frame), now=t_now)
+                    badges = qr_decoder.decode(raw_frame) if qr_decoder is not None else []
+                    identity_tracker.update(last_persons, badges, now=t_now)
                     # Attendance evidence: identified people currently in view.
                     for track in identity_tracker.tracks:
-                        if track.badge and track.last_seen == t_now and sightings.due(track.badge, t_now):
+                        if track.badge and track.last_seen == t_now and sightings and sightings.due(track.badge, t_now):
                             outbox.enqueue(activity_payload("SIGHTING", track.badge, camera_id, wall_clock(t_now, t_now)))
                     if inactivity_tracker is not None:
                         for moved in inactivity_tracker.resumed:
@@ -1229,9 +1239,12 @@ def main() -> None:
             # delivers them, so a slow or offline API never stalls capture
             # and an outage does not lose the event.
             # One alert per person per violation episode (FR-05): each
-            # violation box is tracked, confirmed after it persists and
-            # re-alerted only after it has cleared.
-            for episode in ppe_episodes_tracker.update(badged_violations(violation_dets, identity_tracker), now=t_now):
+            # violation box is tied to its person and tracked, confirmed after
+            # it persists and re-alerted only after it has cleared.
+            people = identity_tracker.people() if identity_tracker is not None else None
+            for episode in ppe_episodes_tracker.update(
+                badged_violations(violation_dets, identity_tracker), now=t_now, people=people
+            ):
                 vname, vconf, badge = episode["class"], episode["confidence"], episode["badge"]
                 if queue_event(outbox, rules, with_model(ppe_payload(vname, vconf, camera_id, badge), ppe_version), snapshot):
                     alerts_sent += 1

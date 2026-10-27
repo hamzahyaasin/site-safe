@@ -105,17 +105,17 @@ class BadgedViolationTests(unittest.TestCase):
             ("no-helmet", 0.8, (230.0, 10.0, 270.0, 50.0)),
             ("no-helmet", 0.5, (500.0, 10.0, 540.0, 50.0)),
         ]
-        self.assertEqual(
-            [badge for *_, badge in inference.badged_violations(dets, t)],
-            [ALI, SARA, None],
-        )
+        out = inference.badged_violations(dets, t)
+        self.assertEqual([v.badge for v in out], [ALI, SARA, None])
+        self.assertEqual(len({out[0].person, out[1].person}), 2, "two people, two person ids")
+        self.assertIsNone(out[2].person, "outside every person")
 
     def test_unidentified_boxes_stay_separate(self):
         # Two unidentified people must reach the episode tracker as two boxes.
         dets = [("no-vest", 0.4, (0, 0, 1, 1)), ("no-vest", 0.7, (5, 5, 6, 6))]
         self.assertEqual(
             inference.badged_violations(dets, None),
-            [("no-vest", 0.4, (0, 0, 1, 1), None), ("no-vest", 0.7, (5, 5, 6, 6), None)],
+            [("no-vest", 0.4, (0, 0, 1, 1), None, None), ("no-vest", 0.7, (5, 5, 6, 6), None, None)],
         )
 
     def test_payload_carries_badge(self):
@@ -126,3 +126,37 @@ class BadgedViolationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PersonIdTests(unittest.TestCase):
+    """Stable person ids for other trackers (PPE episodes), badge or not."""
+
+    def test_person_keeps_its_id_while_followed_and_boxes_resolve_to_it(self):
+        t = identity.IdentityTracker()
+        t.update([(100, 100, 200, 400), (400, 100, 500, 400)], [], now=0.0)
+        ids = {tr.track_id for tr in t.tracks}
+        self.assertEqual(len(ids), 2)
+        left = t.person_at((130, 105, 170, 150))
+        t.update([(110, 100, 210, 400), (400, 100, 500, 400)], [], now=0.1)
+        self.assertEqual(t.person_at((140, 105, 180, 150)), left, "same person after moving")
+        self.assertEqual(t.people(), ids)
+
+    def test_head_box_above_the_person_box_still_belongs_to_them(self):
+        t = identity.IdentityTracker()
+        t.update([(100, 100, 200, 400)], [], now=0.0)
+        head = (130, 70, 170, 105)  # centre at y=87.5, above y1=100 but inside the top margin
+        self.assertIsNotNone(t.person_at(head))
+
+    def test_ambiguous_or_outside_is_none(self):
+        t = identity.IdentityTracker()
+        t.update([(100, 100, 300, 400), (200, 100, 400, 400)], [], now=0.0)
+        self.assertIsNone(t.person_at((240, 200, 260, 220)), "inside both people")
+        self.assertIsNone(t.person_at((600, 200, 620, 220)), "inside nobody")
+
+    def test_new_person_gets_a_new_id(self):
+        t = identity.IdentityTracker(track_ttl=1.0)
+        t.update([(100, 100, 200, 400)], [], now=0.0)
+        first = t.person_at((140, 200, 160, 220))
+        t.update([], [], now=2.0)  # lost
+        t.update([(100, 100, 200, 400)], [], now=2.1)
+        self.assertNotEqual(t.person_at((140, 200, 160, 220)), first)

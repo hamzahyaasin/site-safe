@@ -169,7 +169,7 @@ A permit never hides fire, and FIRE alerts cannot be disabled in Settings. Safet
 
 On the **Workers** page, edit a worker and choose **Print badge**. The QR code encodes only a random code (`SSW1:…`), never a name or phone number. Print it at 100% scale (60 mm) and wear it on the helmet front or chest. **Reissue badge** revokes every earlier printout.
 
-A camera reads badges on the sampled frames and links each one to the person box that contains it. A PPE, fall or inactivity alert for that person is then attributed to the worker. A badge that is ambiguous (overlapping people), unreadable or revoked leaves the alert unidentified. The camera never guesses. Disable reading with `--no-qr`.
+A camera reads badges on the sampled frames and links each one to the person box that contains it. A PPE, fall or inactivity alert for that person is then attributed to the worker. A badge that is ambiguous (overlapping people), unreadable or revoked leaves the alert unidentified. The camera never guesses. Disable reading with `--no-qr`. People are still followed without badges whenever the person detector runs, so each person's PPE violations stay one alert per item even as they move.
 
 ### Alert evidence: snapshots and model version
 
@@ -438,6 +438,8 @@ python tools/measure/make_tables.py --out docs/evidence/CHAPTER5_MEASUREMENTS.md
 ```
 
 If a second copy of the stack runs on the same machine, give `soak.py` the processes to watch: `--pids api=1234,camera=5678,presence_monitor=91011`.
+
+**Recording a clip.** `python tools/measure/record_clip.py --out clips/name.mp4 --seconds 60` records raw camera frames, with no overlays, at the camera's measured frame rate, and writes `name.json` beside the clip. Keep clips of people out of git (`tools/measure/results/` is ignored).
 
 **Scoring detection on a recorded clip.** `tools/measure/evaluate_clip.py` runs the full pipeline on a video, headless and offline, timing every tracker by the video's own clock (`--video-clock`). It then scores the alerts against a CSV of the true episodes: detections, misses, duplicates, false alerts and delay per event type. Copy `tools/measure/clip_annotations_template.csv`, write one row per true episode (event, start and end in seconds, badge if worn), then run:
 
