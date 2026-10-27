@@ -24,6 +24,7 @@ import numpy as np
 import requests
 from ultralytics import YOLO
 
+import danger_areas
 import evidence
 import fall_detection
 import fire_detection
@@ -66,7 +67,8 @@ SNAPSHOTS_ENV = "SITESAFE_SNAPSHOTS"
 # a second for Safety Officers and Admins to watch. Never stored server-side.
 # Set SITESAFE_LIVE=0 (or pass --no-live) to keep video on the camera host.
 LIVE_ENV = "SITESAFE_LIVE"
-RULES_REFRESH_SECONDS = 60
+# Rules and danger areas saved in the dashboard reach the camera within this long.
+RULES_REFRESH_SECONDS = 15
 # Minimum gap between VEHICLE_PROXIMITY alerts. PPE alerts use per-person
 # episodes instead (ppe_episodes.py).
 COOLDOWN_SECONDS = 15
@@ -388,6 +390,7 @@ class CameraRules:
         self.camera_id = camera_id
         self.rules: dict[str, dict] = {}
         self.zone: str | None = None
+        self.areas: list[danger_areas.Area] = []
         self._stop = threading.Event()
 
     def refresh(self) -> bool:
@@ -404,6 +407,7 @@ class CameraRules:
             return False
         self.rules = data.get("rules") or {}
         self.zone = data.get("zone")
+        self.areas = danger_areas.parse_areas(data.get("areas"))
         return True
 
     def enabled(self, alert_type: str) -> bool:
@@ -596,18 +600,35 @@ def draw_fps(frame: np.ndarray, fps: float) -> None:
     cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
 
 
+def draw_danger_areas(frame: np.ndarray, areas: list[danger_areas.Area], occupied: set[int]) -> None:
+    """Outline each danger area; fill it red while someone is inside."""
+    h, w = frame.shape[:2]
+    for area in areas:
+        pts = np.array([[int(x * w), int(y * h)] for x, y in area.polygon], dtype=np.int32)
+        inside = area.id in occupied
+        color = (0, 0, 255) if inside else (0, 200, 255)  # BGR red / amber
+        if inside:
+            overlay = frame.copy()
+            cv2.fillPoly(overlay, [pts], color)
+            cv2.addWeighted(overlay, 0.3, frame, 0.7, 0, frame)
+        cv2.polylines(frame, [pts], True, color, 2, cv2.LINE_AA)
+        x, y = pts.min(axis=0)
+        cv2.putText(frame, area.name, (int(x) + 4, max(int(y) - 6, 16)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+
+
 def draw_status_bar(
     frame: np.ndarray,
     violations: list[tuple[str, float]],
     proximity_event: dict | None = None,
     fall_fired_this_frame: bool = False,
+    danger_area: str | None = None,
 ) -> None:
     """Top-left status strip: green ALL CLEAR, or red naming what is wrong.
 
     A confirmed fall outranks everything else in the banner — a worker down
-    is the most urgent condition this pipeline can raise. A proximity breach
-    in turn outranks a plain PPE violation, since a worker beside moving
-    plant is more immediate than a missing hardhat.
+    is the most urgent condition this pipeline can raise. Someone inside a
+    danger area comes next, then a proximity breach, since a worker beside
+    moving plant is more immediate than a missing hardhat.
     """
     h, w = frame.shape[:2]
     bar_h = 44
@@ -615,6 +636,9 @@ def draw_status_bar(
     if fall_fired_this_frame:
         color = (0, 0, 220)  # BGR red-ish
         label = "FALL DETECTED"
+    elif danger_area is not None:
+        color = (0, 0, 220)
+        label = f"DANGER AREA - {danger_area}"
     elif proximity_event is not None:
         color = (0, 0, 220)  # BGR red-ish
         label = f"VEHICLE PROXIMITY - {proximity_event['vehicle_label']}"
@@ -1028,6 +1052,10 @@ def main() -> None:
     # add who each person is.
     qr_decoder = None
     identity_tracker = identity.IdentityTracker() if coco_model is not None else None
+    # Danger areas follow the same tracked people; areas come with the rules.
+    danger_tracker = danger_areas.DangerAreaTracker() if identity_tracker is not None else None
+    if danger_tracker is None:
+        print(f"[{camera_id}] danger areas need the person detector; disabled", file=sys.stderr)
     sightings = None
     if not args.no_qr:
         if coco_model is not None:
@@ -1135,6 +1163,8 @@ def main() -> None:
                     # Same reasoning: paused time must not silently count
                     # toward a collapsed-posture persistence window either.
                     fall_tracker.reset()
+                if danger_tracker is not None:
+                    danger_tracker.reset()
                 if identity_tracker is not None:
                     identity_tracker.reset()
                 if fire_tracker is not None:
@@ -1196,6 +1226,7 @@ def main() -> None:
             # overlay, while inactivity timing uses the actual sample times.
             confirmed_proximity = None
             confirmed_inactivity: list[dict] = []
+            confirmed_danger: list[dict] = []
             if coco_model is not None and total_frames % PROXIMITY_FRAME_INTERVAL == 0:
                 p_result = coco_model.predict(
                     raw_frame, verbose=False, conf=PROXIMITY_CONF, device=device
@@ -1221,6 +1252,14 @@ def main() -> None:
                 if identity_tracker is not None:
                     badges = qr_decoder.decode(raw_frame) if qr_decoder is not None else []
                     identity_tracker.update(last_persons, badges, now=t_now)
+                    if danger_tracker is not None:
+                        fh, fw = raw_frame.shape[:2]
+                        in_view = [
+                            (t.track_id, danger_areas.foot_point(t.box, fw, fh))
+                            for t in identity_tracker.tracks
+                            if t.last_seen == t_now
+                        ]
+                        confirmed_danger = danger_tracker.update(in_view, rules.areas, now=t_now)
                     # Attendance evidence: identified people currently in view.
                     for track in identity_tracker.tracks:
                         if track.badge and track.last_seen == t_now and sightings and sightings.due(track.badge, t_now):
@@ -1267,8 +1306,13 @@ def main() -> None:
             if pose_model is not None:
                 draw_poses(display_frame, last_poses, confirmed_fall)
 
+            if danger_tracker is not None:
+                draw_danger_areas(display_frame, rules.areas, danger_tracker.occupied)
             draw_identities(display_frame, identity_tracker)
-            draw_status_bar(display_frame, violations, last_proximity_event, bool(confirmed_fall))
+            occupied = [a.name for a in rules.areas if danger_tracker is not None and a.id in danger_tracker.occupied]
+            draw_status_bar(
+                display_frame, violations, last_proximity_event, bool(confirmed_fall), occupied[0] if occupied else None
+            )
             draw_fps(display_frame, fps_smooth)
 
             # Confirmed events go to the durable outbox; a background thread
@@ -1323,6 +1367,16 @@ def main() -> None:
                     alerts_sent += 1
                     fall_alerts_sent += 1
                     print(f"[ALERT] {fall_detection.describe(event)} → queued")
+
+            # One alert per person per entry into a danger area (DangerAreaTracker
+            # latches each entry until the person has been out of it a while).
+            for event in confirmed_danger:
+                badge = next((t.badge for t in identity_tracker.tracks if t.track_id == event["person"]), None)
+                payload = with_model(with_badge(danger_areas.alert_payload(event, camera_id), badge), coco_version)
+                if queue_event(outbox, rules, payload, snapshot):
+                    alerts_sent += 1
+                    who = f" [{badge}]" if badge else ""
+                    print(f"[ALERT] {danger_areas.describe(event, camera_id)}{who} → queued")
 
             # FireTracker latches per class until the scene is clear, so no
             # extra cooldown is needed; the server applies hot-work permits.

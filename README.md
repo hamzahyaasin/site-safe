@@ -201,6 +201,17 @@ The **Cameras** page (Safety Officers and Admins only) shows a live grid of ever
 
 Turn it off on a camera with `--no-live` or `SITESAFE_LIVE=0`, or for the whole server with `LIVE_VIEW_ENABLED=False`. When the API runs as several processes, set `REDIS_URL`, which shares the latest frames through Redis.
 
+### Danger areas on the camera picture
+
+A danger area is a polygon drawn on one camera's picture, such as a crane's swing radius, an excavation edge or a loading bay. Areas are stored as fractions of the picture (0–1), so they still fit if the camera's resolution changes. They need not cover a whole zone.
+
+- **Drawing.** An Admin opens a camera on the Cameras page and chooses **Draw a danger area**. They click the corners on the live picture (3 to 24), then enter a name and severity (Critical, High or Medium). Areas can be switched off while the hazard is absent, and deleted. Safety Officers see the areas but cannot change them.
+- **Detection.** A person is inside when the bottom-centre of their box, where their feet are, is inside the polygon. Using the box centre would wrongly count someone standing in front of the area. The camera fetches its areas with its alert rules every 15 s (`RULES_REFRESH_SECONDS`), so a new or changed area takes effect within 15 s without restarting it.
+- **Alerts.** A person inside an active area for 1 s (at least 2 samples, no gap over 1 s) raises one DANGER_AREA alert with a snapshot, the area's severity, and the worker's name if their QR badge was read. Walking past a corner raises nothing. The same person can only be alerted for that area again after 10 s outside it. If the detector loses someone and finds them again close by under a new track, their entry continues rather than alerting twice.
+- **Display.** The live view outlines every area in amber and fills it red while someone is inside, with a "DANGER AREA – name" banner.
+
+Danger-area alerts apply to anyone, badged or not. The Danger area rule on the Settings page (Alert Configuration) switches them all off, or changes how they are notified.
+
 ### Report service
 
 ```bash
@@ -482,7 +493,8 @@ Run them on the demo machine with the configuration you will present. Prefer a s
 | `POST` | `/api/v1/camera-events/` | Camera token | Idempotent camera event (`event_id`, optional `badge_code`, `model_version`, base64 JPEG `snapshot`) |
 | `GET/POST` | `/api/workers/{id}/badge/` | Safety Officer | Badge payload to print / reissue (revokes the old one) |
 | `POST` | `/api/v1/reports/generate/` | Safety Officer | `report_type`, `date_from`, `date_to`, `file_format` (DOCX/PDF), `tz` |
-| `GET` | `/api/v1/camera-config/?camera_id=` | Camera token | Effective alert rules for a camera |
+| `GET` | `/api/v1/camera-config/?camera_id=` | Camera token | Effective alert rules and active danger areas for a camera |
+| `GET/POST/PATCH/DELETE` | `/api/v1/camera-areas/?camera_id=` | JWT read, Admin write | Danger areas (`camera_id`, `name`, `polygon` as `[[x, y], …]` fractions, `severity`, `is_active`) |
 | `POST` | `/api/v1/camera-frames/?camera_id=` | Camera token | Live-view JPEG (`image/jpeg` body, max 256 KB); relayed, not stored |
 | `POST` | `/api/v1/camera-counts/` | Camera token | People in view (`camera_id`, `people`, `observed_at`) for zone head counts |
 | `GET` | `/api/v1/cameras/` | Safety Officer | Every known camera with zone and live status |

@@ -81,6 +81,36 @@ class Camera(models.Model):
         return self.camera_id
 
 
+class CameraArea(models.Model):
+    """A danger area drawn on one camera's picture, such as a crane's swing radius.
+
+    ``polygon`` holds [x, y] vertices as fractions of the image width and
+    height (0-1), so it does not depend on the camera's resolution. The
+    camera raises a DANGER_AREA alert when a person's feet are inside an
+    active area (ai-module/danger_areas.py).
+    """
+
+    class Severity(models.TextChoices):
+        CRITICAL = "CRITICAL", "Critical"
+        HIGH = "HIGH", "High"
+        MEDIUM = "MEDIUM", "Medium"
+
+    camera_id = models.CharField(max_length=64, db_index=True)
+    name = models.CharField(max_length=60)
+    polygon = models.JSONField(help_text="[[x, y], ...] as fractions (0-1) of the image width and height")
+    severity = models.CharField(max_length=16, choices=Severity.choices, default=Severity.HIGH)
+    is_active = models.BooleanField(default=True, help_text="Switch off while the hazard is not present")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["camera_id", "name"]
+        constraints = [models.UniqueConstraint(fields=["camera_id", "name"], name="unique_area_name_per_camera")]
+
+    def __str__(self):
+        return f"{self.camera_id}: {self.name}"
+
+
 class HotWorkPermitQuerySet(models.QuerySet):
     def active_at(self, when=None):
         when = when or timezone.now()

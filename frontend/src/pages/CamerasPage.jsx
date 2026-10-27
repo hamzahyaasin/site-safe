@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Badge from '../components/ui/Badge.jsx'
+import CameraWithAreas from '../components/cameras/DangerAreas.jsx'
 import Card from '../components/ui/Card.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useCameraFeed } from '../hooks/useCameraFeed.js'
@@ -132,7 +133,7 @@ export default function CamerasPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => setSelected(null)}
         >
-          <div className="w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
+          <div className="max-h-full w-full max-w-6xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="mb-2 flex items-center justify-between text-sm text-zinc-300">
               <TileLabel tile={focused} />
               <button
@@ -143,7 +144,7 @@ export default function CamerasPage() {
                 Close (Esc)
               </button>
             </div>
-            <Frame tile={focused} large />
+            <CameraWithAreas cameraId={focused.camera_id} frameUrl={focused.frame?.url} live={focused.live} />
           </div>
         </div>
       ) : null}
@@ -185,9 +186,9 @@ function TileLabel({ tile }) {
   )
 }
 
-function Frame({ tile, large }) {
+function Frame({ tile }) {
   return (
-    <div className={cn('relative aspect-video w-full bg-black', large && 'max-h-[80vh]')}>
+    <div className="relative aspect-video w-full bg-black">
       {tile.frame ? (
         <img
           src={tile.frame.url}

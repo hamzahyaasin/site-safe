@@ -50,6 +50,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-29 | Alert evidence (snapshot, confidence, model version) | S | Each AI incident is traceable to its frame and model | `ai-module/evidence.py` (model id = weights name + SHA-256 prefix; JPEG of the raw frame ≤ 640 px), snapshot BLOB in `event_outbox.py`, `--no-snapshots` / `SITESAFE_SNAPSHOTS`; `Alert.model_version` (migration alerts 0012), `decode_snapshot` + `CameraEventView` (base64 JPEG ≤ 512 KB, stored once per `event_id`), `/api/alerts/{id}/snapshot/`, `ALERT_SNAPSHOTS_ENABLED`, `purge_alert_snapshots`; `AlertSnapshot.jsx`, `mobile/components/AlertSnapshot.tsx` | `alerts/test_evidence.py` (19), `test_evidence.py` (8), `test_event_outbox.py` snapshot cases (3), `mobile/__tests__/api.test.ts` image fetch (3); e2e 20 Oct on a throwaway database: synthetic frame → outbox → API (201, one 11 KB file), replay of the same `event_id` → 200 and no second file; frame, confidence and model version shown to a Viewer on web and on the mobile web build; `purge_alert_snapshots --days 0` removed the file and kept the alert | Integrated (**synthetic frame; not yet from a live camera run**) |
 | FR-30 | Live camera grid for monitoring (all cameras, including a test webcam) | S | Every running camera appears live within seconds to Safety Officers and Admins, configured cameras that are not running show as offline, and Viewers cannot see video | `ai-module/live_feed.py`, `--no-live` / `SITESAFE_LIVE`, `--live-fps`; `alerts/live.py`, `CameraFrameView` (`/api/v1/camera-frames/`), `CameraListView` (`/api/v1/cameras/`), `CameraFeedConsumer` (`/ws/cameras/`), `LIVE_VIEW_ENABLED`; `pages/CamerasPage.jsx`, `hooks/useCameraFeed.js` | `test_live_feed.py` (7), `alerts/test_live.py` (11); e2e 27 Oct on a throwaway database: real pipeline (all detectors) on a test video as CAM-01 plus synthetic test frames as WEBCAM-TEST, both live in the grid at 5.0 frames/s in the browser with detections drawn; CAM-GATE (zone, not running) offline; enlarged view; pipeline 17.6 FPS while streaming; Viewer had no Cameras tab and saw the role notice | Integrated (**test video and synthetic frames; no physical camera or second machine yet**) |
 | FR-31 | Worker location and zone head counts without a vest (camera-based, zones with several cameras) | S | A badge read by a camera places the worker in that camera's zone within seconds and as last seen after a minute; zone head counts never double-count overlapping cameras; one over-capacity alert per sustained crossing; a restricted-zone entry by an unassigned badge holder raises one breach | `workers/location.py` (place, zone_occupancy, check_capacity with hysteresis, sweeps), `Worker.location_*`, `Zone.camera_views_overlap`, `sitemap.Camera`, `CameraCountView` (`/api/v1/camera-counts/`), sightings every 15 s and people counts (`ai-module/latest_sender.py`); Workers page and mobile location, Zones page counts and overlap setting, live map labels (`zone_updated`) | `workers/test_location.py` (28), `test_activity_events.py` people counts (3); e2e 27 Oct (see ledger) | Integrated (**test videos with a printed test badge; no physical camera or real badge yet**) |
+| FR-32 | Danger areas drawn on the live camera picture | S | An Admin draws an area on a camera's live view and it takes effect within 15 s without a restart; a person whose feet stay inside an active area for 1 s raises one alert with a snapshot (named if badged); walking past raises nothing; the area shows red in the live view while occupied; Safety Officers see areas but cannot change them | `sitemap.CameraArea`, `CameraAreaSerializer`, `CameraAreaViewSet` (`/api/v1/camera-areas/`), areas in `CameraConfigView`; `AlertType.DANGER_AREA` and its seeded rule; `ai-module/danger_areas.py` (foot point, `DangerAreaTracker`), `inference.py` (rules refresh 15 s, `draw_danger_areas`, banner); `components/cameras/DangerAreas.jsx` on the Cameras page; incident filter, simulate button, report-service type list, mobile label | `sitemap/test_camera_areas.py` (7), `test_danger_areas.py` (14), mobile label (1 assertion); e2e 27 Oct (see ledger) | Integrated (**test video; no physical camera yet**) |
 
 ## Non-functional requirements
 
@@ -61,7 +62,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. With the fire model (27 Oct, commit `fae1367`, clean tree): mps 15.8 and 16.1 FPS, cpu 10.4 and 10.2 FPS; fire stage p50 18 ms (mps) every 5th frame | **Met on mps with all detectors** (cpu marginal) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 223 (SQLite and PostgreSQL), ai-module 111, fire tools 7, report-service 13, mobile 17, vest simulator 8, measurement and clip scoring 21 = 400 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 230 (SQLite and PostgreSQL), ai-module 125, fire tools 7, report-service 13, mobile 17, vest simulator 8, measurement and clip scoring 21 = 421 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
 
 ## Progress ledger
 
@@ -496,4 +497,36 @@ Known limitations: zone-level only (no position inside a camera view; Phase 2 it
   C1); throwaway SQLite reported "database is locked" under concurrent camera writes (PostgreSQL in real use)
 Migrations: sitemap 0004 (Camera, zone overlap and capacity state), workers 0008 (location fields), workers 0009
   (fills location from each worker's latest vest zone log); the dev database still needs `migrate`
+```
+
+```text
+Phase / task IDs: Phase 2 item 2 — FR-32 danger areas drawn on the live camera picture
+Status: Integrated on a throwaway database with a test video (dataset image with a printed test badge); not yet
+  with a physical camera
+Design: an area is a polygon of 3-24 corners in picture fractions (0-1), per camera, with a name (unique per
+  camera), a severity and an on/off switch. Admins draw them by clicking on the enlarged live view; everyone
+  signed in can read them (API: Admin write). The camera gets its active areas with its alert rules, refreshed
+  every 15 s. A person is inside when the bottom-centre of their box (their feet) is inside the polygon. One
+  DANGER_AREA alert per person per entry: 1 s inside with at least 2 samples and no gap over 1 s; again only
+  after 10 s outside; a person lost and re-found nearby under a new track continues their entry. Alerts carry
+  the snapshot, model version and badge holder like other camera alerts, and apply to anyone (badge or not),
+  independent of decision B1. The live view outlines areas in amber, fills an occupied area red and shows a
+  "DANGER AREA - name" banner (ranked after a fall, before vehicle proximity). A global rule (seeded on,
+  push and email) can switch the type off.
+E2E (27 Oct, throwaway SQLite database, real pipeline with all detectors, badge clip as CAM-01): as the test
+  Admin, drew "Loading bay edge" (4 corners, CRITICAL) on CAM-01's enlarged view; it appeared at once on the
+  page. Within the 15 s refresh the camera filled the area red and showed "DANGER AREA - Loading bay edge".
+  Two CRITICAL DANGER_AREA alerts, each with a snapshot: the badge holder, identified by QR badge (inside
+  1.0 s), and a second person in the area without a readable badge (inside 1.1 s); no repeats while both
+  stayed inside. Incident log filter "Danger area" listed both. As the test Safety Officer the area and the
+  red overlay showed, with no draw, switch or delete controls. No console errors after a reload.
+Tests (27 Oct): backend 230 OK on SQLite and PostgreSQL (7 new); ai-module 125 (14 new); mobile 17 (label
+  assertion); fire tools 7, report-service 13, vest simulator 8, measurement 21; frontend lint clean, build OK
+  — 421 in total
+Known limitations: the foot point assumes the person stands on the ground plane the area was drawn on (a
+  person on a raised platform in front of an area can count as inside); a partly hidden person's box may end
+  above their feet; areas belong to one camera's view and move if the camera is moved, so they must be
+  redrawn after re-aiming it
+Migrations: alerts 0013 (DANGER_AREA type), alerts 0014 (seeds the global rule), sitemap 0005 (CameraArea);
+  the dev database still needs `migrate`
 ```

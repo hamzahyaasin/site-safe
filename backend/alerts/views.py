@@ -496,7 +496,8 @@ class CameraCountView(APIView):
 class CameraConfigView(APIView):
     """GET the effective rules for one camera, so the edge applies saved settings.
 
-    Inactivity uses ``threshold_seconds`` as its stationary timeout.
+    Inactivity uses ``threshold_seconds`` as its stationary timeout. ``areas``
+    lists the camera's active danger areas (polygons in image fractions).
     """
 
     permission_classes = [IsCameraService]
@@ -510,10 +511,11 @@ class CameraConfigView(APIView):
                 {"detail": "This device token may not read this camera's configuration."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        from sitemap.models import Zone
+        from sitemap.models import CameraArea, Zone
 
         zone = Zone.objects.for_camera(camera_id).first()
         rules = rules_for_camera(camera_id)
+        areas = CameraArea.objects.filter(camera_id=camera_id, is_active=True)
         return Response(
             {
                 "camera_id": camera_id,
@@ -522,6 +524,9 @@ class CameraConfigView(APIView):
                     t: {"is_enabled": r.is_enabled, "threshold_seconds": r.threshold_seconds}
                     for t, r in rules.items()
                 },
+                "areas": [
+                    {"id": a.pk, "name": a.name, "polygon": a.polygon, "severity": a.severity} for a in areas
+                ],
             }
         )
 

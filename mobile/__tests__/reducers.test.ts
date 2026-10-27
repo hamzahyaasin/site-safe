@@ -42,6 +42,7 @@ test('presence comes from vest telemetry only', () => {
 
 test('labels and roles', () => {
   expect(formatType('PPE_VIOLATION')).toBe('PPE violation');
+  expect(formatType('DANGER_AREA')).toBe('Danger area');
   expect(canOperate('VIEWER')).toBe(false);
   expect(canOperate('SAFETY_OFFICER')).toBe(true);
 });

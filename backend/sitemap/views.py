@@ -11,8 +11,8 @@ from workers.models import Worker
 from workers.serializers import WorkerSerializer
 
 from .geofence import point_in_polygon
-from .models import HotWorkPermit, Zone
-from .serializers import HotWorkPermitSerializer, ZoneDetailSerializer, ZoneSerializer
+from .models import CameraArea, HotWorkPermit, Zone
+from .serializers import CameraAreaSerializer, HotWorkPermitSerializer, ZoneDetailSerializer, ZoneSerializer
 
 
 class ZoneViewSet(viewsets.ModelViewSet):
@@ -114,3 +114,16 @@ class HotWorkPermitViewSet(viewsets.ModelViewSet):
             permit.revoked_at = timezone.now()
             permit.save(update_fields=["revoked_at"])
         return Response(HotWorkPermitSerializer(permit).data)
+
+
+class CameraAreaViewSet(viewsets.ModelViewSet):
+    """Danger areas drawn on camera pictures. Admins edit; signed-in users read (``?camera_id=``)."""
+
+    queryset = CameraArea.objects.all()
+    serializer_class = CameraAreaSerializer
+    permission_classes = [ReadOnlyOrAdmin]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        camera_id = self.request.query_params.get("camera_id")
+        return qs.filter(camera_id=camera_id) if camera_id else qs

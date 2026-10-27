@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from sitesafe.validation import validate_camera_ids, validate_polygon
 
-from .models import HotWorkPermit, Zone
+from .models import CameraArea, HotWorkPermit, Zone
 
 
 class ZoneSerializer(serializers.ModelSerializer):
@@ -126,4 +126,56 @@ class HotWorkPermitSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"ends_at": "This permit would already have expired."})
         if zone is not None and not zone.is_active:
             raise serializers.ValidationError({"zone": "Permits can only be issued for active zones."})
+        return attrs
+
+
+class CameraAreaSerializer(serializers.ModelSerializer):
+    MAX_VERTICES = 24
+
+    class Meta:
+        model = CameraArea
+        fields = ("id", "camera_id", "name", "polygon", "severity", "is_active", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
+        validators = []  # the per-camera name check below gives a readable message
+
+    def validate_camera_id(self, value):
+        from alerts.live import CAMERA_ID
+
+        value = value.strip()
+        if not CAMERA_ID.match(value):
+            raise serializers.ValidationError("Use letters, digits, '.', '_' or '-' (up to 64).")
+        return value
+
+    def validate_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Name is required.")
+        return value
+
+    def validate_polygon(self, value):
+        if not isinstance(value, list) or not 3 <= len(value) <= self.MAX_VERTICES:
+            raise serializers.ValidationError(f"An area needs 3 to {self.MAX_VERTICES} points.")
+        points = []
+        for point in value:
+            if not (isinstance(point, (list, tuple)) and len(point) == 2):
+                raise serializers.ValidationError("Each point must be [x, y].")
+            try:
+                x, y = float(point[0]), float(point[1])
+            except (TypeError, ValueError) as exc:
+                raise serializers.ValidationError("Each point must be [x, y] numbers.") from exc
+            if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0):
+                raise serializers.ValidationError("Points are fractions of the image size, from 0 to 1.")
+            points.append([round(x, 4), round(y, 4)])
+        if len({tuple(p) for p in points}) < 3:
+            raise serializers.ValidationError("An area needs at least three distinct points.")
+        return points
+
+    def validate(self, attrs):
+        camera_id = attrs.get("camera_id", getattr(self.instance, "camera_id", None))
+        name = attrs.get("name", getattr(self.instance, "name", None))
+        clash = CameraArea.objects.filter(camera_id=camera_id, name__iexact=name)
+        if self.instance is not None:
+            clash = clash.exclude(pk=self.instance.pk)
+        if clash.exists():
+            raise serializers.ValidationError({"name": f"{camera_id} already has an area called {name}."})
         return attrs

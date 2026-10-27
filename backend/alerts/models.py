@@ -10,6 +10,7 @@ class AlertType(models.TextChoices):
     FALL = "FALL", "Fall"
     FIRE = "FIRE", "Fire"
     SMOKE = "SMOKE", "Smoke"
+    DANGER_AREA = "DANGER_AREA", "Danger area"
 
 
 class Severity(models.TextChoices):

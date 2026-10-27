@@ -155,6 +155,7 @@ CAMERA_ALERT_TYPES = (
     AlertType.FALL,
     AlertType.FIRE,
     AlertType.SMOKE,
+    AlertType.DANGER_AREA,
 )
 
 
