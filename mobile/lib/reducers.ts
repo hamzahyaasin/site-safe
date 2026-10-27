@@ -1,5 +1,5 @@
 import type { LiveEvent } from '@/context/Live';
-import type { Alert, Worker } from './types';
+import type { Alert, SmartVest, Worker, Zone } from './types';
 
 /** Apply one live event to an alert list. ``onlyOpen`` lists drop resolved alerts. */
 export function reduceAlerts(onlyOpen: boolean) {
@@ -20,4 +20,16 @@ export function reduceAlerts(onlyOpen: boolean) {
 export function reduceWorkers(list: Worker[], event: LiveEvent, worker: Worker): Worker[] {
   if (event !== 'worker_status_update') return list;
   return list.map((w) => (w.id === worker.id ? worker : w));
+}
+
+/** Apply a zone_updated (head count, boundary or settings changed) to a zone list. */
+export function reduceZones(list: Zone[], event: LiveEvent, zone: Zone): Zone[] {
+  if (event !== 'zone_updated' || !zone?.id) return list;
+  return list.map((z) => (z.id === zone.id ? zone : z));
+}
+
+/** Apply a vest_updated (position, battery, SOS, online) to a vest list. */
+export function reduceVests(list: SmartVest[], event: LiveEvent, vest: SmartVest): SmartVest[] {
+  if (event !== 'vest_updated' || !vest?.id) return list;
+  return list.some((v) => v.id === vest.id) ? list.map((v) => (v.id === vest.id ? vest : v)) : [vest, ...list];
 }

@@ -181,6 +181,9 @@ class DashboardStatsView(APIView):
         )
 
 
+MAX_ALERT_LIMIT = 500
+
+
 class IgnoreAcceptHeader(BaseContentNegotiation):
     """Always render errors as JSON, whatever the client asks for.
 
@@ -219,7 +222,19 @@ class AlertViewSet(
         severity = self.request.query_params.get("severity")
         if severity:
             qs = qs.filter(severity=severity)
-        return filter_local_dates(qs, "timestamp", self.request)
+        camera_id = self.request.query_params.get("camera_id")
+        if camera_id:
+            qs = qs.filter(camera_id=camera_id)
+        qs = filter_local_dates(qs, "timestamp", self.request)
+        # ?limit=N gives the newest N, e.g. a camera's recent alerts on the mobile app.
+        limit = self.request.query_params.get("limit")
+        if self.action == "list" and limit is not None:
+            from rest_framework.exceptions import ValidationError
+
+            if not limit.isdigit() or not 1 <= int(limit) <= MAX_ALERT_LIMIT:
+                raise ValidationError({"limit": f"limit must be a whole number from 1 to {MAX_ALERT_LIMIT}."})
+            qs = qs[: int(limit)]
+        return qs
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

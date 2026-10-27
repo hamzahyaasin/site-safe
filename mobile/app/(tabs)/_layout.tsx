@@ -37,6 +37,24 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="map"
+        options={{
+          title: 'Map',
+          tabBarIcon: ({ color }) => (
+            <SymbolView name={{ ios: 'map', android: 'map', web: 'map' }} tintColor={color} size={26} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="cameras"
+        options={{
+          title: 'Cameras',
+          tabBarIcon: ({ color }) => (
+            <SymbolView name={{ ios: 'video', android: 'videocam', web: 'videocam' }} tintColor={color} size={26} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="workers"
         options={{
           title: 'Workers',

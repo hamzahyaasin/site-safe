@@ -436,7 +436,19 @@ python scripts/inference_webcam.py --weights runs/train/ppe_yolov10n/weights/bes
 
 ## 5. Mobile app (`mobile/`)
 
-The mobile app is for site supervisors, built with React Native (Expo SDK 58). Supervisors sign in, see open and all alerts live, open an alert, resolve it if their role allows, and check worker presence. The app renews expired sessions automatically and reloads after reconnecting.
+The mobile app is for site supervisors, built with React Native (Expo SDK 58). It has five tabs:
+
+| Tab | What it shows |
+|---|---|
+| **Alerts** | Open and all alerts, live. Open one for its evidence frame, model version and confidence, and **Open camera** for the camera that raised it. Resolve it if your role allows. |
+| **Map** | The live site map: zones with head counts, vests, and cameras with their view cones (green live, grey offline, red for a minute after an alert). Tap a camera to open it. |
+| **Cameras** | Every camera with its status, people in view and open alerts. Open one for its live picture (refreshed every second, Safety Officers and Admins) with its danger areas outlined, its areas, and its latest alerts. Admins can switch an area off while the hazard is absent; areas are drawn on the web. |
+| **Workers** | Worker presence. |
+| **Settings** | Account and notifications. |
+
+The app renews expired sessions automatically and reloads after reconnecting. Live pictures and the map refresh only while their screen is open.
+
+The map is drawn by Leaflet in a WebView, with OpenStreetMap tiles like the web dashboard, so it needs no map API key on Android or iOS but does need internet access for the base map. Leaflet 1.9.4 is loaded from unpkg, pinned by its integrity hash.
 
 ```bash
 cd mobile
@@ -453,6 +465,8 @@ At sign-in, enter the backend computer's LAN address (for example `192.168.1.20:
 2. Put its `google-services.json` in `mobile/`. The file is git-ignored, and `app.config.js` picks it up.
 3. Point the backend's `FIREBASE_CREDENTIALS_PATH` at the project's service-account JSON.
 4. Make a development build. Expo Go cannot receive remote pushes. Use `npx expo run:android` with a phone connected over USB, or `npx eas-cli@latest build --profile development --platform android`.
+
+A development build made before 27 October 2026 lacks the map and live-picture modules (`react-native-webview`, `react-native-svg`). Make a new one. Expo Go already includes both.
 
 The app registers the phone after sign-in and unregisters it on sign-out. Tapping a notification opens that alert. iOS and the web build receive alerts live only while open, because the backend does not send to APNs.
 
@@ -529,7 +543,7 @@ Run them on the demo machine with the configuration you will present. Prefer a s
 | `POST` | `/api/token/` | Public | Obtain JWT (`email`, `password`) |
 | `POST` | `/api/token/refresh/` | Public | Refresh access token |
 | `GET` | `/api/dashboard/stats/` | JWT | Dashboard summary stats |
-| `GET/POST` | `/api/alerts/` | JWT | List / create alerts |
+| `GET/POST` | `/api/alerts/` | JWT | List / create alerts; filters `is_resolved`, `severity`, `camera_id`, `start_date`/`end_date`/`tz`, and `limit` (newest N, 1–500) |
 | `POST` | `/api/alerts/{id}/resolve/` | JWT | Mark alert resolved |
 | `GET` | `/api/alerts/{id}/snapshot/` | JWT | Evidence JPEG of a camera alert (404 if none or purged) |
 | `POST` | `/api/alerts/simulate/` | JWT | Create a simulated alert |

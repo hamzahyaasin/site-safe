@@ -40,6 +40,7 @@ Kept since 27 October 2026. Update this file whenever something is skipped or de
 | C11 | **Report admin** | Semester dates; title-page date; Chapter 2 citations and the Labour Force Survey figure to verify; approval, declaration and Turnitin pages; meeting log; contribution statement |
 | C12 | **Smart Vest hardware** | Only if approved later: ESP32, GPS, SOS button, LoRa link (FR-21) |
 | C13 | **Real camera positions** | Where each camera is mounted on your site and which way it faces, to place them on the site map (Zones → Site Map → Place). The demo database has CAM-01 and CAM-09 placed at the test zones only (FR-33) |
+| C14 | **New mobile development build on your phone** | The Map and camera screens (27 Oct) use two native modules that an older development build lacks. With the phone on USB: `cd mobile && npx expo run:android`, or `npx eas-cli@latest build --profile development --platform android`. Expo Go needs nothing new. Then check the Map and a camera's live picture on the phone (FR-28) |
 
 ## Done
 

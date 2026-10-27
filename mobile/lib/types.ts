@@ -27,6 +27,7 @@ export interface Alert {
 export interface SmartVest {
   id: number;
   vest_id: string;
+  worker_name?: string | null;
   battery_level: number | null;
   latitude: number | null;
   longitude: number | null;
@@ -54,6 +55,51 @@ export interface Worker {
   smart_vest: SmartVest | null;
   location: WorkerLocation | null;
   last_seen_at: string | null;
+  is_active: boolean;
+}
+
+export interface Zone {
+  id: number;
+  name: string;
+  risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'RESTRICTED';
+  boundaries: { lat: number; lng: number }[];
+  camera_ids: string[];
+  max_occupancy: number;
+  is_active: boolean;
+  /** Head count now (identified workers and camera people counts). */
+  current_occupancy?: number;
+}
+
+/** Where a camera is on the site map and what it covers (FR-33). */
+export interface CameraPlacement {
+  latitude: number;
+  longitude: number;
+  /** Degrees clockwise from north. */
+  heading: number;
+  field_of_view: number;
+  view_range_m: number;
+}
+
+/** One camera from /api/v1/camera-map/. */
+export interface MapCamera {
+  camera_id: string;
+  zone: string | null;
+  live: boolean;
+  last_frame_at: string | null;
+  /** People in view now, or null when the camera has no recent count. */
+  people_in_view: number | null;
+  placement: CameraPlacement | null;
+  open_alerts: number;
+  last_alert: { id: number; alert_type: string; severity: Severity; timestamp: string; is_resolved: boolean } | null;
+}
+
+/** A danger area drawn on a camera's picture (FR-32); corners are fractions of the picture. */
+export interface CameraArea {
+  id: number;
+  camera_id: string;
+  name: string;
+  polygon: [number, number][];
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
   is_active: boolean;
 }
 

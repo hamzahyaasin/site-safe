@@ -1,6 +1,6 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AlertSnapshot } from '@/components/AlertSnapshot';
 import { Badge, Button, Card, ErrorText, Screen, styles } from '@/components/ui';
@@ -19,6 +19,7 @@ const SOURCE: Record<Alert['source'], string> = {
 
 export default function AlertDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const { profile } = useSession();
   const { subscribe } = useLive();
   const [alert, setAlert] = useState<Alert | null>(null);
@@ -103,6 +104,14 @@ export default function AlertDetail() {
           <Card>
             <AlertSnapshot key={alert.snapshot} path={alert.snapshot} />
           </Card>
+        ) : null}
+        {alert.camera_id ? (
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push({ pathname: '/camera/[id]', params: { id: alert.camera_id } })}
+            style={({ pressed }) => [pressed && { opacity: 0.6 }]}>
+            <Text style={{ color: C.accent, fontSize: 14 }}>Open camera {alert.camera_id} →</Text>
+          </Pressable>
         ) : null}
         {error ? <ErrorText>{error}</ErrorText> : null}
         {!alert.is_resolved && canOperate(profile?.role) ? (

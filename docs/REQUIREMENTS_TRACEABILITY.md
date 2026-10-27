@@ -46,7 +46,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-25 | Incident list, detail, resolve, CSV export | M | Resolve is broadcast; filters include every type | `frontend/src/components/incidents/` | Browser check 26 Oct on a throwaway database with one alert of every type (9 alerts): each of the 8 type filters and 4 severity filters returned exactly the seeded rows; vest search found the 2 vest alerts; row detail shows zone, source and description; an officer's resolve (API) appeared as RESOLVED in the Viewer's open list within 1.5 s without reload; resolve from the UI as Safety Officer; CSV export follows the active filter (FIRE → 1 row; all → header + 9 rows), captured in the page, not downloaded; 27 Oct: responsive table (vest under worker, camera column from 1280 px), fits a 1024 px window with Status and Resolve visible | Integrated |
 | FR-26 | Dashboard KPIs and charts reflect recorded data only | M | Every displayed number reconciles to the API; nothing fabricated | `DashboardStatsView`, `KpiStrip.jsx`, `DashboardCharts.jsx`, `WorkerStatusGrid.jsx` | `workers/tests.py` DashboardStatsTests (3); browser check 16 Oct | Integrated |
 | FR-27 | Incident and safety-performance reports in DOCX and PDF | M | Fixtures reconcile exactly; PDF produced; no unsupported percentages; period in the user's time zone | `report-service/lib/*`, `templates/*`, `backend/reports/` | `report-service/test` (12); `reports/tests.py` (6); e2e 16 Oct (both types, both formats via API → service; PDF inspected) | Integrated |
-| FR-28 | Mobile app: login, alerts, resolve, worker status, push | M | Android build receives a push and resolves an incident visible on web | `mobile/` (Expo SDK 58) | `mobile/__tests__` (13); web build checked 16 Oct: sign-in, live alert arrival, detail, resolve, resolve from another session removed live, workers presence, sign-out | Integrated on web target (**device + push pending**) |
+| FR-28 | Mobile app: login, alerts, resolve, worker status, push; site map, cameras, live pictures and danger areas | M | Android build receives a push and resolves an incident visible on web; the map, camera list and a camera's live picture match the web | `mobile/` (Expo SDK 58): Alerts (evidence frame, model, Open camera), Map (`SiteMapView` Leaflet page in a WebView, iframe on web; `lib/siteMap.ts`), Cameras (`useCameraMap`), camera screen (`LiveCameraView` with `react-native-svg` area outlines, Admin area switch, latest alerts via `alerts/?camera_id=&limit=`) | `mobile/__tests__` (25); web build checked 16 Oct (sign-in, live alerts, resolve, workers, sign-out) and 27 Oct (see ledger) | Integrated on web target (**device + push pending, C14**) |
 | FR-29 | Alert evidence (snapshot, confidence, model version) | S | Each AI incident is traceable to its frame and model | `ai-module/evidence.py` (model id = weights name + SHA-256 prefix; JPEG of the raw frame ≤ 640 px), snapshot BLOB in `event_outbox.py`, `--no-snapshots` / `SITESAFE_SNAPSHOTS`; `Alert.model_version` (migration alerts 0012), `decode_snapshot` + `CameraEventView` (base64 JPEG ≤ 512 KB, stored once per `event_id`), `/api/alerts/{id}/snapshot/`, `ALERT_SNAPSHOTS_ENABLED`, `purge_alert_snapshots`; `AlertSnapshot.jsx`, `mobile/components/AlertSnapshot.tsx` | `alerts/test_evidence.py` (19), `test_evidence.py` (8), `test_event_outbox.py` snapshot cases (3), `mobile/__tests__/api.test.ts` image fetch (3); e2e 20 Oct on a throwaway database: synthetic frame → outbox → API (201, one 11 KB file), replay of the same `event_id` → 200 and no second file; frame, confidence and model version shown to a Viewer on web and on the mobile web build; `purge_alert_snapshots --days 0` removed the file and kept the alert | Integrated (**synthetic frame; not yet from a live camera run**) |
 | FR-30 | Live camera grid for monitoring (all cameras, including a test webcam) | S | Every running camera appears live within seconds to Safety Officers and Admins, configured cameras that are not running show as offline, and Viewers cannot see video | `ai-module/live_feed.py`, `--no-live` / `SITESAFE_LIVE`, `--live-fps`; `alerts/live.py`, `CameraFrameView` (`/api/v1/camera-frames/`), `CameraListView` (`/api/v1/cameras/`), `CameraFeedConsumer` (`/ws/cameras/`), `LIVE_VIEW_ENABLED`; `pages/CamerasPage.jsx`, `hooks/useCameraFeed.js` | `test_live_feed.py` (7), `alerts/test_live.py` (11); e2e 27 Oct on a throwaway database: real pipeline (all detectors) on a test video as CAM-01 plus synthetic test frames as WEBCAM-TEST, both live in the grid at 5.0 frames/s in the browser with detections drawn; CAM-GATE (zone, not running) offline; enlarged view; pipeline 17.6 FPS while streaming; Viewer had no Cameras tab and saw the role notice | Integrated (**test video and synthetic frames; no physical camera or second machine yet**) |
 | FR-31 | Worker location and zone head counts without a vest (camera-based, zones with several cameras) | S | A badge read by a camera places the worker in that camera's zone within seconds and as last seen after a minute; zone head counts never double-count overlapping cameras; one over-capacity alert per sustained crossing; a restricted-zone entry by an unassigned badge holder raises one breach | `workers/location.py` (place, zone_occupancy, check_capacity with hysteresis, sweeps), `Worker.location_*`, `Zone.camera_views_overlap`, `sitemap.Camera`, `CameraCountView` (`/api/v1/camera-counts/`), sightings every 15 s and people counts (`ai-module/latest_sender.py`); Workers page and mobile location, Zones page counts and overlap setting, live map labels (`zone_updated`) | `workers/test_location.py` (28), `test_activity_events.py` people counts (3); e2e 27 Oct (see ledger) | Integrated (**test videos with a printed test badge; no physical camera or real badge yet**) |
@@ -64,7 +64,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. With the fire model (27 Oct, commit `fae1367`, clean tree): mps 15.8 and 16.1 FPS, cpu 10.4 and 10.2 FPS; fire stage p50 18 ms (mps) every 5th frame | **Met on mps with all detectors** (cpu marginal) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 235 (SQLite and PostgreSQL), ai-module 144, fire tools 7, report-service 23, mobile 17, vest simulator 8, measurement and clip scoring 21 = 455 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 237 (SQLite and PostgreSQL), ai-module 144, fire tools 7, report-service 23, mobile 25, vest simulator 8, measurement and clip scoring 21 = 465 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
 
 ## Progress ledger
 
@@ -623,4 +623,39 @@ Known limitations: images are embedded at the camera's resolution (640 px), abou
   people (decision B3 covers whether snapshots are allowed on site); Word itself not yet opened on the
   generated file (LibreOffice used)
 Migrations: reports 0003 (includes_evidence); the dev database still needs `migrate`
+```
+
+```text
+Phase / task IDs: Phase 2 item 5 — mobile parity for FR-31 to FR-34 (FR-28)
+Status: Integrated on the app's web build against a throwaway database with a test video; not yet on a phone
+  (C14: a new development build is needed; Expo Go already has both native modules)
+Already in place: alert detail showed the evidence frame, model version and confidence (FR-29), and the
+  Danger area type label (FR-32).
+Added: Map tab (zones with head counts, vests, cameras with view cones, green/grey/red as on the web; tap a
+  camera to open it) drawn by Leaflet 1.9.4, pinned by integrity hash, with OpenStreetMap tiles in a WebView,
+  so no Google Maps key is needed on Android; the same page runs in an iframe on the web build; names are
+  HTML-escaped and only well-formed messages from the page are acted on. Cameras tab (status, people in view,
+  open and latest alert). Camera screen: live picture refreshed every second while open (Safety Officers and
+  Admins) with the camera's danger areas outlined by react-native-svg over the frame at its true shape;
+  areas with an on/off switch for Admins; the camera's 10 latest alerts. Alert detail: Open camera.
+  Live events zone_updated and camera_updated; polling only while a screen is in view.
+Backend: GET /api/alerts/ accepts camera_id and limit (newest N, 1-500; detail views ignore it), 2 tests.
+E2E (27 Oct, app web build at phone size, throwaway SQLite database, badge clip as CAM-01): as the test Safety
+  Officer, Cameras listed CAM-01 live with 2 in view and CAM-02/CAM-09 offline; CAM-01's screen showed the live
+  frame with "Loading bay edge" outlined exactly over the camera's own red fill, its areas and latest alerts;
+  an alert opened with its evidence frame and "Open camera CAM-01"; the Map showed Bay 1 and Crane with head
+  counts, CAM-01 green with its cone and CAM-09 grey and dashed; tapping CAM-01 on the map opened its screen.
+  As the test Admin, switching the area off from the phone: within the 15 s rules refresh the camera stopped
+  drawing it and raising it; switched back on, it re-armed (both people in it alerted again). As the test
+  Viewer: no live picture ("for Safety Officers and Admins"), area shown as On without a switch. No console
+  errors after a reload. Fixed during the run: the web build's image load event has no size (crashed the
+  camera screen); the picture's shape is now read once with Image.getSize on every platform.
+Not done: an Android emulator could not boot here (the installed Android 37.1 preview image hung at cold boot,
+  with and without the command sandbox), so the WebView map and SVG overlay have not run natively; C14 covers
+  a phone check. Also seen: on the looping badge clip in real time, the unidentified person's proximity
+  alerts recurred about every 2-3 minutes (5 in 11 min, against 14 in 3 min before FR-07's fix and 1 in the
+  frame-exact replay); worth measuring on a real recording (A1)
+Tests (27 Oct): mobile 25 (8 new), lint and tsc clean; backend 237 OK on SQLite and PostgreSQL (2 new) — 465
+  in total
+Dependencies: react-native-webview 14.0.1 and react-native-svg 15.16.0 (npx expo install, SDK 58 versions)
 ```

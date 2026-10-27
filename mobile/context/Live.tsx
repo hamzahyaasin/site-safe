@@ -10,6 +10,8 @@ export type LiveEvent =
   | 'alert_resolved'
   | 'vest_updated'
   | 'worker_status_update'
+  | 'zone_updated'
+  | 'camera_updated'
   | 'resync';
 export type LiveStatus = 'connecting' | 'live' | 'offline';
 type Listener = (event: LiveEvent, payload: any) => void;
