@@ -2,13 +2,26 @@
 
 `docs/SiteSafe_FYP_Report_V8.docx` is built from the submitted V7 (left unchanged) by `docs/build_report_v8.py`. The text lives in `docs/report_v8_content.py` and the figures come from `docs/figures/make_figures.py`. Edit those files and rebuild; don't hand-edit the .docx, or the next build will overwrite the edits. The build, render and page-number commands are in the docstring of `build_report_v8.py`.
 
-The rendered PDF (`docs/SiteSafe_FYP_Report_V8.pdf`, 73 pages) is exported from Microsoft Word, and the contents and list page numbers were measured from that Word render (all 120 entries match).
+The rendered PDF (`docs/SiteSafe_FYP_Report_V8.pdf`, 93 pages) is exported from Microsoft Word, and the contents and list page numbers were measured from that Word render (all 146 entries match).
 
 Fixed on 21 Oct 2026: the shared table helper in `update_fyp_report.py` wrote widths in EMUs where Word expects twips, so 18 tables claimed to be about 3,800 inches wide. Word laid them out off the page, which made Table 4.1 look broken and pushed later chapters out of view. LibreOffice had silently clamped the widths, so this didn't show in the earlier checks. V7 already had five such tables from the same helper.
 
 ## Length
 
-Body text, excluding front matter, chapter title pages and references: **10,093 words** (the guideline allows 8,500–10,500). Tables add 2,426 words. If the examiners count table text, move Tables 4.7, 4.8 and 5.2 to an appendix.
+Body text of Chapters 1–6, excluding headings, captions, tables, front matter, chapter title pages, appendices and references: **10,470 words** (the guideline allows 8,500–10,500). Tables in the chapters add 2,969 words and the appendices 2,006.
+
+Tables 4.7, 4.8, 5.2, 5.7 and 5.8 (1,309 words) moved to Appendices III and IV on 26 Oct 2026; the builder renumbers the tables left behind and rewrites every reference. The new requirements tables in Chapter 3 add 1,676 words, so if the examiners count table text, the chapters are over the cap either way; moving Table 3.4 (functional requirements, 580 words) to an appendix would be the next step.
+
+## Added on 26 Oct 2026 (SOP Appendix D gaps)
+
+| Where | Change |
+|---|---|
+| Front matter | Blank Final Approval Certificate, Declaration, Plagiarism Certificate and Turnitin Originality Report pages after the abstract (SOP 3.9 items 3–6). Front matter numbered in roman numerals; title page unnumbered. |
+| 3.2.2 Data Flow | V7's list (hidden in Google Docs content controls, items 3 and 4 run together, Cardo font) replaced with one paragraph. |
+| 3.8 Requirements Specification | Interface requirements, functional requirements with priority and acceptance criteria, use case descriptions with two full-dress use cases, non-functional requirements, resources, database requirements and a feasibility assessment (Tables 3.3–3.10). |
+| 3.9 System Workflow | Whole-system activity diagram (Figure 3.9) and Level-0 DFD (Figure 3.10), both drawn by `make_figures.py`, which checks the model fields they mention. |
+| 3.10 Limitations | Was 3.8. |
+| Appendices I–IV | User manual, installation and setup guide, API and database reference, test evidence. Each has a title page; References now starts on a new page. |
 
 ## Chapters 1–3: corrections only (semester-7 structure kept)
 
@@ -72,5 +85,8 @@ Each chapter now opens on its own title page: chapter number 18 pt bold, name 22
 4. **Epochs.** "Stopped after 102 of 150 epochs, best at epoch 77" comes from the team's earlier notes. The exported manifest has no per-epoch results, so keep the Colab log as evidence.
 5. **Title page.** It still says LAHORE and April 2026. Update the date and confirm the campus.
 6. **Screenshots** (Figures 4.3 and 4.4) were taken from test data. The mobile screens were captured from the app's web build, as the text says.
-7. **Missing front-matter pages** required by the guideline (approval certificate, declaration, Turnitin report, acknowledgement) are not in V7 or V8 and must be added from the department templates.
+7. **Front-matter pages** are blank templates: fill in the committee names, dates, signatures and the Turnitin figures, and insert the Turnitin report. Dedication and acknowledgement (optional) are not included.
 8. **Fire model, soak, push and QR range.** These are reported as not yet done. When they are measured, re-run `tools/measure/make_tables.py`, update `report_v8_content.py` and rebuild.
+9. **Task division.** Table 3.9 has a placeholder for the human effort row (task division and person-months).
+10. **Figure 3.4** (Level-1 DFD, from V7) still shows Firebase as a telemetry store; Firebase only sends push notifications. Redraw it to match Figure 3.10.
+11. **Blank pages** after the Chapter 2, 4 and 5 title pages in the Word render existed before these changes.

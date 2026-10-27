@@ -564,6 +564,12 @@ def collect_toc_entries(doc: Document) -> list[dict]:
             title = CHAPTER_TITLES[chapter]
             entries.append({"display": f"Chapter {chapter}: {title}", "search": title, "level": 1})
             continue
+        match = re.fullmatch(r"Appendix ([IVX]+)", text)
+        if match:
+            # The appendix name is the next paragraph of its title page.
+            title = paragraphs[idx + 1].text.strip()
+            entries.append({"display": f"Appendix {match.group(1)}: {title}", "search": title, "level": 1})
+            continue
         if text == "References":
             entries.append({"display": "References", "search": "References", "level": 1})
             break
@@ -577,7 +583,7 @@ def collect_toc_entries(doc: Document) -> list[dict]:
 
 def collect_captions(doc: Document, kind: str) -> list[str]:
     start = body_start_index(doc)
-    pattern = re.compile(rf"^{kind} \d+\.\d+:\s+.+")
+    pattern = re.compile(rf"^{kind} (?:\d+|[IVX]+)\.\d+:\s+.+")
     return [normalized(p.text) for p in doc.paragraphs[start:] if pattern.match(normalized(p.text))]
 
 
@@ -932,8 +938,8 @@ def normalize_typography(doc: Document) -> None:
     for idx, p in enumerate(doc.paragraphs):
         text = normalized(p.text)
         style = p.style.name if p.style else ""
-        is_caption = bool(re.match(r"^(Table|Figure) \d+\.\d+:", text))
-        is_separator = bool(re.fullmatch(r"Chapter [1-6]", text)) or text in chapter_titles
+        is_caption = bool(re.match(r"^(Table|Figure) (?:\d+|[IVX]+)\.\d+:", text))
+        is_separator = bool(re.fullmatch(r"Chapter [1-6]|Appendix [IVX]+", text)) or text in chapter_titles
         for run in p.runs:
             if style.startswith("Heading"):
                 set_run_font(run)
