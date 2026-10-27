@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Badge from '../components/ui/Badge.jsx'
 import CameraWithAreas from '../components/cameras/DangerAreas.jsx'
 import Card from '../components/ui/Card.jsx'
@@ -25,7 +26,13 @@ export default function CamerasPage() {
   const [cameras, setCameras] = useState([])
   const [liveViewEnabled, setLiveViewEnabled] = useState(true)
   const [error, setError] = useState(null)
-  const [selected, setSelected] = useState(null)
+  // The enlarged camera is in the address (?camera=CAM-01), so the site map can link to it.
+  const [params, setParams] = useSearchParams()
+  const selected = params.get('camera')
+  const setSelected = useCallback(
+    (cameraId) => setParams(cameraId ? { camera: cameraId } : {}, { replace: true }),
+    [setParams],
+  )
   const [now, setNow] = useState(() => Date.now())
 
   const loadCameras = useCallback(async () => {
@@ -58,7 +65,7 @@ export default function CamerasPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selected])
+  }, [selected, setSelected])
 
   // Cameras from the server list, plus any camera that started streaming since it was fetched.
   const tiles = useMemo(() => {

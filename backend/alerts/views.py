@@ -423,6 +423,34 @@ class CameraFrameView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class CameraLatestFrameView(APIView):
+    """GET a camera's latest live-view JPEG (``?camera_id=``), for a thumbnail on the site map.
+
+    The same frame the Cameras page shows, from the relay's short-lived cache;
+    404 when the camera has sent nothing in the last 30 s. Safety Officers and
+    Admins only, like the live view itself.
+    """
+
+    permission_classes = [IsSafetyOfficer]
+    content_negotiation_class = IgnoreAcceptHeader
+
+    def get(self, request, *args, **kwargs):
+        from django.http import Http404, HttpResponse
+
+        from . import live
+
+        camera_id = (request.query_params.get("camera_id") or "").strip()
+        if not live.CAMERA_ID.match(camera_id):
+            return Response({"camera_id": "A camera_id of letters, digits, '.', '_' or '-' is required."}, status=400)
+        jpeg = live.latest_frame(camera_id)
+        if jpeg is None:
+            raise Http404("No live frame from this camera.")
+        response = HttpResponse(jpeg, content_type="image/jpeg")
+        response["Cache-Control"] = "no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
 class CameraListView(APIView):
     """GET every known camera with its zone and whether its live view is current."""
 

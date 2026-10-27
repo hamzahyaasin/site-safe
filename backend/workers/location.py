@@ -284,7 +284,7 @@ def place_by_camera(worker, camera_id, when):
 
 def record_camera_count(camera_id, people, when):
     """Store a camera's people count and re-check its zone's capacity. Returns True if stored."""
-    from alerts.events import publish_zones
+    from alerts.events import publish_camera, publish_zones
     from sitemap.models import Camera, Zone
 
     with transaction.atomic():
@@ -303,6 +303,7 @@ def record_camera_count(camera_id, people, when):
             check_capacity(zone, now=when, camera_id=camera_id)
     if changed:
         publish_zones(zones)
+        publish_camera(camera_id)
     return True
 
 

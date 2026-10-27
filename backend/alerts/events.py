@@ -92,6 +92,17 @@ def publish_worker(worker):
     publish("worker_status_update", build)
 
 
+def publish_camera(camera_id):
+    """Broadcast a camera's site-map row (placement, live status, people in view, alerts)."""
+
+    def build():
+        from sitemap import camera_map
+
+        return camera_map.row(camera_id)
+
+    publish("camera_updated", build)
+
+
 def publish_zones(zones):
     """Broadcast each zone's details, including its current head count."""
     from sitemap.serializers import ZoneDetailSerializer

@@ -127,3 +127,46 @@
 .leaflet-tooltip.zone-count-label::before {
   display: none;
 }
+
+/* Cameras on the site map (CameraLayer.jsx). */
+.leaflet-marker-icon.camera-marker {
+  background: none;
+  border: none;
+}
+.camera-marker > span {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #0b0d12;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.camera-marker--alerting > span {
+  animation: camera-alert-pulse 1.2s ease-out infinite;
+}
+@keyframes camera-alert-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgba(239, 68, 68, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .camera-marker--alerting > span {
+    animation: none;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.5);
+  }
+}
+/* leaflet.css is loaded after this file, so these need the extra class to win. */
+.leaflet-container .leaflet-popup-content-wrapper,
+.leaflet-container .leaflet-popup-tip {
+  background: #151821;
+  color: #e4e4e7;
+  border: 1px solid #3f3f46;
+}
+.leaflet-container .leaflet-popup-close-button {
+  color: #a1a1aa;
+}

@@ -1,6 +1,7 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 
 from django.utils import timezone
 
@@ -10,9 +11,16 @@ from rest_framework.response import Response
 from workers.models import Worker
 from workers.serializers import WorkerSerializer
 
+from . import camera_map
 from .geofence import point_in_polygon
-from .models import CameraArea, HotWorkPermit, Zone
-from .serializers import CameraAreaSerializer, HotWorkPermitSerializer, ZoneDetailSerializer, ZoneSerializer
+from .models import Camera, CameraArea, HotWorkPermit, Zone
+from .serializers import (
+    CameraAreaSerializer,
+    CameraPlacementSerializer,
+    HotWorkPermitSerializer,
+    ZoneDetailSerializer,
+    ZoneSerializer,
+)
 
 
 class ZoneViewSet(viewsets.ModelViewSet):
@@ -127,3 +135,44 @@ class CameraAreaViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         camera_id = self.request.query_params.get("camera_id")
         return qs.filter(camera_id=camera_id) if camera_id else qs
+
+
+class CameraMapView(APIView):
+    """GET every known camera for the site map: placement, live status, people in view, alerts (FR-33)."""
+
+    permission_classes = [ReadOnlyOrAdmin]
+
+    def get(self, request, *args, **kwargs):
+        return Response(camera_map.rows())
+
+
+class CameraPlacementView(APIView):
+    """One camera on the site map. Admins place or move it (PUT) and take it off the map (DELETE)."""
+
+    permission_classes = [ReadOnlyOrAdmin]
+
+    def put(self, request, camera_id, *args, **kwargs):
+        from alerts.events import publish_camera
+        from alerts.live import CAMERA_ID
+
+        if not CAMERA_ID.match(camera_id):
+            return Response(
+                {"camera_id": "A camera id is letters, digits, '.', '_' or '-'."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        camera = Camera.objects.filter(camera_id=camera_id).first() or Camera(camera_id=camera_id)
+        serializer = CameraPlacementSerializer(camera, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        publish_camera(camera_id)
+        return Response(camera_map.row(camera_id))
+
+    def delete(self, request, camera_id, *args, **kwargs):
+        from alerts.events import publish_camera
+
+        camera = Camera.objects.filter(camera_id=camera_id).first()
+        if camera is None or not camera.is_placed:
+            return Response({"detail": "This camera is not on the map."}, status=status.HTTP_404_NOT_FOUND)
+        camera.latitude = camera.longitude = None
+        camera.save(update_fields=["latitude", "longitude"])
+        publish_camera(camera_id)
+        return Response(status=status.HTTP_204_NO_CONTENT)

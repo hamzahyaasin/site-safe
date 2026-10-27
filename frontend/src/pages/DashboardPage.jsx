@@ -6,6 +6,7 @@ import { useWorkers } from '../hooks/useWorkers.js'
 import AlertFeed from '../components/dashboard/AlertFeed.jsx'
 import DashboardCharts from '../components/dashboard/DashboardCharts.jsx'
 import KpiStrip from '../components/dashboard/KpiStrip.jsx'
+import SiteMapCard from '../components/dashboard/SiteMapCard.jsx'
 import WorkerStatusGrid from '../components/dashboard/WorkerStatusGrid.jsx'
 import Button from '../components/ui/Button.jsx'
 import { Select } from '../components/ui/Input.jsx'
@@ -81,6 +82,8 @@ export default function DashboardPage() {
         onResolve={canOperate ? resolveAlert : undefined}
         newAlertIds={newAlertIds}
       />
+
+      <SiteMapCard />
 
       <DashboardCharts stats={stats} loading={statsLoading} />
 

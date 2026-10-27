@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { CircleMarker, MapContainer, Polygon, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { formatTimestamp } from '../../lib/utils.js'
+import CameraLayer from './CameraLayer.jsx'
 
 const RISK_COLOR = {
   LOW: '#3b82f6',
@@ -45,16 +46,21 @@ function ClickToAdd({ onAddPoint }) {
 }
 
 /**
- * Site map: zone polygons coloured by risk and vest positions as last
- * reported. Offline vests are grey and show the age of their last report,
- * so a stale position is never presented as live.
+ * Site map: zone polygons coloured by risk, vest positions as last reported,
+ * and placed cameras with their view cones (CameraLayer). Offline vests are
+ * grey and show the age of their last report, so a stale position is never
+ * presented as live.
  *
  * Pass ``draft``/``onAddPoint`` to use it as a boundary editor: each map
- * click appends a vertex to the draft polygon.
+ * click appends a vertex to the draft polygon. ``onAddPoint`` with
+ * ``cameraDraft`` places a camera instead.
  */
 export default function SiteMap({
   zones = [],
   vests = [],
+  cameras = [],
+  alerting = {},
+  cameraDraft = null,
   draft,
   onAddPoint,
   excludeZoneId,
@@ -63,7 +69,10 @@ export default function SiteMap({
   const shownZones = zones.filter((z) => z.id !== excludeZoneId && z.boundaries?.length >= 3)
   const located = vests.filter((v) => v.latitude !== null && v.longitude !== null)
   const zonePoints = shownZones.flatMap((z) => z.boundaries.map(toLatLng))
-  const otherPoints = located.map((v) => [v.latitude, v.longitude])
+  const otherPoints = [
+    ...located.map((v) => [v.latitude, v.longitude]),
+    ...cameras.filter((c) => c.placement).map((c) => [c.placement.latitude, c.placement.longitude]),
+  ]
   const zoneKey = shownZones.map((z) => z.id).join(',') || 'none'
 
   const draftLatLngs = (draft ?? []).map(toLatLng)
@@ -127,6 +136,8 @@ export default function SiteMap({
         {draftLatLngs.map((p, i) => (
           <CircleMarker key={`d-${i}`} center={p} radius={4} pathOptions={{ color: '#f59e0b', fillOpacity: 1 }} />
         ))}
+
+        <CameraLayer cameras={cameras} alerting={alerting} draft={cameraDraft} />
 
         {located.map((vest) => (
           <CircleMarker

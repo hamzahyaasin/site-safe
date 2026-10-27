@@ -51,6 +51,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-30 | Live camera grid for monitoring (all cameras, including a test webcam) | S | Every running camera appears live within seconds to Safety Officers and Admins, configured cameras that are not running show as offline, and Viewers cannot see video | `ai-module/live_feed.py`, `--no-live` / `SITESAFE_LIVE`, `--live-fps`; `alerts/live.py`, `CameraFrameView` (`/api/v1/camera-frames/`), `CameraListView` (`/api/v1/cameras/`), `CameraFeedConsumer` (`/ws/cameras/`), `LIVE_VIEW_ENABLED`; `pages/CamerasPage.jsx`, `hooks/useCameraFeed.js` | `test_live_feed.py` (7), `alerts/test_live.py` (11); e2e 27 Oct on a throwaway database: real pipeline (all detectors) on a test video as CAM-01 plus synthetic test frames as WEBCAM-TEST, both live in the grid at 5.0 frames/s in the browser with detections drawn; CAM-GATE (zone, not running) offline; enlarged view; pipeline 17.6 FPS while streaming; Viewer had no Cameras tab and saw the role notice | Integrated (**test video and synthetic frames; no physical camera or second machine yet**) |
 | FR-31 | Worker location and zone head counts without a vest (camera-based, zones with several cameras) | S | A badge read by a camera places the worker in that camera's zone within seconds and as last seen after a minute; zone head counts never double-count overlapping cameras; one over-capacity alert per sustained crossing; a restricted-zone entry by an unassigned badge holder raises one breach | `workers/location.py` (place, zone_occupancy, check_capacity with hysteresis, sweeps), `Worker.location_*`, `Zone.camera_views_overlap`, `sitemap.Camera`, `CameraCountView` (`/api/v1/camera-counts/`), sightings every 15 s and people counts (`ai-module/latest_sender.py`); Workers page and mobile location, Zones page counts and overlap setting, live map labels (`zone_updated`) | `workers/test_location.py` (28), `test_activity_events.py` people counts (3); e2e 27 Oct (see ledger) | Integrated (**test videos with a printed test badge; no physical camera or real badge yet**) |
 | FR-32 | Danger areas drawn on the live camera picture | S | An Admin draws an area on a camera's live view and it takes effect within 15 s without a restart; a person whose feet stay inside an active area for 1 s raises one alert with a snapshot (named if badged); walking past raises nothing; the area shows red in the live view while occupied; Safety Officers see areas but cannot change them | `sitemap.CameraArea`, `CameraAreaSerializer`, `CameraAreaViewSet` (`/api/v1/camera-areas/`), areas in `CameraConfigView`; `AlertType.DANGER_AREA` and its seeded rule; `ai-module/danger_areas.py` (foot point, `DangerAreaTracker`), `inference.py` (rules refresh 15 s, `draw_danger_areas`, banner); `components/cameras/DangerAreas.jsx` on the Cameras page; incident filter, simulate button, report-service type list, mobile label | `sitemap/test_camera_areas.py` (7), `test_danger_areas.py` (14), mobile label (1 assertion); e2e 27 Oct (see ledger) | Integrated (**test video; no physical camera yet**) |
+| FR-33 | Cameras on the site map | S | An Admin places a camera (position, facing, view angle, range) and its view cone appears at once; every user sees cameras live, offline, or red for a minute after an alert; Safety Officers and Admins get a live thumbnail and a link to the camera's live view, Viewers no picture | `sitemap.Camera` placement fields, `CameraPlacementSerializer`, `sitemap/camera_map.py`, `CameraMapView` (`/api/v1/camera-map/`), `CameraPlacementView` (`PUT/DELETE /api/v1/camera-map/{id}/`), `camera_updated` event (placement, changed people count), `CameraLatestFrameView` (`/api/v1/camera-frames/latest/`); `components/map/CameraLayer.jsx`, `CameraPlacementPanel.jsx`, `hooks/useCameraMap.js`, `lib/geo.js`, dashboard `SiteMapCard.jsx`, Cameras page `?camera=` | `sitemap/test_camera_map.py` (11); e2e 27 Oct (see ledger) | Integrated (**test video; real camera positions pending, C13**) |
 
 ## Non-functional requirements
 
@@ -62,7 +63,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. With the fire model (27 Oct, commit `fae1367`, clean tree): mps 15.8 and 16.1 FPS, cpu 10.4 and 10.2 FPS; fire stage p50 18 ms (mps) every 5th frame | **Met on mps with all detectors** (cpu marginal) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 221 (SQLite and PostgreSQL), ai-module 144, fire tools 7, report-service 13, mobile 17, vest simulator 8, measurement and clip scoring 21 = 431 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 232 (SQLite and PostgreSQL), ai-module 144, fire tools 7, report-service 13, mobile 17, vest simulator 8, measurement and clip scoring 21 = 442 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
 
 ## Progress ledger
 
@@ -557,4 +558,36 @@ Tests (27 Oct): ai-module 144 (test_proximity 18, moved from backend/alerts and 
   danger areas 15); backend 221 (the 9 moved tests leave it) — 431 in total
 Known limitations: proximity is measured in the image (person-heights), not in metres, so a worker in front of
   a distant vehicle can read as close (unchanged); a busy scene gives one alert per person near a vehicle
+```
+
+```text
+Phase / task IDs: Phase 2 item 3 — FR-33 cameras on the site map
+Status: Integrated on a throwaway database with a test video; real camera positions pending (C13)
+Design: sitemap.Camera gains a placement (latitude, longitude, heading 0-359 from north, view angle 10-180,
+  range 1-300 m); a row is created when an Admin places a camera that has not reported yet. GET
+  /api/v1/camera-map/ (everyone signed in) lists every known camera (zone, token, live, or placed) with its
+  placement, live status, people in view (a count older than 30 s shows as none), open alerts and latest
+  alert. PUT/DELETE /api/v1/camera-map/{id}/ is Admin-only. camera_updated is broadcast on placement changes
+  and changed people counts. GET /api/v1/camera-frames/latest/ returns the cached live frame to Safety
+  Officers and Admins only. The map draws a cone from the entered values (nothing is measured from video).
+Visible: Zones page Site Map with a Cameras list (Place / Move / Remove; three sliders with the cone
+  following); dashboard Site Map card (live / offline / alerting counts, link to unplaced cameras); camera
+  markers green, grey with a dashed cone, or red and pulsing for 60 s after an alert from that camera
+  (alert_created); popup with zone, live picture (refreshed every second), people in view, open alerts,
+  latest alert, and "Open live view" to /cameras?camera=ID
+E2E (27 Oct, throwaway SQLite database, badge clip as CAM-01 with all detectors): as the test Admin, placed
+  CAM-01 at Bay 1's corner facing NE (70 deg, 40 m) and CAM-09 at the Crane zone facing SW (90 deg); the
+  draft cone followed the sliders; after saving CAM-01 was green, CAM-09 grey and dashed. CAM-01's popup
+  showed its live frame, 2 people in view and its latest alert (danger area); "Open live view" opened the
+  Cameras page on CAM-01. On the dashboard CAM-01 turned red within seconds of its next alerts after a camera
+  restart (two vehicle-proximity alerts, the CRITICAL one naming the badge holder). As the test Safety
+  Officer the list was read-only; as the test Viewer the map showed both cameras and the popup had status,
+  count and alerts with no picture or link. Fixed during the run: the popup's dark style lost to leaflet.css
+  (selector made more specific) and the popup opened under the zoom buttons (re-measured once filled).
+  The same run confirmed FR-07 live: about 4 minutes of the looping clip gave 2 proximity alerts (was 14).
+Tests (27 Oct): backend 232 OK on SQLite and PostgreSQL (11 new); ai-module 144; frontend lint clean, build
+  OK — 442 in total
+Known limitations: the cone is what the Admin enters, not the camera's real field of view; live status
+  follows a 10 s refresh; a camera that sends nothing stays grey but keeps its position
+Migrations: sitemap 0006 (camera placement); the dev database still needs `migrate`
 ```

@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from sitesafe.validation import validate_camera_ids, validate_polygon
 
-from .models import CameraArea, HotWorkPermit, Zone
+from .models import Camera, CameraArea, HotWorkPermit, Zone
 
 
 class ZoneSerializer(serializers.ModelSerializer):
@@ -179,3 +179,20 @@ class CameraAreaSerializer(serializers.ModelSerializer):
         if clash.exists():
             raise serializers.ValidationError({"name": f"{camera_id} already has an area called {name}."})
         return attrs
+
+
+class CameraPlacementSerializer(serializers.ModelSerializer):
+    """Where a camera is on the site map and what it covers: a position, the
+    direction it faces (degrees clockwise from north), its view angle and its
+    useful range. The map draws this as a view cone."""
+
+    class Meta:
+        model = Camera
+        fields = ("latitude", "longitude", "heading", "field_of_view", "view_range_m")
+        extra_kwargs = {
+            "latitude": {"required": True, "allow_null": False, "min_value": -90, "max_value": 90},
+            "longitude": {"required": True, "allow_null": False, "min_value": -180, "max_value": 180},
+            "heading": {"min_value": 0, "max_value": 359},
+            "field_of_view": {"min_value": 10, "max_value": 180},
+            "view_range_m": {"min_value": 1, "max_value": 300},
+        }

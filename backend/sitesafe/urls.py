@@ -14,10 +14,12 @@ from alerts.views import (
     CameraCountView,
     CameraEventView,
     CameraFrameView,
+    CameraLatestFrameView,
     CameraListView,
     DashboardStatsView,
 )
 from sitemap.urls import area_urlpatterns, permit_urlpatterns
+from sitemap.views import CameraMapView, CameraPlacementView
 from workers.urls import activity_urlpatterns, vest_urlpatterns
 
 from .jwt_views import PublicTokenObtainPairView, PublicTokenRefreshView
@@ -35,8 +37,11 @@ urlpatterns = [
     path("api/v1/camera-config/", CameraConfigView.as_view(), name="camera-config"),
     path("api/v1/camera-activity/", CameraActivityView.as_view(), name="camera-activity"),
     path("api/v1/camera-frames/", CameraFrameView.as_view(), name="camera-frames"),
+    path("api/v1/camera-frames/latest/", CameraLatestFrameView.as_view(), name="camera-latest-frame"),
     path("api/v1/camera-counts/", CameraCountView.as_view(), name="camera-counts"),
     path("api/v1/cameras/", CameraListView.as_view(), name="cameras"),
+    path("api/v1/camera-map/", CameraMapView.as_view(), name="camera-map"),
+    path("api/v1/camera-map/<str:camera_id>/", CameraPlacementView.as_view(), name="camera-placement"),
     path("api/workers/", include("workers.urls")),
     path("api/v1/vests/", include((vest_urlpatterns, "workers"), namespace="vests")),
     path("api/v1/activity/", include((activity_urlpatterns, "workers"), namespace="activity")),

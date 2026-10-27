@@ -84,6 +84,12 @@ def last_seen():
     return dict(cache.get(REGISTRY_KEY) or {})
 
 
+def latest_frame(camera_id):
+    """The camera's newest JPEG still in the cache, or None."""
+    hit = cache.get(frame_key(camera_id))
+    return hit[1] if hit else None
+
+
 def latest_frames():
     """(camera_id, jpeg) for every camera with a frame still in the cache."""
     out = []

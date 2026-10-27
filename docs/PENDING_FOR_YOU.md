@@ -39,6 +39,7 @@ Kept since 27 October 2026. Update this file whenever something is skipped or de
 | C10 | **Supervisor sign-offs** | Smart Vest hardware moved to future work; the proposed acceptance targets; the report metrics replacing a compliance percentage |
 | C11 | **Report admin** | Semester dates; title-page date; Chapter 2 citations and the Labour Force Survey figure to verify; approval, declaration and Turnitin pages; meeting log; contribution statement |
 | C12 | **Smart Vest hardware** | Only if approved later: ESP32, GPS, SOS button, LoRa link (FR-21) |
+| C13 | **Real camera positions** | Where each camera is mounted on your site and which way it faces, to place them on the site map (Zones → Site Map → Place). The demo database has CAM-01 and CAM-09 placed at the test zones only (FR-33) |
 
 ## Done
 

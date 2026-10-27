@@ -70,12 +70,23 @@ class Zone(models.Model):
 
 
 class Camera(models.Model):
-    """What each camera last reported about its view. Rows are created on the
-    first report; zone assignment stays in Zone.camera_ids."""
+    """What each camera last reported about its view, and where it is on the
+    site map. Rows are created on the first report or when an Admin places
+    the camera; zone assignment stays in Zone.camera_ids."""
 
     camera_id = models.CharField(max_length=64, unique=True)
     people_count = models.PositiveIntegerField(default=0, help_text="People in view at counted_at")
     counted_at = models.DateTimeField(null=True, blank=True)
+    # Placement on the site map; a camera without a position is not drawn.
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    heading = models.PositiveSmallIntegerField(default=0, help_text="Direction it faces, degrees clockwise from north")
+    field_of_view = models.PositiveSmallIntegerField(default=70, help_text="Horizontal view angle, degrees")
+    view_range_m = models.PositiveSmallIntegerField(default=30, help_text="How far it usefully sees, metres")
+
+    @property
+    def is_placed(self):
+        return self.latitude is not None and self.longitude is not None
 
     def __str__(self):
         return self.camera_id

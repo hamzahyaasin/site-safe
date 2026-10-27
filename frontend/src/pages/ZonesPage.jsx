@@ -4,10 +4,12 @@ import Button from '../components/ui/Button.jsx'
 import DataTable from '../components/ui/DataTable.jsx'
 import Drawer from '../components/ui/Drawer.jsx'
 import Input, { Select } from '../components/ui/Input.jsx'
+import CameraPlacementPanel from '../components/map/CameraPlacementPanel.jsx'
 import SiteMap from '../components/map/SiteMap.jsx'
 import HotWorkPermits from '../components/zones/HotWorkPermits.jsx'
 import { useHotWorkPermits } from '../hooks/useHotWorkPermits.js'
 import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card.jsx'
+import { useCameraMap } from '../hooks/useCameraMap.js'
 import { useZones } from '../hooks/useZones.js'
 import { useVests } from '../hooks/useVests.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -78,6 +80,8 @@ const textareaClass =
 export default function ZonesPage() {
   const { zones, loading, error, createZone, updateZone, deleteZone } = useZones()
   const { vests } = useVests()
+  const cameraMap = useCameraMap()
+  const [cameraDraft, setCameraDraft] = useState(null)
   // Zone edits are Admin-only server-side; hide the controls for everyone else.
   const { isAdmin, canOperate } = useAuth()
   const permitState = useHotWorkPermits()
@@ -272,12 +276,33 @@ export default function ZonesPage() {
         <CardHeader>
           <CardTitle>Site Map</CardTitle>
           <CardDescription>
-            Zone boundaries by risk level and each vest&apos;s last reported position (green online, grey
-            offline, red SOS)
+            Zone boundaries by risk level, each vest&apos;s last reported position (green online, grey offline, red
+            SOS), and cameras with what they cover (green live, grey offline, red for a minute after an alert)
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <SiteMap zones={zones} vests={vests} height={380} />
+        <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <SiteMap
+            zones={zones}
+            vests={vests}
+            cameras={cameraMap.cameras}
+            alerting={cameraMap.alerting}
+            cameraDraft={cameraDraft}
+            onAddPoint={cameraDraft ? ({ lat, lng }) => setCameraDraft((d) => ({ ...d, latitude: lat, longitude: lng })) : undefined}
+            height={380}
+          />
+          <div>
+            <p className="mb-2 text-sm font-medium text-zinc-200">Cameras</p>
+            {cameraMap.error ? <p className="mb-2 text-xs text-red-400">{cameraMap.error}</p> : null}
+            <CameraPlacementPanel
+              cameras={cameraMap.cameras}
+              alerting={cameraMap.alerting}
+              draft={cameraDraft}
+              setDraft={setCameraDraft}
+              place={cameraMap.place}
+              unplace={cameraMap.unplace}
+              isAdmin={isAdmin}
+            />
+          </div>
         </CardContent>
       </Card>
 

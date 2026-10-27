@@ -201,6 +201,20 @@ The **Cameras** page (Safety Officers and Admins only) shows a live grid of ever
 
 Turn it off on a camera with `--no-live` or `SITESAFE_LIVE=0`, or for the whole server with `LIVE_VIEW_ENABLED=False`. When the API runs as several processes, set `REDIS_URL`, which shares the latest frames through Redis.
 
+### Cameras on the site map
+
+Each camera can be placed on the site map with where it is mounted, the direction it faces, its view angle and how far it usefully sees. The map then draws it as a marker with a view cone, on the Zones page and in the **Site Map** card on the dashboard:
+
+- **Green**: the camera's live view is current.
+- **Grey, dashed cone**: the camera is offline.
+- **Red, pulsing**: for a minute after the camera raises an alert. It turns red the moment the alert arrives over the dashboard socket.
+
+Hovering a camera shows how many people it sees. Clicking it shows its zone, people in view, open alerts and its latest alert. Safety Officers and Admins also see a live thumbnail, refreshed every second, and a link that opens that camera on the Cameras page (`/cameras?camera=CAM-01`). Viewers get the map and status without any picture.
+
+To place a camera, an Admin opens **Zones → Site Map**, chooses **Place** (or **Move**) next to the camera, and clicks the map where it is mounted. Three sliders set where it faces (0–355°), its view angle (20–150°) and its range (5–150 m); the cone follows as they move. **Remove** takes a camera off the map without affecting its alerts or live view. Every known camera is listed, whether placed or not: those assigned to a zone, those named by a camera token, and those currently sending. The dashboard card links to the unplaced ones.
+
+The cone is drawn from what the Admin enters; nothing is measured from the picture. Changed people counts and placements arrive over the dashboard socket (`camera_updated`); live status is refreshed every 10 s.
+
 ### Danger areas on the camera picture
 
 A danger area is a polygon drawn on one camera's picture, such as a crane's swing radius, an excavation edge or a loading bay. Areas are stored as fractions of the picture (0–1), so they still fit if the camera's resolution changes. They need not cover a whole zone.
@@ -509,11 +523,14 @@ Run them on the demo machine with the configuration you will present. Prefer a s
 | `POST` | `/api/v1/camera-frames/?camera_id=` | Camera token | Live-view JPEG (`image/jpeg` body, max 256 KB); relayed, not stored |
 | `POST` | `/api/v1/camera-counts/` | Camera token | People in view (`camera_id`, `people`, `observed_at`) for zone head counts |
 | `GET` | `/api/v1/cameras/` | Safety Officer | Every known camera with zone and live status |
+| `GET` | `/api/v1/camera-map/` | JWT | Every known camera for the site map: `placement`, `live`, `people_in_view`, `open_alerts`, `last_alert` |
+| `PUT/DELETE` | `/api/v1/camera-map/{camera_id}/` | Admin | Place or move a camera (`latitude`, `longitude`, `heading`, `field_of_view`, `view_range_m`), or take it off the map |
+| `GET` | `/api/v1/camera-frames/latest/?camera_id=` | Safety Officer | The camera's latest live-view JPEG (404 if none in the last 30 s) |
 | `WS` | `/ws/cameras/?token=<access>` | Safety Officer | Live frames: binary `camera_id`, newline, JPEG |
 | `POST` | `/api/v1/camera-activity/` | Camera token | Badge sighting / idle start / idle end with `occurred_at` |
 | `GET` | `/api/v1/activity/timeline/?worker_id=&date=&tz=` | JWT | One worker's day: sessions, idle, zone visits, totals |
 | `GET` | `/api/v1/activity/daily/?start_date=&end_date=&tz=` | JWT | Per-worker daily attendance (max 31 days) |
-| `WS` | `/ws/dashboard/?token=<access>` | JWT | Live `alert_created/updated/resolved`, `vest_updated`, `worker_status_update`, `zone_updated` |
+| `WS` | `/ws/dashboard/?token=<access>` | JWT | Live `alert_created/updated/resolved`, `vest_updated`, `worker_status_update`, `zone_updated`, `camera_updated` |
 | `GET/POST/…` | `/api/workers/` | JWT | Worker CRUD |
 | — | `/admin/` | Staff | Django admin |
 
