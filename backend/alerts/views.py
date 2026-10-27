@@ -25,6 +25,7 @@ from .serializers import (
     AlertSerializer,
     AlertSimulateSerializer,
     CameraActivitySerializer,
+    CameraCountSerializer,
     CameraEventSerializer,
     DetectionSerializer,
 )
@@ -65,9 +66,10 @@ class DashboardStatsView(APIView):
     """Dashboard figures computed only from stored records.
 
     Day and hour buckets use the caller's ``tz``. "On site" counts active
-    workers whose vest is currently reporting; it is unknown for workers
-    without vests. Simulated alerts are counted separately so a demo can
-    be distinguished from real observations.
+    workers whose vest is currently reporting or whose badge a camera read
+    within ``CAMERA_PRESENCE_SECONDS``; workers with neither are unknown,
+    not absent. Simulated alerts are counted separately so a demo can be
+    distinguished from real observations.
     """
 
     permission_classes = [IsViewer]
@@ -90,7 +92,12 @@ class DashboardStatsView(APIView):
         workers = Worker.objects.all()
         active = workers.filter(is_active=True)
         with_vest = active.filter(smart_vest__isnull=False)
-        on_site = with_vest.filter(smart_vest__last_seen__gte=now - offline_after())
+        from workers.location import CAMERA, camera_presence
+
+        by_vest = set(with_vest.filter(smart_vest__last_seen__gte=now - offline_after()).values_list("pk", flat=True))
+        by_camera = set(
+            active.filter(location_source=CAMERA, location_at__gte=now - camera_presence()).values_list("pk", flat=True)
+        )
 
         unresolved = Alert.objects.filter(is_resolved=False)
         today = Alert.objects.filter(timestamp__gte=start_of_day)
@@ -152,7 +159,9 @@ class DashboardStatsView(APIView):
                 "total_workers": workers.count(),
                 "active_workers": active.count(),
                 "workers_with_vest": with_vest.count(),
-                "workers_on_site": on_site.count(),
+                "workers_on_site": len(by_vest | by_camera),
+                "workers_on_site_by_vest": len(by_vest),
+                "workers_on_site_by_camera": len(by_camera),
                 "total_alerts_today": today.count(),
                 "simulated_alerts_today": today.filter(simulated).count(),
                 "alerts_yesterday": Alert.objects.filter(
@@ -453,8 +462,35 @@ class CameraActivityView(APIView):
         elif data["kind"] == "IDLE_END":
             activity.idle_end(worker, when, source)
         else:
+            from workers import location
+
             activity.record_seen(worker, when, source)
+            location.place_by_camera(worker, data["camera_id"], when)
         return Response({"status": "recorded", "worker": worker.pk}, status=status.HTTP_200_OK)
+
+
+class CameraCountView(APIView):
+    """POST how many people a camera sees (``camera_id``, ``people``, ``observed_at``).
+
+    Feeds zone head counts and over-capacity alerts. Counts are latest-wins:
+    one older than the stored count is ignored (200), and simulator tokens
+    are ignored (202) so test data never sets real occupancy.
+    """
+
+    permission_classes = [IsCameraService]
+
+    def post(self, request, *args, **kwargs):
+        from workers import location
+
+        serializer = CameraCountSerializer(data=request.data, context={"service_token": request.auth})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        if request.auth.is_simulator:
+            return Response({"status": "ignored"}, status=status.HTTP_202_ACCEPTED)
+        stored = location.record_camera_count(data["camera_id"], data["people"], data["observed_at"])
+        if not stored:
+            return Response({"status": "older than the stored count"}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CameraConfigView(APIView):

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useWebSocketContext } from './useWebSocketContext.js'
 
 function normalizeList(data) {
   return Array.isArray(data) ? data : data?.results || []
@@ -7,6 +8,7 @@ function normalizeList(data) {
 
 export function useZones() {
   const { api } = useAuth()
+  const { subscribe } = useWebSocketContext()
   const [zones, setZones] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -58,6 +60,17 @@ export function useZones() {
     }, 0)
     return () => window.clearTimeout(t)
   }, [loadZones])
+
+  // Head counts change as cameras report and workers move: take each live update.
+  useEffect(
+    () =>
+      subscribe((event, payload) => {
+        if (event === 'zone_updated' && payload?.id) {
+          setZones((prev) => prev.map((z) => (z.id === payload.id ? payload : z)))
+        }
+      }),
+    [subscribe],
+  )
 
   return {
     zones,

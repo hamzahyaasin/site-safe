@@ -182,6 +182,19 @@ Privacy controls:
 - **Turn snapshots off.** Do it at the camera with `--no-snapshots` or `SITESAFE_SNAPSHOTS=0`, and the image never leaves the host. Do it at the server with `ALERT_SNAPSHOTS_ENABLED=False`, and incoming images are discarded. Either way, the confidence and model version are still recorded.
 - **Retention.** `python manage.py purge_alert_snapshots` deletes images older than `ALERT_SNAPSHOT_RETENTION_DAYS` (default 30). It keeps the alerts themselves. Add `--days N` to override the period, or `--dry-run` to only count. Schedule it daily, for example with cron: `0 3 * * * cd /app && python manage.py purge_alert_snapshots`. Deleting an alert also deletes its image.
 
+### Worker location and zone head counts
+
+Workers are located without a vest too. When a camera reads a worker's QR badge, the worker is placed in that camera's zone (assign cameras to zones on the Zones page; a camera belongs to one zone). Cameras repeat sightings every 15 s. A location counts as current for `CAMERA_PRESENCE_SECONDS` (60) after the last sighting, or while the vest is online for vest GPS. After that the worker is "last seen" there, and the presence monitor records the zone exit, dated to the last sighting. Zone entries and exits appear in the worker's timeline whichever source produced them. A recent camera sighting takes precedence over GPS, so a worker near a zone edge is not flipped back and forth.
+
+Each camera also reports how many people it sees, at most every 5 s. A zone's head count is the larger of two figures: the identified workers placed there, and its cameras' counts. With the zone setting **"These cameras can see the same people"** (the default) the largest single camera count is used, which never double-counts; turned off, the counts are added. A count older than `CAMERA_COUNT_STALE_SECONDS` (30) is ignored. The Zones page shows each count and how it was reached ("cameras 3 (largest of 2) · 1 identified"), and the map keeps live head counts on every zone. The Workers page and the mobile app show "In Bay 1 · CAM-02" or "Last seen in Bay 1 · CAM-02 · 4 min ago".
+
+Zone breaches from cameras:
+
+- An identified worker seen in a restricted zone they are not assigned to raises a ZONE_BREACH, naming the camera.
+- Over capacity uses hysteresis, because a head count is a noisy reading. The zone must be over its limit for `ZONE_CAPACITY_CONFIRM_SECONDS` (10) before one alert is raised. Another alert can only follow after the zone has been back within its limit for `ZONE_CAPACITY_CLEAR_SECONDS` (60).
+
+Run the presence monitor (`python manage.py run_presence_monitor`) so exits are recorded and counts that go stale update the dashboard.
+
 ### Live camera view
 
 The **Cameras** page (Safety Officers and Admins only) shows a live grid of every camera: those assigned to a zone, those named by a camera token, and any camera currently sending, including a test webcam. Each camera running `inference.py` sends its annotated view (boxes, status banner) as a 640 px JPEG up to 5 times a second (`--live-fps`). It sends from a background thread, so detection never waits, and it drops old frames rather than queueing them. The API relays frames over `/ws/cameras/` and keeps only the latest frame per camera, in memory for 30 s. Live frames are never written to disk and never go through the outbox. A camera with no frame for 5 s shows as offline. Click a tile to enlarge it.
@@ -223,6 +236,9 @@ Copy `backend/.env.example` to `backend/.env`:
 | `ALERT_SNAPSHOT_MAX_BYTES` | Largest snapshot accepted, in bytes | `524288` |
 | `LIVE_VIEW_ENABLED` | Relay camera live views to the Cameras page | `True` |
 | `MEDIA_ROOT` | Where uploaded files (alert snapshots) are stored | `backend/media` |
+| `CAMERA_PRESENCE_SECONDS` | How long a camera badge sighting keeps a worker placed in its zone | `60` |
+| `CAMERA_COUNT_STALE_SECONDS` | Age after which a camera's people count stops counting | `30` |
+| `ZONE_CAPACITY_CONFIRM_SECONDS` / `ZONE_CAPACITY_CLEAR_SECONDS` | Over-capacity alert after this long over the limit / re-armed after this long back within it | `10` / `60` |
 
 ---
 
@@ -468,12 +484,13 @@ Run them on the demo machine with the configuration you will present. Prefer a s
 | `POST` | `/api/v1/reports/generate/` | Safety Officer | `report_type`, `date_from`, `date_to`, `file_format` (DOCX/PDF), `tz` |
 | `GET` | `/api/v1/camera-config/?camera_id=` | Camera token | Effective alert rules for a camera |
 | `POST` | `/api/v1/camera-frames/?camera_id=` | Camera token | Live-view JPEG (`image/jpeg` body, max 256 KB); relayed, not stored |
+| `POST` | `/api/v1/camera-counts/` | Camera token | People in view (`camera_id`, `people`, `observed_at`) for zone head counts |
 | `GET` | `/api/v1/cameras/` | Safety Officer | Every known camera with zone and live status |
 | `WS` | `/ws/cameras/?token=<access>` | Safety Officer | Live frames: binary `camera_id`, newline, JPEG |
 | `POST` | `/api/v1/camera-activity/` | Camera token | Badge sighting / idle start / idle end with `occurred_at` |
 | `GET` | `/api/v1/activity/timeline/?worker_id=&date=&tz=` | JWT | One worker's day: sessions, idle, zone visits, totals |
 | `GET` | `/api/v1/activity/daily/?start_date=&end_date=&tz=` | JWT | Per-worker daily attendance (max 31 days) |
-| `WS` | `/ws/dashboard/?token=<access>` | JWT | Live `alert_created/updated/resolved`, `vest_updated`, `worker_status_update` |
+| `WS` | `/ws/dashboard/?token=<access>` | JWT | Live `alert_created/updated/resolved`, `vest_updated`, `worker_status_update`, `zone_updated` |
 | `GET/POST/…` | `/api/workers/` | JWT | Worker CRUD |
 | — | `/admin/` | Staff | Django admin |
 

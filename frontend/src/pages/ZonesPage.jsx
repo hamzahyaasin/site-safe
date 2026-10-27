@@ -28,12 +28,28 @@ const emptyForm = {
   max_occupancy: 0,
   boundaries: [],
   camera_ids: '',
+  camera_views_overlap: true,
   is_active: true,
 }
 
 function formatOccupancy(zone) {
   const present = zone.current_occupancy ?? 0
   return zone.max_occupancy ? `${present} / ${zone.max_occupancy}` : `${present} / ∞`
+}
+
+/** How the head count was reached, e.g. "cameras 3 (largest of 2) · 2 identified". */
+function occupancyBasis(zone) {
+  const o = zone.occupancy
+  if (!o) return null
+  const parts = []
+  if (o.camera_count !== null) {
+    const how = o.cameras_reporting > 1 ? ` (${o.method === 'max' ? 'largest' : 'sum'} of ${o.cameras_reporting})` : ''
+    parts.push(`cameras ${o.camera_count}${how}`)
+  } else if (o.cameras_assigned) {
+    parts.push('no camera reporting')
+  }
+  parts.push(`${o.identified} identified`)
+  return parts.join(' · ')
 }
 
 function parseCameraIds(raw) {
@@ -51,6 +67,7 @@ function zoneToForm(zone) {
     max_occupancy: zone.max_occupancy ?? 0,
     boundaries: zone.boundaries ?? [],
     camera_ids: (zone.camera_ids ?? []).join(', '),
+    camera_views_overlap: zone.camera_views_overlap ?? true,
     is_active: zone.is_active ?? true,
   }
 }
@@ -108,6 +125,7 @@ export default function ZonesPage() {
         max_occupancy: Number(form.max_occupancy) || 0,
         boundaries,
         camera_ids: parseCameraIds(form.camera_ids),
+        camera_views_overlap: form.camera_views_overlap,
         is_active: form.is_active,
       }
       if (editingZone) {
@@ -171,11 +189,17 @@ export default function ZonesPage() {
       key: 'occupancy',
       header: 'Present / Max',
       render: (row) =>
-        row.boundaries?.length >= 3 ? (
-          formatOccupancy(row)
+        row.boundaries?.length >= 3 || row.camera_ids?.length ? (
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-zinc-200">{formatOccupancy(row)}</span>
+              {row.capacity_alerted_at ? <Badge variant="critical">Over capacity</Badge> : null}
+            </div>
+            <div className="text-[11px] text-zinc-500">{occupancyBasis(row)}</div>
+          </div>
         ) : (
-          <span className="text-zinc-600" title="Presence is measured from vest GPS inside the boundary">
-            no boundary
+          <span className="text-zinc-600" title="People are counted by the zone's cameras and by vest GPS inside its boundary">
+            no boundary or camera
           </span>
         ),
     },
@@ -184,7 +208,14 @@ export default function ZonesPage() {
       header: 'Cameras',
       render: (row) =>
         row.camera_ids?.length ? (
-          <span className="font-mono text-xs text-zinc-400">{row.camera_ids.join(', ')}</span>
+          <div>
+            <span className="font-mono text-xs text-zinc-400">{row.camera_ids.join(', ')}</span>
+            {row.camera_ids.length > 1 ? (
+              <div className="text-[11px] text-zinc-500">
+                {row.camera_views_overlap ? 'Views overlap' : 'Separate views'}
+              </div>
+            ) : null}
+          </div>
         ) : (
           <span className="text-zinc-600">None assigned</span>
         ),
@@ -340,8 +371,25 @@ export default function ZonesPage() {
           />
           <p className="-mt-2 text-[11px] text-zinc-600">
             Comma-separated camera identifiers assigned to watch this zone — match the{' '}
-            <code className="font-mono">--camera-id</code> each vision pipeline instance is started with.
+            <code className="font-mono">--camera-id</code> each vision pipeline instance is started with. A camera
+            belongs to one zone: a badge it reads places that worker here.
           </p>
+
+          <label className="flex items-start gap-2 text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={form.camera_views_overlap}
+              onChange={(e) => setForm((f) => ({ ...f, camera_views_overlap: e.target.checked }))}
+            />
+            <span>
+              These cameras can see the same people
+              <span className="block text-[11px] text-zinc-600">
+                On: the head count is the largest single camera count, so nobody is counted twice. Off: the cameras
+                watch separate areas and their counts are added.
+              </span>
+            </span>
+          </label>
 
           {editingZone ? (
             <label className="flex items-center gap-2 text-sm text-zinc-300">

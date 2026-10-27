@@ -18,8 +18,8 @@ Kept since 27 October 2026. Update this file whenever something is skipped or de
 
 | # | Question | Default if you don't decide |
 |---|---|---|
-| B1 | An **unidentified person** (no readable badge) in a **restricted zone**: raise an alert, or only count them? | Not built until decided |
-| B2 | Does any camera on your site look at **two zones**? (Then the camera-image areas of Phase 2 item 2 are needed sooner.) | Treated as possible; Phase 2 item 2 follows item 1 |
+| B1 | An **unidentified person** (no readable badge) in a **restricted zone**: raise an alert, or only count them? Today they are counted in the zone's head count (visible on the map) but raise nothing. | Counted only; no alert until decided |
+| B2 | Does any camera on your site look at **two zones**? Since 27 Oct a camera id can belong to one zone only (the API refuses a second); areas inside one camera's view come with Phase 2 item 2. | Phase 2 item 2 follows item 1 |
 | B3 | Snapshot **retention period** and whether snapshots are allowed on site at all | 30 days, snapshots on |
 | B4 | Revoke the **WEBCAM-TEST** device token in Django admin after testing | Left active |
 

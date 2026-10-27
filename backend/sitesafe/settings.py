@@ -197,6 +197,18 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "sitesafe@localhost")
 # A vest that has not reported for this long is shown as offline.
 VEST_OFFLINE_AFTER_SECONDS = int(os.environ.get("VEST_OFFLINE_AFTER_SECONDS", "120"))
 
+# Camera-based location. A badge sighting places a worker in the camera's
+# zone for this long (cameras report sightings every 15 s); after that they
+# are "last seen" there and the presence monitor records the zone exit.
+CAMERA_PRESENCE_SECONDS = int(os.environ.get("CAMERA_PRESENCE_SECONDS", "60"))
+# A camera's people count stops counting towards its zone after this long.
+CAMERA_COUNT_STALE_SECONDS = int(os.environ.get("CAMERA_COUNT_STALE_SECONDS", "30"))
+# Head counts are noisy (a person flickering in and out of detection), so an
+# over-capacity alert needs the zone over its limit this long, and the next
+# one needs it back within the limit this long first.
+ZONE_CAPACITY_CONFIRM_SECONDS = int(os.environ.get("ZONE_CAPACITY_CONFIRM_SECONDS", "10"))
+ZONE_CAPACITY_CLEAR_SECONDS = int(os.environ.get("ZONE_CAPACITY_CLEAR_SECONDS", "60"))
+
 # A worker's check-in session closes after this long without a vest report
 # or QR sighting, dated to when they were last seen.
 CHECKOUT_AFTER_MINUTES = int(os.environ.get("CHECKOUT_AFTER_MINUTES", "30"))

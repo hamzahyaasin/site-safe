@@ -35,14 +35,26 @@ export const SEVERITY_COLOR: Record<Severity, string> = {
 
 export type Presence = { label: string; tone: 'good' | 'bad' | 'muted' | 'alert' };
 
-/** Same rules as the dashboard: presence comes only from vest telemetry. */
+/** Same rules as the dashboard: presence from vest telemetry and camera badge sightings. */
 export function workerPresence(worker: Worker): Presence {
   if (!worker.is_active) return { label: 'Inactive', tone: 'muted' };
   const vest = worker.smart_vest;
-  if (!vest) return { label: 'No vest', tone: 'muted' };
-  if (!vest.last_seen) return { label: 'Never reported', tone: 'muted' };
-  if (vest.sos_active) return { label: 'SOS', tone: 'alert' };
-  return vest.is_online ? { label: 'On site', tone: 'good' } : { label: 'Offline', tone: 'bad' };
+  if (vest?.sos_active) return { label: 'SOS', tone: 'alert' };
+  // A vest counts as online only once it has reported.
+  if (worker.location?.current || (vest?.is_online && vest.last_seen)) return { label: 'On site', tone: 'good' };
+  if (worker.last_seen_at || vest?.last_seen) return { label: 'Not in view', tone: 'bad' };
+  if (vest) return { label: 'Never reported', tone: 'muted' };
+  return { label: 'Not seen yet', tone: 'muted' };
+}
+
+/** "In Bay 1 · CAM-02", "Last seen in Bay 1 · CAM-02 · 4 min ago", or null if never placed. */
+export function describeLocation(worker: Worker, now = Date.now()): string | null {
+  const loc = worker.location;
+  if (!loc) return null;
+  const device = loc.source === 'vest' ? `vest ${loc.device}` : loc.device;
+  const where = loc.zone_name ? `in ${loc.zone_name}` : loc.source === 'vest' ? 'outside all zones' : 'in view (camera has no zone)';
+  if (loc.current) return `${where.charAt(0).toUpperCase()}${where.slice(1)} · ${device}`;
+  return `Last seen ${where} · ${device} · ${timeAgo(loc.at, now)}`;
 }
 
 export function canOperate(role: string | null | undefined): boolean {

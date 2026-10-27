@@ -86,7 +86,26 @@ def publish_worker(worker):
     def build():
         from workers.models import Worker
 
-        fresh = Worker.objects.select_related("zone").filter(pk=pk).first()
+        fresh = Worker.objects.select_related("zone", "smart_vest", "location_zone").filter(pk=pk).first()
         return WorkerSerializer(fresh or worker).data
 
     publish("worker_status_update", build)
+
+
+def publish_zones(zones):
+    """Broadcast each zone's details, including its current head count."""
+    from sitemap.serializers import ZoneDetailSerializer
+
+    pks = sorted({z.pk for z in zones})
+    if not pks:
+        return
+
+    def send_all():
+        from sitemap.models import Zone
+
+        rows = Zone.objects.filter(pk__in=pks).prefetch_related("workers")
+        context = {}
+        for zone in rows:
+            _send("zone_updated", ZoneDetailSerializer(zone, context=context).data)
+
+    transaction.on_commit(send_all)

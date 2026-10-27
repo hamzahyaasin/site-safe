@@ -42,6 +42,23 @@ class Worker(models.Model):
         help_text="Last time a vest report or QR sighting placed this worker on site",
     )
     last_seen_source = models.CharField(max_length=80, blank=True, default="")
+    # Last known location: the zone a camera badge sighting or vest GPS last
+    # placed the worker in (None: outside every zone, or a camera with no zone).
+    location_zone = models.ForeignKey(
+        "sitemap.Zone",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    location_at = models.DateTimeField(null=True, blank=True)
+    location_source = models.CharField(
+        max_length=8,
+        blank=True,
+        default="",
+        choices=[("camera", "Camera"), ("vest", "Vest GPS")],
+    )
+    location_device = models.CharField(max_length=64, blank=True, default="", help_text="Camera id or vest id")
 
     class Meta:
         ordering = ["-created_at"]

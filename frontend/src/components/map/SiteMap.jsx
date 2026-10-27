@@ -98,11 +98,23 @@ export default function SiteMap({
               dashArray: zone.is_active ? undefined : '6 6',
             }}
           >
-            <Tooltip sticky>
-              {zone.name} · {zone.risk_level}
-              {zone.current_occupancy !== undefined ? ` · ${zone.current_occupancy} present` : ''}
-              {zone.max_occupancy ? ` / ${zone.max_occupancy}` : ''}
-              {zone.is_active ? '' : ' · inactive'}
+            {/* Live head counts stay on the map; the name and details show on hover. */}
+            <Tooltip
+              permanent={!draft && zone.current_occupancy !== undefined}
+              direction="center"
+              className="zone-count-label"
+            >
+              {draft || zone.current_occupancy === undefined ? (
+                <>
+                  {zone.name} · {zone.risk_level}
+                  {zone.is_active ? '' : ' · inactive'}
+                </>
+              ) : (
+                <>
+                  {zone.name}: {zone.current_occupancy}
+                  {zone.max_occupancy ? ` / ${zone.max_occupancy}` : ''} present
+                </>
+              )}
             </Tooltip>
           </Polygon>
         ))}

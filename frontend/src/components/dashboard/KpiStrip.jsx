@@ -14,14 +14,13 @@ export default function KpiStrip({ stats, loading }) {
       tone: diff > 0 ? 'bad' : diff < 0 ? 'good' : 'neutral',
     }
   }
-  const untracked = stats ? stats.active_workers - stats.workers_with_vest : 0
 
   const cards = [
     {
       label: 'Workers On Site',
       value: stats?.workers_on_site,
       hint: stats
-        ? `of ${stats.active_workers} active · ${untracked} without a vest (not tracked)`
+        ? `of ${stats.active_workers} active · ${stats.workers_on_site_by_camera} seen by camera, ${stats.workers_on_site_by_vest} by vest`
         : null,
       borderColor: 'border-l-emerald-500',
     },

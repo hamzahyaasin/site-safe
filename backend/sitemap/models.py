@@ -41,6 +41,25 @@ class Zone(models.Model):
         help_text="Identifiers of cameras assigned to monitor this zone",
     )
     max_occupancy = models.IntegerField(default=0, help_text="0 = unlimited")
+    camera_views_overlap = models.BooleanField(
+        default=True,
+        help_text=(
+            "Whether this zone's cameras can see the same people. If they can, the zone's head count is "
+            "the largest single-camera count (never double-counts); if not, the counts are added."
+        ),
+    )
+    # Over-capacity state with hysteresis (workers.location.check_capacity):
+    # alert once the zone has been over its limit for ZONE_CAPACITY_CONFIRM_SECONDS,
+    # re-arm once it has been back within it for ZONE_CAPACITY_CLEAR_SECONDS.
+    over_capacity_since = models.DateTimeField(
+        null=True, blank=True, help_text="Start of the current over-capacity period"
+    )
+    capacity_alerted_at = models.DateTimeField(
+        null=True, blank=True, help_text="When the current over-capacity period raised its alert"
+    )
+    within_capacity_since = models.DateTimeField(
+        null=True, blank=True, help_text="When an alerted zone came back within its limit"
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -48,6 +67,18 @@ class Zone(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.risk_level})"
+
+
+class Camera(models.Model):
+    """What each camera last reported about its view. Rows are created on the
+    first report; zone assignment stays in Zone.camera_ids."""
+
+    camera_id = models.CharField(max_length=64, unique=True)
+    people_count = models.PositiveIntegerField(default=0, help_text="People in view at counted_at")
+    counted_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.camera_id
 
 
 class HotWorkPermitQuerySet(models.QuerySet):

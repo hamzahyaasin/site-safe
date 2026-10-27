@@ -4,7 +4,7 @@ import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { Badge, Empty, ErrorText, Screen, styles } from '@/components/ui';
 import { C } from '@/constants/theme';
 import { useLiveList } from '@/hooks/useLiveList';
-import { timeAgo, workerPresence } from '@/lib/format';
+import { describeLocation, timeAgo, workerPresence } from '@/lib/format';
 import { reduceWorkers } from '@/lib/reducers';
 import type { Worker } from '@/lib/types';
 
@@ -14,7 +14,7 @@ export default function Workers() {
   const { items, loading, error, reload } = useLiveList<Worker>('workers/', reduceWorkers);
   const [refreshing, setRefreshing] = useState(false);
   const active = items.filter((w) => w.is_active);
-  const onSite = active.filter((w) => w.smart_vest?.is_online).length;
+  const onSite = active.filter((w) => w.location?.current || w.smart_vest?.is_online).length;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -33,7 +33,7 @@ export default function Workers() {
           <View style={{ gap: 8, marginBottom: 4 }}>
             {error ? <ErrorText>{error}</ErrorText> : null}
             <Text style={styles.muted}>
-              {onSite} on site by vest · {active.length} active · presence is unknown for workers without a vest
+              {onSite} on site · {active.length} active · located by camera badge sightings and vest GPS
             </Text>
           </View>
         }
@@ -47,6 +47,9 @@ export default function Workers() {
                 <Text style={styles.title}>{item.name}</Text>
                 <Badge label={p.label} color={TONE[p.tone]} />
               </View>
+              <Text style={[styles.text, { color: item.location?.current ? C.good : C.muted }]}>
+                {describeLocation(item) ?? (vest ? 'Vest has not reported a position yet' : 'No camera has read this badge yet')}
+              </Text>
               <Text style={styles.muted}>
                 {[item.role, item.zone_name ? `assigned ${item.zone_name}` : null].filter(Boolean).join(' · ') || '—'}
               </Text>

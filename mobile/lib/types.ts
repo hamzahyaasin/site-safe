@@ -35,6 +35,16 @@ export interface SmartVest {
   last_seen: string | null;
 }
 
+/** Where a camera badge sighting or vest GPS last placed the worker. */
+export interface WorkerLocation {
+  zone: number | null;
+  zone_name: string | null;
+  source: 'camera' | 'vest';
+  device: string;
+  at: string;
+  current: boolean;
+}
+
 export interface Worker {
   id: number;
   name: string;
@@ -42,6 +52,8 @@ export interface Worker {
   vest_id: string | null;
   zone_name: string | null;
   smart_vest: SmartVest | null;
+  location: WorkerLocation | null;
+  last_seen_at: string | null;
   is_active: boolean;
 }
 

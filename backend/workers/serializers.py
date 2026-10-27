@@ -86,6 +86,9 @@ class WorkerSerializer(serializers.ModelSerializer):
     zone_name = serializers.SerializerMethodField()
     smart_vest = SmartVestSerializer(read_only=True)
     vest_id = serializers.SerializerMethodField()
+    # Where the worker is: the zone a camera badge sighting or vest GPS last
+    # placed them in, and whether that is still current (see workers.location).
+    location = serializers.SerializerMethodField()
     vest = serializers.PrimaryKeyRelatedField(
         queryset=SmartVest.objects.all(),
         required=False,
@@ -105,16 +108,34 @@ class WorkerSerializer(serializers.ModelSerializer):
             "role",
             "phone",
             "smart_vest",
+            "location",
+            "last_seen_at",
+            "last_seen_source",
             "is_active",
             "created_at",
         )
-        read_only_fields = ("id", "zone_name", "smart_vest", "created_at")
+        read_only_fields = ("id", "zone_name", "smart_vest", "location", "last_seen_at", "last_seen_source", "created_at")
 
     def get_zone_name(self, obj):
         return obj.zone.name if obj.zone_id else None
 
     def get_vest_id(self, obj):
         return obj.vest_id
+
+    def get_location(self, obj):
+        from .location import is_current
+
+        if obj.location_at is None:
+            return None
+        return {
+            "zone": obj.location_zone_id,
+            "zone_name": obj.location_zone.name if obj.location_zone_id else None,
+            "source": obj.location_source,
+            "device": obj.location_device,
+            # Formatted here: broadcast payloads are encoded with plain json.dumps.
+            "at": serializers.DateTimeField().to_representation(obj.location_at),
+            "current": is_current(obj),
+        }
 
     def validate_name(self, value):
         value = value.strip()

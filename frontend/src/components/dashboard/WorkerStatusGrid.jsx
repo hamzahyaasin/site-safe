@@ -4,17 +4,17 @@ import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import EmptyState from '../ui/EmptyState.jsx'
 import Skeleton from '../ui/Skeleton.jsx'
 import Tooltip from '../ui/Tooltip.jsx'
-import { cn, formatTimestamp, getWorkerPresence, initials } from '../../lib/utils.js'
+import { cn, describeLocation, formatTimestamp, getWorkerPresence, initials } from '../../lib/utils.js'
 
-/** Worker cards. Presence and battery come only from the worker's vest
- * telemetry; ``onEdit`` (Workers page) adds an edit action per card and
- * ``canAdd`` shows the register tile. */
+/** Worker cards. Presence and location come from vest GPS and camera badge
+ * sightings, battery from the vest; ``onEdit`` (Workers page) adds an edit
+ * action per card and ``canAdd`` shows the register tile. */
 export default function WorkerStatusGrid({ workers, loading, highlightIds, onEdit, onAdd, onTimeline, canAdd = false }) {
   return (
     <Card className="col-span-12 xl:col-span-8">
       <CardHeader>
         <CardTitle>Worker Status</CardTitle>
-        <CardDescription>Presence from vest telemetry; workers without a vest are not tracked</CardDescription>
+        <CardDescription>Location from camera badge sightings and vest GPS</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -62,13 +62,18 @@ export default function WorkerStatusGrid({ workers, loading, highlightIds, onEdi
                           {presence.label}
                         </Badge>
                       </div>
-                      <p className="mt-2 text-[11px] text-zinc-600">
-                        {presence.lastSeen
-                          ? `Last report ${formatTimestamp(presence.lastSeen)}`
-                          : vest
-                            ? 'Vest has not reported yet'
-                            : 'Presence not tracked'}
+                      <p
+                        className={cn(
+                          'mt-2 text-[11px]',
+                          worker.location?.current ? 'font-medium text-emerald-400' : 'text-zinc-500',
+                        )}
+                      >
+                        {describeLocation(worker) ||
+                          (vest ? 'Vest has not reported a position yet' : 'No camera has read this badge yet')}
                       </p>
+                      {presence.lastSeen ? (
+                        <p className="mt-0.5 text-[11px] text-zinc-600">Seen {formatTimestamp(presence.lastSeen)}</p>
+                      ) : null}
                       <p className="mt-0.5 text-[11px] text-zinc-500">
                         Assigned zone: {worker.zone_name || 'none'}
                         {worker.role ? ` · ${worker.role}` : ''}

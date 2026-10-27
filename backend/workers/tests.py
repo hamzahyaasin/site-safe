@@ -12,7 +12,8 @@ from sitemap.models import Zone
 
 from .mqtt_handlers import apply_vest_telemetry
 from .models import ActivityLog, SmartVest, Worker
-from .presence import is_vest_online, observed_occupancy, sweep_stale_vests
+from .location import zone_occupancy
+from .presence import is_vest_online, sweep_stale_vests
 
 SQUARE = [{"lat": 0, "lng": 0}, {"lat": 0, "lng": 1}, {"lat": 1, "lng": 1}, {"lat": 1, "lng": 0}]
 INNER = [{"lat": 0.4, "lng": 0.4}, {"lat": 0.4, "lng": 0.6}, {"lat": 0.6, "lng": 0.6}, {"lat": 0.6, "lng": 0.4}]
@@ -158,11 +159,15 @@ class ZoneBreachTests(TestCase):
         self.assertEqual(log.zone, self.restricted)
 
     def test_over_capacity(self):
+        from .location import check_capacity
+
         apply_vest_telemetry("V-1", {"latitude": 0.1, "longitude": 0.1})
         self.assertEqual(self.breaches().count(), 0)
-        self.assertEqual(observed_occupancy(self.site.pk), 1)
+        self.assertEqual(zone_occupancy(self.site)["count"], 1)
         apply_vest_telemetry("V-2", {"latitude": 0.2, "longitude": 0.2})
-        self.assertEqual(observed_occupancy(self.site.pk), 2)
+        self.assertEqual(zone_occupancy(self.site)["count"], 2)
+        self.assertEqual(self.breaches().count(), 0, "over, but not yet for the confirm time")
+        check_capacity(self.site, now=timezone.now() + timedelta(seconds=11))
         self.assertEqual(self.breaches().count(), 1)
         self.assertIn("over capacity", self.breaches().get().description)
 
@@ -180,7 +185,7 @@ class ZoneBreachTests(TestCase):
     def test_stale_vest_not_counted_in_occupancy(self):
         apply_vest_telemetry("V-1", {"latitude": 0.1, "longitude": 0.1})
         SmartVest.objects.filter(vest_id="V-1").update(last_seen=timezone.now() - timedelta(hours=1))
-        self.assertEqual(observed_occupancy(self.site.pk), 0)
+        self.assertEqual(zone_occupancy(self.site)["count"], 0)
 
     def test_breach_alert_reports_zone_where_it_happened(self):
         apply_vest_telemetry("V-1", {"latitude": 0.5, "longitude": 0.5})

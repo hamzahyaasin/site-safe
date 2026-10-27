@@ -112,3 +112,18 @@
     background-size: 32px 32px;
   }
 }
+
+/* Live head counts on the site map (SiteMap.jsx). */
+.leaflet-tooltip.zone-count-label {
+  background: rgba(15, 17, 23, 0.85);
+  color: #f4f4f5;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+}
+.leaflet-tooltip.zone-count-label::before {
+  display: none;
+}

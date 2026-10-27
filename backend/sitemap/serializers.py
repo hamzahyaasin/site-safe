@@ -19,16 +19,25 @@ class ZoneSerializer(serializers.ModelSerializer):
             "boundaries",
             "camera_ids",
             "max_occupancy",
+            "camera_views_overlap",
+            "capacity_alerted_at",
             "is_active",
             "created_at",
         )
-        read_only_fields = ("id", "created_at")
+        read_only_fields = ("id", "capacity_alerted_at", "created_at")
 
     def validate_boundaries(self, value):
         return validate_polygon(value)
 
     def validate_camera_ids(self, value):
-        return validate_camera_ids(value)
+        """A camera belongs to one zone: its sightings place workers there."""
+        value = validate_camera_ids(value)
+        others = Zone.objects.exclude(pk=getattr(self.instance, "pk", None))
+        taken = {cam: zone.name for zone in others for cam in zone.camera_ids or [] if cam in value}
+        if taken:
+            listed = ", ".join(f"{cam} ({name})" for cam, name in sorted(taken.items()))
+            raise serializers.ValidationError(f"Already assigned to another zone: {listed}.")
+        return value
 
     def validate_max_occupancy(self, value):
         if value < 0:
@@ -37,27 +46,40 @@ class ZoneSerializer(serializers.ModelSerializer):
 
 
 class ZoneDetailSerializer(ZoneSerializer):
-    """Adds ``worker_count`` (active workers *assigned* to the zone) and
-    ``current_occupancy`` (workers *observed* inside it by an online vest's
-    GPS). Camera-only zones have no observed occupancy."""
+    """Adds ``worker_count`` (active workers *assigned* to the zone),
+    ``current_occupancy`` (the zone's head count now) and ``occupancy`` (how
+    that count was worked out: identified workers placed there by a camera
+    sighting or vest GPS, and the zone cameras' people counts, combined by
+    the largest count if their views overlap, else by sum)."""
 
     worker_count = serializers.SerializerMethodField()
     current_occupancy = serializers.SerializerMethodField()
+    occupancy = serializers.SerializerMethodField()
 
     class Meta(ZoneSerializer.Meta):
-        fields = ZoneSerializer.Meta.fields + ("worker_count", "current_occupancy")
+        fields = ZoneSerializer.Meta.fields + ("worker_count", "current_occupancy", "occupancy")
 
     def get_worker_count(self, obj):
         return sum(1 for w in obj.workers.all() if w.is_active)
 
-    def get_current_occupancy(self, obj):
-        observed = self.context.get("observed_zone_ids")
-        if observed is None:
-            from workers.presence import observed_zone_ids
+    def _occupancy(self, obj):
+        from workers import location
 
-            observed = observed_zone_ids()
-            self.context["observed_zone_ids"] = observed
-        return sum(1 for z in observed.values() if z == obj.pk)
+        cache = self.context.setdefault("_occupancy", {})
+        if obj.pk not in cache:
+            if "_present" not in self.context:
+                self.context["_present"] = location.current_zone_ids()
+                self.context["_cameras"] = location.fresh_cameras()
+            cache[obj.pk] = location.zone_occupancy(
+                obj, present=self.context["_present"], cameras=self.context["_cameras"]
+            )
+        return cache[obj.pk]
+
+    def get_current_occupancy(self, obj):
+        return self._occupancy(obj)["count"]
+
+    def get_occupancy(self, obj):
+        return self._occupancy(obj)
 
 
 class HotWorkPermitSerializer(serializers.ModelSerializer):

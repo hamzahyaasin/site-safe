@@ -14,6 +14,7 @@ const FORWARDED_EVENTS = new Set([
   'alert_resolved',
   'vest_updated',
   'worker_status_update',
+  'zone_updated',
 ])
 
 function socketUrl() {

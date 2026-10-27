@@ -397,3 +397,27 @@ class CameraActivitySerializer(serializers.Serializer):
         if value < now - timedelta(hours=24):
             raise serializers.ValidationError("occurred_at is more than 24 hours old.")
         return value
+
+
+class CameraCountSerializer(serializers.Serializer):
+    """People a camera sees at ``observed_at`` (within the last 10 minutes, not in the future)."""
+
+    camera_id = serializers.CharField(max_length=64)
+    people = serializers.IntegerField(min_value=0, max_value=500)
+    observed_at = serializers.DateTimeField()
+
+    def validate_camera_id(self, value):
+        token = self.context.get("service_token")
+        if token is not None and not token.allows_camera(value):
+            raise serializers.ValidationError("This device token may not report for this camera.")
+        return value
+
+    def validate_observed_at(self, value):
+        from datetime import timedelta
+
+        now = timezone.now()
+        if value > now + timedelta(minutes=1):
+            raise serializers.ValidationError("observed_at is in the future; check the camera clock.")
+        if value < now - timedelta(minutes=10):
+            raise serializers.ValidationError("observed_at is more than 10 minutes old.")
+        return value

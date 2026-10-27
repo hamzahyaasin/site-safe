@@ -105,14 +105,29 @@ export function normalizeList(data) {
 /** Presence from the worker's vest telemetry; there is no presence signal
  * for a worker without a vest, so that is reported as untracked rather
  * than guessed. */
+/** Presence from the worker's vest and camera badge sightings (the API's ``location``). */
 export function getWorkerPresence(worker) {
   if (!worker.is_active) return { label: 'INACTIVE', variant: 'offline', lastSeen: null }
   const vest = worker.smart_vest
-  if (!vest) return { label: 'NO VEST', variant: 'neutral', lastSeen: null }
-  if (!vest.last_seen) return { label: 'NEVER REPORTED', variant: 'offline', lastSeen: null }
-  if (vest.sos_active) return { label: 'SOS', variant: 'critical', lastSeen: vest.last_seen }
-  if (vest.is_online) return { label: 'ON SITE', variant: 'active', lastSeen: vest.last_seen }
-  return { label: 'OFFLINE', variant: 'offline', lastSeen: vest.last_seen }
+  if (vest?.sos_active) return { label: 'SOS', variant: 'critical', lastSeen: vest.last_seen }
+  // A vest counts as online only once it has reported.
+  if (worker.location?.current || (vest?.is_online && vest.last_seen)) {
+    return { label: 'ON SITE', variant: 'active', lastSeen: worker.last_seen_at || vest?.last_seen }
+  }
+  const lastSeen = worker.last_seen_at || vest?.last_seen
+  if (lastSeen) return { label: 'NOT IN VIEW', variant: 'offline', lastSeen }
+  if (vest) return { label: 'NEVER REPORTED', variant: 'offline', lastSeen: null }
+  return { label: 'NOT SEEN YET', variant: 'neutral', lastSeen: null }
+}
+
+/** "In Bay 1 · CAM-02", "Last seen in Bay 1 · CAM-02", or null if never placed. */
+export function describeLocation(worker) {
+  const loc = worker.location
+  if (!loc) return null
+  const device = loc.source === 'vest' ? `vest ${loc.device}` : loc.device
+  const where = loc.zone_name ? `in ${loc.zone_name}` : loc.source === 'vest' ? 'outside all zones' : 'in view (camera has no zone)'
+  const text = `${where} · ${device}`
+  return loc.current ? text.charAt(0).toUpperCase() + text.slice(1) : `Last seen ${where} · ${device}`
 }
 
 /** Short local label for an ISO date, e.g. "Thu 16". */

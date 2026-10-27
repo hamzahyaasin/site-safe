@@ -49,6 +49,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-28 | Mobile app: login, alerts, resolve, worker status, push | M | Android build receives a push and resolves an incident visible on web | `mobile/` (Expo SDK 58) | `mobile/__tests__` (13); web build checked 16 Oct: sign-in, live alert arrival, detail, resolve, resolve from another session removed live, workers presence, sign-out | Integrated on web target (**device + push pending**) |
 | FR-29 | Alert evidence (snapshot, confidence, model version) | S | Each AI incident is traceable to its frame and model | `ai-module/evidence.py` (model id = weights name + SHA-256 prefix; JPEG of the raw frame ≤ 640 px), snapshot BLOB in `event_outbox.py`, `--no-snapshots` / `SITESAFE_SNAPSHOTS`; `Alert.model_version` (migration alerts 0012), `decode_snapshot` + `CameraEventView` (base64 JPEG ≤ 512 KB, stored once per `event_id`), `/api/alerts/{id}/snapshot/`, `ALERT_SNAPSHOTS_ENABLED`, `purge_alert_snapshots`; `AlertSnapshot.jsx`, `mobile/components/AlertSnapshot.tsx` | `alerts/test_evidence.py` (19), `test_evidence.py` (8), `test_event_outbox.py` snapshot cases (3), `mobile/__tests__/api.test.ts` image fetch (3); e2e 20 Oct on a throwaway database: synthetic frame → outbox → API (201, one 11 KB file), replay of the same `event_id` → 200 and no second file; frame, confidence and model version shown to a Viewer on web and on the mobile web build; `purge_alert_snapshots --days 0` removed the file and kept the alert | Integrated (**synthetic frame; not yet from a live camera run**) |
 | FR-30 | Live camera grid for monitoring (all cameras, including a test webcam) | S | Every running camera appears live within seconds to Safety Officers and Admins, configured cameras that are not running show as offline, and Viewers cannot see video | `ai-module/live_feed.py`, `--no-live` / `SITESAFE_LIVE`, `--live-fps`; `alerts/live.py`, `CameraFrameView` (`/api/v1/camera-frames/`), `CameraListView` (`/api/v1/cameras/`), `CameraFeedConsumer` (`/ws/cameras/`), `LIVE_VIEW_ENABLED`; `pages/CamerasPage.jsx`, `hooks/useCameraFeed.js` | `test_live_feed.py` (7), `alerts/test_live.py` (11); e2e 27 Oct on a throwaway database: real pipeline (all detectors) on a test video as CAM-01 plus synthetic test frames as WEBCAM-TEST, both live in the grid at 5.0 frames/s in the browser with detections drawn; CAM-GATE (zone, not running) offline; enlarged view; pipeline 17.6 FPS while streaming; Viewer had no Cameras tab and saw the role notice | Integrated (**test video and synthetic frames; no physical camera or second machine yet**) |
+| FR-31 | Worker location and zone head counts without a vest (camera-based, zones with several cameras) | S | A badge read by a camera places the worker in that camera's zone within seconds and as last seen after a minute; zone head counts never double-count overlapping cameras; one over-capacity alert per sustained crossing; a restricted-zone entry by an unassigned badge holder raises one breach | `workers/location.py` (place, zone_occupancy, check_capacity with hysteresis, sweeps), `Worker.location_*`, `Zone.camera_views_overlap`, `sitemap.Camera`, `CameraCountView` (`/api/v1/camera-counts/`), sightings every 15 s and people counts (`ai-module/latest_sender.py`); Workers page and mobile location, Zones page counts and overlap setting, live map labels (`zone_updated`) | `workers/test_location.py` (28), `test_activity_events.py` people counts (3); e2e 27 Oct (see ledger) | Integrated (**test videos with a printed test badge; no physical camera or real badge yet**) |
 
 ## Non-functional requirements
 
@@ -60,7 +61,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | NFR-04 | Inference throughput | ≥ 10 FPS with all detectors on the demo machine | `tools/measure/fps.py`, Apple M4 at 1280×720: mps 13.4 and 15.7 FPS; cpu 9.8 and 10.1 FPS. Pipeline now defaults to mps. With the fire model (27 Oct, commit `fae1367`, clean tree): mps 15.8 and 16.1 FPS, cpu 10.4 and 10.2 FPS; fire stage p50 18 ms (mps) every 5th frame | **Met on mps with all detectors** (cpu marginal) |
 | NFR-05 | Soak | 2-hour full-stack run with controlled disconnect | `tools/measure/soak.py` 5-min validation: 146 probes, 0 missed, reconnect 1.2 s; API memory 64→92 MB in 5 min (warm-up; needs the 2 h run) | **Not met yet** (2 h run pending on demo setup) |
 | NFR-06 | Reproducible setup | Fresh machine reaches a working demo from the README | README updated 16 Oct | Not verified |
-| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 194 (SQLite and PostgreSQL), ai-module 98, fire tools 7, report-service 13, mobile 16, vest simulator 8, measurement and clip scoring 19 = 355 pass (27 Oct, merged stage branch); frontend lint clean, build OK; mobile lint and tsc clean | Met |
+| NFR-07 | Code quality gate | Backend, AI and report-service tests pass; frontend build passes, lint clean | backend 223 (SQLite and PostgreSQL), ai-module 111, fire tools 7, report-service 13, mobile 17, vest simulator 8, measurement and clip scoring 21 = 400 pass (27 Oct); frontend lint clean, build OK; mobile lint and tsc clean | Met |
 
 ## Progress ledger
 
@@ -457,4 +458,42 @@ FR-25: incident table responsive: vest ID under the worker name, Camera column f
   734 px area with all 25 Resolve buttons visible; at 1440 px the Camera column returns, no overflow
 Also: tools/measure/record_clip.py records evaluation clips at the camera's measured frame rate (2 tests)
 Human inputs still needed: a recorded webcam clip with annotations to score FR-05 on real video
+```
+
+```text
+Phase / task IDs: Phase 2 item 1 — FR-31 worker location without a vest; zones with several cameras
+Status: Integrated on a throwaway database with test videos (a dataset image with a printed test badge, a
+  crowd clip); not yet with a physical camera and a real printed badge
+Design: a camera badge sighting places the worker in that camera's zone (a camera belongs to one zone, enforced
+  by the zone API); sightings every 15 s; current for CAMERA_PRESENCE_SECONDS (60), then "last seen" and a
+  ZONE_EXIT dated to the last sighting (presence monitor). Vest GPS uses the same location model; a current
+  camera sighting takes precedence over GPS. Zone head count = max(identified workers placed there, camera
+  people counts combined by largest count when views overlap, else sum); counts older than 30 s drop out.
+  Over capacity uses hysteresis: alert after 10 s over the limit, re-armed after 60 s back within it.
+  Restricted-zone breach from cameras for unassigned badge holders. Unidentified people in restricted zones
+  are counted but raise nothing until decision B1 (docs/PENDING_FOR_YOU.md).
+Visible: worker cards and mobile Workers tab show "In Bay 1 · CAM-02" / "Last seen in ...", Workers page and
+  dashboard "on site" count camera-seen workers (split by camera/vest), Zones page shows each head count with
+  its basis ("cameras 2 (largest of 2) · 1 identified") and an Over capacity badge, zone form gains "These
+  cameras can see the same people", map keeps live head-count labels; all update over the zone_updated event
+Found and fixed during the live run:
+  - worker location time was a raw datetime in socket payloads: every worker update closed dashboard sockets
+    (1011). Now ISO text; a test checks worker and zone payloads encode as plain JSON
+  - over-capacity alerted once per crossing, which on a noisy count gave 5 alerts in 4 minutes; replaced by
+    hysteresis, and capacity is now evaluated on every count report, not only on changes (a steady crowd never
+    reached its confirm time between monitor sweeps)
+E2E (27 Oct, throwaway SQLite database, real pipeline, all detectors): Bay 1 with CAM-01 (badge clip) and
+  CAM-02 (40-scene clip, then crowd clip), Crane (restricted) with CAM-09. Badge holder placed in Bay 1 by
+  CAM-01 ("ON SITE · In Bay 1 · CAM-01" on the Workers page, no vest; dashboard "1 seen by camera, 0 by vest");
+  head counts followed the cameras live on the Zones page and map. Crowd clip (9 people for 25 s of every 100 s)
+  over 250 s: 3 crowd periods, 3 over-capacity alerts, each 10-15 s into the period, re-armed between them. Badge
+  clip as CAM-09: Bay 1 exit + Crane entry, one HIGH breach naming CAM-09; after 60 s without a sighting the
+  monitor recorded the Crane exit dated 11:41:28 (last sighting), API location current=false
+Tests (27 Oct): backend 223 OK on SQLite and PostgreSQL (29 new); ai-module 111 (people counts 3, shared
+  LatestSender); mobile 17 (location); frontend lint clean, build OK — 400 in total
+Known limitations: zone-level only (no position inside a camera view; Phase 2 item 2); counting relies on the
+  person detector, which misses occluded people; identity needs a readable badge (physical range test pending,
+  C1); throwaway SQLite reported "database is locked" under concurrent camera writes (PostgreSQL in real use)
+Migrations: sitemap 0004 (Camera, zone overlap and capacity state), workers 0008 (location fields), workers 0009
+  (fills location from each worker's latest vest zone log); the dev database still needs `migrate`
 ```

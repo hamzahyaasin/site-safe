@@ -76,3 +76,46 @@ class ActivityEventTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PeopleCountTests(unittest.TestCase):
+    """People in view feed the zone head count (FR-31)."""
+
+    def test_payload_and_sender(self):
+        p = inference.people_count_payload("CAM-01", 3, 1_760_000_000.0)
+        self.assertEqual((p["camera_id"], p["people"]), ("CAM-01", 3))
+        self.assertEqual(datetime.fromisoformat(p["observed_at"]).timestamp(), 1_760_000_000.0)
+
+        class Session:
+            def __init__(self):
+                self.calls = []
+
+            def post(self, url, json, timeout):
+                self.calls.append((url, json))
+
+                class R:
+                    status_code = 204
+
+                return R()
+
+        session = Session()
+        self.assertEqual(inference.make_count_sender(session)(p), 204)
+        self.assertTrue(session.calls[0][0].endswith("/v1/camera-counts/"))
+
+    def test_latest_sender_sends_newest_count_and_skips_none(self):
+        from latest_sender import LatestSender
+
+        sent = []
+        clock = [0.0]
+        s = LatestSender(lambda v: sent.append(v) or 204, interval=5, encode=lambda v: v or None, clock=lambda: clock[0])
+        s.offer(1)
+        s.offer(2)
+        s.send_pending()
+        self.assertEqual(sent, [2])
+        clock[0] = 5
+        s.offer(0)  # encode returns None: nothing to send
+        self.assertFalse(s.send_pending())
+        self.assertEqual(sent, [2])
+
+    def test_sightings_repeat_within_the_servers_presence_window(self):
+        self.assertLessEqual(inference.SIGHTING_INTERVAL_SECONDS * 3, 60)

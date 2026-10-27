@@ -31,6 +31,7 @@ import identity
 from event_outbox import EventOutbox
 import inactivity
 import live_feed
+from latest_sender import LatestSender
 import ppe_episodes
 import proximity
 
@@ -254,7 +255,31 @@ def make_sender(session: requests.Session):
     return send
 
 
-SIGHTING_INTERVAL_SECONDS = 60
+# Badge sightings place a worker in the camera's zone for 60 s on the server
+# (CAMERA_PRESENCE_SECONDS), so they are repeated well within that.
+SIGHTING_INTERVAL_SECONDS = 15
+# People in view feed the zone's head count; the server drops a count after 30 s.
+PEOPLE_COUNT_INTERVAL_SECONDS = 5
+
+
+def people_count_payload(camera_id: str, people: int, unix_time: float) -> dict:
+    """How many people the camera sees, for /v1/camera-counts/."""
+    from datetime import datetime, timezone
+
+    return {
+        "camera_id": camera_id,
+        "people": int(people),
+        "observed_at": datetime.fromtimestamp(unix_time, tz=timezone.utc).isoformat(),
+    }
+
+
+def make_count_sender(session: requests.Session):
+    """Post one people count; return the HTTP status code."""
+
+    def send(payload: dict) -> int:
+        return session.post(api_url("v1", "camera-counts", ""), json=payload, timeout=2).status_code
+
+    return send
 
 
 def wall_clock(t: float, now: float | None = None) -> float:
@@ -906,6 +931,7 @@ def main() -> None:
         print(f"[{camera_id}] alert snapshots disabled; alerts carry the model version only")
 
     coco_model = None
+    people_counts = None
     coco_version = ""
     proximity_tracker = None
     inactivity_tracker = None
@@ -913,6 +939,14 @@ def main() -> None:
         proximity_model_path = resolve_proximity_model_path()
         if proximity_model_path.is_file():
             coco_model = YOLO(str(proximity_model_path))
+            # Latest people count for the zone head count; never queued (latest_sender).
+            people_counts = LatestSender(
+                make_count_sender(session),
+                interval=PEOPLE_COUNT_INTERVAL_SECONDS,
+                encode=lambda value: people_count_payload(camera_id, *value),
+                name="sitesafe-counts",
+            )
+            people_counts.start()
             coco_version = evidence.model_version(proximity_model_path)
             if not args.no_proximity:
                 proximity_tracker = proximity.ProximityTracker(
@@ -1172,6 +1206,8 @@ def main() -> None:
                     last_persons, last_vehicles = proximity.split_detections(p_xyxy, p_clss)
                 else:
                     last_persons, last_vehicles = [], []
+                if people_counts is not None:
+                    people_counts.offer((len(last_persons), wall_clock(t_now, t_now)))
 
                 if proximity_tracker is not None:
                     confirmed_proximity = proximity_tracker.update(last_persons, last_vehicles)
@@ -1304,6 +1340,8 @@ def main() -> None:
         rules.stop()
         if live is not None:
             live.stop()
+        if people_counts is not None:
+            people_counts.stop()
         outbox.stop()
         delivery = outbox.stats()
         outbox.close()
@@ -1324,6 +1362,8 @@ def main() -> None:
             print(f"  Last delivery error:    {delivery['last_error']}")
         if live is not None:
             print(f"  Live frames sent:       {live.sent} ({live.failed} failed)")
+        if people_counts is not None:
+            print(f"  People counts sent:     {people_counts.sent} ({people_counts.failed} failed)")
         print(f"  Session duration:       {duration:.1f}s")
         if looping:
             print(f"  Times the clip looped:  {loops}")

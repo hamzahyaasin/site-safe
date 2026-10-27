@@ -9,6 +9,7 @@ import Button from '../components/ui/Button.jsx'
 import Drawer from '../components/ui/Drawer.jsx'
 import Input, { Select } from '../components/ui/Input.jsx'
 import { printBadge } from '../lib/badge.js'
+import { getWorkerPresence } from '../lib/utils.js'
 import WorkerTimeline from '../components/workers/WorkerTimeline.jsx'
 
 const EMPTY = { name: '', role: '', phone: '', zone: '', vest: '', is_active: true }
@@ -126,7 +127,7 @@ export default function WorkersPage() {
           <h1 className="text-2xl font-semibold text-zinc-100">Workers</h1>
           <p className="mt-1 text-sm text-zinc-500">
             {activeCount} active · {workers.length - activeCount} deactivated ·{' '}
-            {workers.filter((w) => w.is_active && w.smart_vest?.is_online).length} on site by vest
+            {workers.filter((w) => w.is_active && getWorkerPresence(w).label === 'ON SITE').length} on site
           </p>
         </div>
         <div className="flex items-center gap-3">

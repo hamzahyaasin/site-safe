@@ -31,7 +31,7 @@ def _parse_day(value, tz):
 
 
 class WorkerViewSet(viewsets.ModelViewSet):
-    queryset = Worker.objects.select_related("zone", "smart_vest").all()
+    queryset = Worker.objects.select_related("zone", "smart_vest", "location_zone").all()
     serializer_class = WorkerSerializer
     permission_classes = [ReadOnlyOrSafetyOfficer]
 
