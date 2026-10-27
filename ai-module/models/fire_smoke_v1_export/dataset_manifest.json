@@ -1,0 +1,86 @@
+{
+  "source": "/tmp/fire_raw",
+  "source_classes": [
+    "smoke",
+    "fire"
+  ],
+  "val_fraction": 0.1,
+  "counts": {
+    "train": {
+      "images": 15469,
+      "negatives": 7040,
+      "smoke": 8575,
+      "fire": 10530
+    },
+    "val": {
+      "images": 1738,
+      "negatives": 793,
+      "fire": 1233,
+      "smoke": 950
+    },
+    "test": {
+      "images": 4294,
+      "negatives": 2005,
+      "smoke": 2298,
+      "fire": 2862
+    }
+  },
+  "problems": [
+    "train/AoF05470.jpg: line 2: box outside 0-1 or empty",
+    "train/AoF06155.jpg: line 2: box outside 0-1 or empty",
+    "train/AoF06348.jpg: line 2: box outside 0-1 or empty",
+    "train/AoF06439.jpg: line 2: box outside 0-1 or empty",
+    "train/AoF06456.jpg: line 2: box outside 0-1 or empty",
+    "train/PublicDataset00056.jpg: line 5: box outside 0-1 or empty",
+    "train/WEB04243.jpg: line 5: box outside 0-1 or empty",
+    "train/WEB04527.jpg: line 2: box outside 0-1 or empty",
+    "train/WEB04742.jpg: line 5: box outside 0-1 or empty",
+    "train/WEB04849.jpg: line 5: box outside 0-1 or empty",
+    "train/WEB05882.jpg: line 7: box outside 0-1 or empty",
+    "train/WEB06900.jpg: line 8: box outside 0-1 or empty",
+    "train/WEB07998.jpg: line 2: box outside 0-1 or empty",
+    "train/WEB08540.jpg: line 2: box outside 0-1 or empty",
+    "test/AoF07743.jpg: line 3: box outside 0-1 or empty",
+    "test/AoF07774.jpg: line 3: box outside 0-1 or empty",
+    "test/AoF08348.jpg: line 2: box outside 0-1 or empty",
+    "test/WEB10669.jpg: line 5: box outside 0-1 or empty",
+    "test/WEB10769.jpg: line 2: box outside 0-1 or empty",
+    "test/WEB10770.jpg: line 2: box outside 0-1 or empty",
+    "test/WEB10775.jpg: line 3: box outside 0-1 or empty",
+    "test/WEB10821.jpg: line 3: box outside 0-1 or empty",
+    "test/WEB11090.jpg: line 1: box outside 0-1 or empty",
+    "test/WEB11598.jpg: line 1: box outside 0-1 or empty",
+    "test/WEB11600.jpg: line 1: box outside 0-1 or empty",
+    "test/WEB11606.jpg: line 1: box outside 0-1 or empty"
+  ],
+  "problem_count": 26,
+  "skipped_images": [
+    "train/AoF05470.jpg",
+    "train/AoF06155.jpg",
+    "train/AoF06348.jpg",
+    "train/AoF06439.jpg",
+    "train/AoF06456.jpg",
+    "train/PublicDataset00056.jpg",
+    "train/WEB04243.jpg",
+    "train/WEB04527.jpg",
+    "train/WEB04742.jpg",
+    "train/WEB04849.jpg",
+    "train/WEB05882.jpg",
+    "train/WEB06900.jpg",
+    "train/WEB07998.jpg",
+    "train/WEB08540.jpg",
+    "test/AoF07743.jpg",
+    "test/AoF07774.jpg",
+    "test/AoF08348.jpg",
+    "test/WEB10669.jpg",
+    "test/WEB10769.jpg",
+    "test/WEB10770.jpg",
+    "test/WEB10775.jpg",
+    "test/WEB10821.jpg",
+    "test/WEB11090.jpg",
+    "test/WEB11598.jpg",
+    "test/WEB11600.jpg",
+    "test/WEB11606.jpg"
+  ],
+  "images": "symlinked to source"
+}

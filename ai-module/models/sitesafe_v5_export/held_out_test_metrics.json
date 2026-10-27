@@ -1,0 +1,117 @@
+{
+  "evaluated_at_utc": "2026-09-02T01:19:25.757898+00:00",
+  "weights": "/content/site-safe/ai-module/runs/train/sitesafe_v5/weights/best.pt",
+  "split": "test",
+  "evaluation_args": {
+    "data": "/content/site-safe/ai-module/ppe_dataset/data.yaml",
+    "split": "test",
+    "imgsz": 640,
+    "batch": 16,
+    "device": 0,
+    "workers": 2,
+    "seed": 42,
+    "deterministic": true,
+    "plots": true,
+    "project": "/content/site-safe/ai-module/runs/test",
+    "name": "sitesafe_v5_held_out",
+    "exist_ok": false
+  },
+  "overall": {
+    "precision": 0.46661160994084083,
+    "recall": 0.7281439438415064,
+    "map50": 0.5621473875982959,
+    "map50_95": 0.3447063797818455
+  },
+  "per_class": [
+    {
+      "class_id": 0,
+      "class_name": "boots",
+      "test_instances": 412,
+      "precision": 0.8448968533019631,
+      "recall": 0.9975728155339806,
+      "map50": 0.9770249994585112,
+      "map50_95": 0.779123622477748
+    },
+    {
+      "class_id": 1,
+      "class_name": "gloves",
+      "test_instances": 136,
+      "precision": 0.22234577785586818,
+      "recall": 0.3161764705882353,
+      "map50": 0.2761388609685195,
+      "map50_95": 0.1404320245031097
+    },
+    {
+      "class_id": 2,
+      "class_name": "goggles",
+      "test_instances": 57,
+      "precision": 0.46987612404820317,
+      "recall": 0.7930810000470823,
+      "map50": 0.6348113033396892,
+      "map50_95": 0.2840548109536567
+    },
+    {
+      "class_id": 3,
+      "class_name": "helmet",
+      "test_instances": 609,
+      "precision": 0.8931463285368,
+      "recall": 0.9589490968801314,
+      "map50": 0.9576436959618868,
+      "map50_95": 0.6213992309975348
+    },
+    {
+      "class_id": 4,
+      "class_name": "no-boots",
+      "test_instances": 19,
+      "precision": 0.12668849234115198,
+      "recall": 0.5956645233823398,
+      "map50": 0.12973509041302758,
+      "map50_95": 0.1060893543880499
+    },
+    {
+      "class_id": 5,
+      "class_name": "no-gloves",
+      "test_instances": 31,
+      "precision": 0.1086772487015744,
+      "recall": 0.3225806451612903,
+      "map50": 0.06178938802958024,
+      "map50_95": 0.02288237396066475
+    },
+    {
+      "class_id": 6,
+      "class_name": "no-goggles",
+      "test_instances": 88,
+      "precision": 0.32082614847761315,
+      "recall": 0.75,
+      "map50": 0.5304624301327143,
+      "map50_95": 0.19432609684668506
+    },
+    {
+      "class_id": 7,
+      "class_name": "no-helmet",
+      "test_instances": 42,
+      "precision": 0.2491472547354387,
+      "recall": 0.7142857142857143,
+      "map50": 0.3094719094950562,
+      "map50_95": 0.13771721428518743
+    },
+    {
+      "class_id": 8,
+      "class_name": "no-vest",
+      "test_instances": 116,
+      "precision": 0.5780062714016795,
+      "recall": 0.8793103448275862,
+      "map50": 0.7818970628815202,
+      "map50_95": 0.3879886413857752
+    },
+    {
+      "class_id": 9,
+      "class_name": "vest",
+      "test_instances": 563,
+      "precision": 0.8525056000081163,
+      "recall": 0.9538188277087034,
+      "map50": 0.962499135302454,
+      "map50_95": 0.7730504280200444
+    }
+  ]
+}

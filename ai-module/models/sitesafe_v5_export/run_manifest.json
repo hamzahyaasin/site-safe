@@ -1,0 +1,352 @@
+{
+  "status": "training_and_held_out_test_completed",
+  "configured_at_utc": "2026-09-01T20:36:56.855825+00:00",
+  "model_source": "yolo11m.pt",
+  "requested_train_args": {
+    "data": "/content/site-safe/ai-module/ppe_dataset/data.yaml",
+    "epochs": 150,
+    "imgsz": 640,
+    "batch": 16,
+    "patience": 25,
+    "optimizer": "AdamW",
+    "lr0": 0.001,
+    "project": "/content/site-safe/ai-module/runs/train",
+    "name": "sitesafe_v5",
+    "seed": 42,
+    "deterministic": true,
+    "device": 0,
+    "workers": 2,
+    "exist_ok": false
+  },
+  "seed": 42,
+  "environment": {
+    "python": "3.13.15",
+    "ultralytics": "8.4.41",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "gpu": "Tesla T4"
+  },
+  "dataset": {
+    "splits": {
+      "train": {
+        "images": 3597,
+        "label_files": 3597,
+        "instances": 15205,
+        "annotation_formats": {
+          "box": 15205
+        }
+      },
+      "valid": {
+        "images": 1026,
+        "label_files": 1026,
+        "instances": 4307,
+        "annotation_formats": {
+          "box": 4307
+        }
+      },
+      "test": {
+        "images": 517,
+        "label_files": 517,
+        "instances": 2073,
+        "annotation_formats": {
+          "box": 2073
+        }
+      }
+    },
+    "class_counts": {
+      "train": {
+        "boots": 3258,
+        "gloves": 1054,
+        "goggles": 418,
+        "helmet": 4097,
+        "no-boots": 108,
+        "no-gloves": 252,
+        "no-goggles": 600,
+        "no-helmet": 453,
+        "no-vest": 841,
+        "vest": 4124
+      },
+      "valid": {
+        "boots": 931,
+        "gloves": 359,
+        "goggles": 113,
+        "helmet": 1187,
+        "no-boots": 36,
+        "no-gloves": 51,
+        "no-goggles": 155,
+        "no-helmet": 103,
+        "no-vest": 218,
+        "vest": 1154
+      },
+      "test": {
+        "boots": 412,
+        "gloves": 136,
+        "goggles": 57,
+        "helmet": 609,
+        "no-boots": 19,
+        "no-gloves": 31,
+        "no-goggles": 88,
+        "no-helmet": 42,
+        "no-vest": 116,
+        "vest": 563
+      }
+    },
+    "total_images": 5140,
+    "total_instances": 21585,
+    "inventory_sha256": "c3d070ef2c4f7c9861895d1eceec362d6dc3585b1956d44a8c6e95d46a8583f6",
+    "label_normalization": {
+      "reason": "YOLO detection training requires one consistent box format; polygons were converted to their enclosing boxes in the temporary Colab copy",
+      "source_labels_sha256": "eee8cd67cdc87e5f28e99c275f308ef767323b539ef5b390d366251645463e26",
+      "normalized_labels_sha256": "bfa3e10ff67cbf772f9dec8f365d9eb369abee5dc730adda4708cb6c42e9a553",
+      "splits": {
+        "train": {
+          "converted_polygon_rows": 38,
+          "files_with_polygons": 14,
+          "mixed_format_files": 10
+        },
+        "valid": {
+          "converted_polygon_rows": 16,
+          "files_with_polygons": 8,
+          "mixed_format_files": 6
+        },
+        "test": {
+          "converted_polygon_rows": 0,
+          "files_with_polygons": 0,
+          "mixed_format_files": 0
+        }
+      }
+    }
+  },
+  "training_completed_at_utc": "2026-09-02T01:18:58.373372+00:00",
+  "run_dir": "/content/site-safe/ai-module/runs/train/sitesafe_v5",
+  "best_weights": "/content/site-safe/ai-module/runs/train/sitesafe_v5/weights/best.pt",
+  "actual_trainer_args": {
+    "task": "detect",
+    "mode": "train",
+    "model": "yolo11m.pt",
+    "data": "/content/site-safe/ai-module/ppe_dataset/data.yaml",
+    "epochs": 150,
+    "time": null,
+    "patience": 25,
+    "batch": 16,
+    "imgsz": 640,
+    "save": true,
+    "save_period": -1,
+    "cache": false,
+    "device": "0",
+    "workers": 2,
+    "project": "/content/site-safe/ai-module/runs/train",
+    "name": "sitesafe_v5",
+    "exist_ok": false,
+    "pretrained": true,
+    "optimizer": "AdamW",
+    "verbose": true,
+    "seed": 42,
+    "deterministic": true,
+    "single_cls": false,
+    "rect": false,
+    "cos_lr": false,
+    "close_mosaic": 10,
+    "resume": false,
+    "amp": true,
+    "fraction": 1.0,
+    "profile": false,
+    "freeze": null,
+    "multi_scale": 0.0,
+    "compile": false,
+    "overlap_mask": true,
+    "mask_ratio": 4,
+    "dropout": 0.0,
+    "val": true,
+    "split": "val",
+    "save_json": false,
+    "conf": null,
+    "iou": 0.7,
+    "max_det": 300,
+    "half": false,
+    "dnn": false,
+    "plots": true,
+    "end2end": null,
+    "source": null,
+    "vid_stride": 1,
+    "stream_buffer": false,
+    "visualize": false,
+    "augment": false,
+    "agnostic_nms": false,
+    "classes": null,
+    "retina_masks": false,
+    "embed": null,
+    "show": false,
+    "save_frames": false,
+    "save_txt": false,
+    "save_conf": false,
+    "save_crop": false,
+    "show_labels": true,
+    "show_conf": true,
+    "show_boxes": true,
+    "line_width": null,
+    "format": "torchscript",
+    "keras": false,
+    "optimize": false,
+    "int8": false,
+    "dynamic": false,
+    "simplify": true,
+    "opset": null,
+    "workspace": null,
+    "nms": false,
+    "lr0": 0.001,
+    "lrf": 0.01,
+    "momentum": 0.937,
+    "weight_decay": 0.0005,
+    "warmup_epochs": 3.0,
+    "warmup_momentum": 0.8,
+    "warmup_bias_lr": 0.1,
+    "box": 7.5,
+    "cls": 0.5,
+    "cls_pw": 0.0,
+    "dfl": 1.5,
+    "pose": 12.0,
+    "kobj": 1.0,
+    "rle": 1.0,
+    "angle": 1.0,
+    "nbs": 64,
+    "hsv_h": 0.015,
+    "hsv_s": 0.7,
+    "hsv_v": 0.4,
+    "degrees": 0.0,
+    "translate": 0.1,
+    "scale": 0.5,
+    "shear": 0.0,
+    "perspective": 0.0,
+    "flipud": 0.0,
+    "fliplr": 0.5,
+    "bgr": 0.0,
+    "mosaic": 1.0,
+    "mixup": 0.0,
+    "cutmix": 0.0,
+    "copy_paste": 0.0,
+    "copy_paste_mode": "flip",
+    "auto_augment": "randaugment",
+    "erasing": 0.4,
+    "cfg": null,
+    "tracker": "botsort.yaml",
+    "save_dir": "/content/site-safe/ai-module/runs/train/sitesafe_v5"
+  },
+  "held_out_test": {
+    "evaluated_at_utc": "2026-09-02T01:19:25.757898+00:00",
+    "weights": "/content/site-safe/ai-module/runs/train/sitesafe_v5/weights/best.pt",
+    "split": "test",
+    "evaluation_args": {
+      "data": "/content/site-safe/ai-module/ppe_dataset/data.yaml",
+      "split": "test",
+      "imgsz": 640,
+      "batch": 16,
+      "device": 0,
+      "workers": 2,
+      "seed": 42,
+      "deterministic": true,
+      "plots": true,
+      "project": "/content/site-safe/ai-module/runs/test",
+      "name": "sitesafe_v5_held_out",
+      "exist_ok": false
+    },
+    "overall": {
+      "precision": 0.46661160994084083,
+      "recall": 0.7281439438415064,
+      "map50": 0.5621473875982959,
+      "map50_95": 0.3447063797818455
+    },
+    "per_class": [
+      {
+        "class_id": 0,
+        "class_name": "boots",
+        "test_instances": 412,
+        "precision": 0.8448968533019631,
+        "recall": 0.9975728155339806,
+        "map50": 0.9770249994585112,
+        "map50_95": 0.779123622477748
+      },
+      {
+        "class_id": 1,
+        "class_name": "gloves",
+        "test_instances": 136,
+        "precision": 0.22234577785586818,
+        "recall": 0.3161764705882353,
+        "map50": 0.2761388609685195,
+        "map50_95": 0.1404320245031097
+      },
+      {
+        "class_id": 2,
+        "class_name": "goggles",
+        "test_instances": 57,
+        "precision": 0.46987612404820317,
+        "recall": 0.7930810000470823,
+        "map50": 0.6348113033396892,
+        "map50_95": 0.2840548109536567
+      },
+      {
+        "class_id": 3,
+        "class_name": "helmet",
+        "test_instances": 609,
+        "precision": 0.8931463285368,
+        "recall": 0.9589490968801314,
+        "map50": 0.9576436959618868,
+        "map50_95": 0.6213992309975348
+      },
+      {
+        "class_id": 4,
+        "class_name": "no-boots",
+        "test_instances": 19,
+        "precision": 0.12668849234115198,
+        "recall": 0.5956645233823398,
+        "map50": 0.12973509041302758,
+        "map50_95": 0.1060893543880499
+      },
+      {
+        "class_id": 5,
+        "class_name": "no-gloves",
+        "test_instances": 31,
+        "precision": 0.1086772487015744,
+        "recall": 0.3225806451612903,
+        "map50": 0.06178938802958024,
+        "map50_95": 0.02288237396066475
+      },
+      {
+        "class_id": 6,
+        "class_name": "no-goggles",
+        "test_instances": 88,
+        "precision": 0.32082614847761315,
+        "recall": 0.75,
+        "map50": 0.5304624301327143,
+        "map50_95": 0.19432609684668506
+      },
+      {
+        "class_id": 7,
+        "class_name": "no-helmet",
+        "test_instances": 42,
+        "precision": 0.2491472547354387,
+        "recall": 0.7142857142857143,
+        "map50": 0.3094719094950562,
+        "map50_95": 0.13771721428518743
+      },
+      {
+        "class_id": 8,
+        "class_name": "no-vest",
+        "test_instances": 116,
+        "precision": 0.5780062714016795,
+        "recall": 0.8793103448275862,
+        "map50": 0.7818970628815202,
+        "map50_95": 0.3879886413857752
+      },
+      {
+        "class_id": 9,
+        "class_name": "vest",
+        "test_instances": 563,
+        "precision": 0.8525056000081163,
+        "recall": 0.9538188277087034,
+        "map50": 0.962499135302454,
+        "map50_95": 0.7730504280200444
+      }
+    ]
+  }
+}

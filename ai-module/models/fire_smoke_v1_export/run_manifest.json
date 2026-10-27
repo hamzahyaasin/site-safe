@@ -1,0 +1,60 @@
+{
+  "status": "training_and_held_out_test_completed",
+  "platform": "kaggle",
+  "model_source": "yolo11s.pt",
+  "train_args": {
+    "data": "/tmp/fire_dataset_v1/data.yaml",
+    "epochs": 100,
+    "imgsz": 640,
+    "batch": 16,
+    "patience": 20,
+    "optimizer": "AdamW",
+    "lr0": 0.001,
+    "seed": 42,
+    "deterministic": true,
+    "device": 0,
+    "workers": 4,
+    "project": "/kaggle/working/runs/fire",
+    "name": "fire_smoke_v1",
+    "exist_ok": false,
+    "plots": true
+  },
+  "epochs_completed": 96,
+  "training_seconds": 25210,
+  "time_guard": {
+    "max_train_hours": 10.0,
+    "stopped_by_time_guard": false
+  },
+  "weights_sha256": "4bdbf70218da49dac240720a4c9928f2853b954262d2a4ef12c3b0eee2e38d10",
+  "environment": {
+    "python": "3.13.15",
+    "ultralytics": "8.4.41",
+    "torch": "2.11.0+cu128",
+    "gpu": "Tesla T4"
+  },
+  "dataset": {
+    "counts": {
+      "train": {
+        "images": 15469,
+        "negatives": 7040,
+        "smoke": 8575,
+        "fire": 10530
+      },
+      "val": {
+        "images": 1738,
+        "negatives": 793,
+        "fire": 1233,
+        "smoke": 950
+      },
+      "test": {
+        "images": 4294,
+        "negatives": 2005,
+        "smoke": 2298,
+        "fire": 2862
+      }
+    },
+    "skipped_images": 26
+  },
+  "notebook_seconds": 25376,
+  "finished_at_utc": "2026-10-27T02:09:44.279935+00:00"
+}

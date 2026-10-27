@@ -1,0 +1,56 @@
+{
+  "status": "training",
+  "started_at_utc": "2026-10-22T14:54:26.302646+00:00",
+  "model_source": "yolo11s.pt",
+  "train_args": {
+    "data": "/Users/hamza/code/site-safe/ai-module/fire/datasets/fire_v1/data.yaml",
+    "epochs": 100,
+    "imgsz": 640,
+    "batch": 16,
+    "patience": 20,
+    "optimizer": "AdamW",
+    "lr0": 0.001,
+    "seed": 42,
+    "deterministic": false,
+    "device": "mps",
+    "workers": 4,
+    "fraction": 1.0,
+    "project": "/Users/hamza/code/site-safe/ai-module/runs/fire",
+    "name": "fire_smoke_v1",
+    "exist_ok": false,
+    "plots": true,
+    "time": 9.0
+  },
+  "environment": {
+    "python": "3.14.3",
+    "ultralytics": "8.4.41",
+    "torch": "2.11.0",
+    "device": "mps",
+    "machine": "Darwin arm64"
+  },
+  "dataset": {
+    "source": "/Users/hamza/code/site-safe/ai-module/fire/datasets/D-Fire",
+    "counts": {
+      "train": {
+        "images": 15469,
+        "negatives": 7040,
+        "smoke": 8575,
+        "fire": 10530
+      },
+      "val": {
+        "images": 1738,
+        "negatives": 793,
+        "fire": 1233,
+        "smoke": 950
+      },
+      "test": {
+        "images": 4294,
+        "negatives": 2005,
+        "smoke": 2298,
+        "fire": 2862
+      }
+    },
+    "skipped_images": 26
+  },
+  "notes": "deterministic=False: some MPS kernels have no deterministic version; the seed is still fixed."
+}

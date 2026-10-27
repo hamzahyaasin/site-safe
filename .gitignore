@@ -48,3 +48,7 @@ tools/measure/results/
 
 # Downloaded fire/smoke datasets and their prepared copies (large; see ai-module/fire/)
 ai-module/fire/datasets/
+
+# Model weights are large; their evidence folders (*_export) are tracked
+ai-module/models/*.pt
+ai-module/models/**/*.pt
