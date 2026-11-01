@@ -1,5 +1,7 @@
 # Scope change request: Smart Vest hardware
 
+> **Withdrawn, 1 November 2026.** The team decided to build the vest after all, with a gas sensor and Wi-Fi instead of LoRa (firmware in `firmware/`, report Section 4.2.2). This unsigned draft is kept only as a record.
+
 **Project:** Site-Safe: AI-based construction site safety monitoring
 **Students:** _[names, roll numbers]_
 **Supervisor:** _[name]_

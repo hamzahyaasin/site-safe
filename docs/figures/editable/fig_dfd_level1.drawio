@@ -25,7 +25,7 @@
         <mxCell id="c9" value="" style="ellipse;html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;" vertex="1" parent="1">
           <mxGeometry x="180.0" y="150.7" width="110.4" height="53.8" as="geometry" />
         </mxCell>
-        <mxCell id="c10" value="" style="ellipse;html=1;whiteSpace=wrap;fillColor=#e0f2fe;strokeColor=#0369a1;strokeWidth=1.20;dashed=0;" vertex="1" parent="1">
+        <mxCell id="c10" value="" style="ellipse;html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;" vertex="1" parent="1">
           <mxGeometry x="180.0" y="275.5" width="110.4" height="53.8" as="geometry" />
         </mxCell>
         <mxCell id="c11" value="" style="ellipse;html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;" vertex="1" parent="1">
@@ -232,11 +232,11 @@
         <mxCell id="c48" value="Firebase push, e-mail" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
           <mxGeometry x="12.1" y="24.1" width="95.8" height="9.5" as="geometry" />
         </mxCell>
-        <mxCell id="c49" value="Smart Vest Gateway" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.3;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
-          <mxGeometry x="7.2" y="5.9" width="105.6" height="13.1" as="geometry" />
+        <mxCell id="c49" value="Smart Vest" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.3;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="30.5" y="5.9" width="59.0" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c50" value="hardware or simulator" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
-          <mxGeometry x="11.9" y="24.1" width="96.3" height="9.4" as="geometry" />
+        <mxCell id="c50" value="device or simulator" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="18.0" y="24.1" width="84.0" height="9.4" as="geometry" />
         </mxCell>
         <mxCell id="c51" value="Admin" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.3;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
           <mxGeometry x="41.5" y="5.9" width="37.0" height="13.1" as="geometry" />
@@ -337,8 +337,8 @@
         <mxCell id="c83" value="reports" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="494.9" y="136.0" width="34.3" height="9.8" as="geometry" />
         </mxCell>
-        <mxCell id="c84" value="Entities and flows are those of Figure 3.10 (Level 0). Processes 1 and 2 run on the edge and the vest gateway, 3 to 5 on the server." style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#4b5563;fontStyle=2;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
-          <mxGeometry x="2.9" y="473.1" width="555.7" height="10.0" as="geometry" />
+        <mxCell id="c84" value="Entities and flows are those of Figure 3.10 (Level 0). Process 1 runs on the edge, 2 to 5 on the server." style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#4b5563;fontStyle=2;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
+          <mxGeometry x="2.9" y="473.1" width="432.4" height="10.0" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

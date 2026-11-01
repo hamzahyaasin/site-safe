@@ -8,7 +8,7 @@ Fixed on 21 Oct 2026: the shared table helper in `update_fyp_report.py` wrote wi
 
 ## Length
 
-Body text of Chapters 1–6, excluding headings, captions, tables, front matter, chapter title pages, appendices and references: **about 10,498 words** (the guideline allows 8,500–10,500, so there is no room left). The Chapter 5 charts of 1 Nov 2026 added 4 words net (the text tightened to pay for the references to them), and the restricted-zone sentence in 3.3.2 (decision B1) 3 more. The reference fix of 1 Nov 2026 added 20 words, all of them citation numbers; the rewritten Chapter 1 and 2 paragraphs are no longer than before. Tables in the chapters add 2,969 words and the appendices 2,006.
+Body text of Chapters 1–6, excluding headings, captions, tables, front matter, chapter title pages, appendices and references: **about 10,495 words** (the guideline allows 8,500–10,500, so there is almost no room left). The Chapter 5 charts of 1 Nov 2026 added 4 words net (the text tightened to pay for the references to them), and the restricted-zone sentence in 3.3.2 (decision B1) 3 more. The reference fix of 1 Nov 2026 added 20 words, all of them citation numbers; the rewritten Chapter 1 and 2 paragraphs are no longer than before. Tables in the chapters add 2,969 words and the appendices 2,006.
 
 Tables 4.7, 4.8, 5.2, 5.7 and 5.8 (1,309 words) moved to Appendices III and IV on 26 Oct 2026; the builder renumbers the tables left behind and rewrites every reference. The new requirements tables in Chapter 3 add 1,676 words, so if the examiners count table text, the chapters are over the cap either way; moving Table 3.4 (functional requirements, 580 words) to an appendix would be the next step.
 
@@ -49,6 +49,22 @@ The text now covers everything built in Phases 0–2, and the body stays within 
 | Appendices | Table I.1/I.2 tasks for cameras, danger areas, camera placement and the mobile map; Table II.1 adds `setup_demo`; Tables III.1/III.2 add the camera endpoints and tables. The full manual is `docs/USER_MANUAL.md`. |
 
 Rebuilt and rendered in Word on 27 Oct 2026: 95 pages; every one of the 147 contents and list entries matches the page it lands on in the final render.
+
+## Updated on 1 Nov 2026 (the Smart Vest is built, not future work)
+
+The owner decided to build the vest, with a gas sensor and Wi-Fi instead of LoRa. Every passage that called the vest future work or a scope-change request now describes the vest as designed and implemented, with its hardware being assembled; nothing claims a field test.
+
+| Where | Change |
+|---|---|
+| Abstract, objective 8, 1.4, 1.7, 3.1, 3.2.1 | Vest with GPS, SOS and gas over Wi-Fi; firmware and server path implemented and tested; hardware being assembled |
+| 3.4.2, 3.4.3, 3.10 | MQ-2 gas sensor added; power from a USB power bank; 3.4.3 renamed Vest Communication Layer, explaining why Wi-Fi replaced LoRa (LoRa stays as the upgrade for large sites); limitation now Wi-Fi range and an uncalibrated gas estimate |
+| 4.2.2 | Rewritten: the parts, the firmware (SOS press and hold-to-cancel, MQ-2 warm-up, calibration and ppm estimate), the GAS alert, compiled but not yet field-tested |
+| Figures 3.3, 3.4, 3.6, 3.7, 3.10, 4.5, 4.8 | Redrawn for the vest as built: no LoRa receiver, MQ-2 and power bank in the block diagram, gas in the flowchart and sequence |
+| Tables 2.1, 3.3, 3.4, 3.7, 3.9, 4.2, 4.3, 5.2, 6.1, III.1, III.2, IV.2 | Vest rows updated; Tables 4.2 and 4.3 are the real parts and wiring (no longer "proposed"); two end-to-end rows added (restricted-zone camera, vest gas and SOS) |
+| Table 5.1, abstract, 3.8 feasibility, 5.3, 6.1 | 503 tests (was 470), re-run 1 Nov on SQLite and PostgreSQL, with a new firmware-logic suite |
+| References, abbreviations | MQ-2 datasheet added (33 entries); ADC and LPG added, unused LoRaWAN removed |
+
+Body text stays within the limit (about 10,495 words); every rewrite replaced text rather than adding to it.
 
 ## Updated on 1 Nov 2026 (layout, Chapter 5 charts, sharper screenshots)
 
@@ -127,7 +143,7 @@ Since 1 Nov 2026 each chapter and appendix is its own Word section that starts a
 
 ## Please check before submission
 
-1. **Smart Vest approval.** The report says the hardware "was moved to future work through a scope-change request to the supervisor". Once `docs/SCOPE_CHANGE_SMART_VEST.md` is signed, change this to "approved by the supervisor" (in objective 8, Section 1.4 and Section 4.2.2).
+1. **Smart Vest.** Since 1 Nov 2026 the report says the vest's firmware and server path are implemented and tested and its hardware "is being assembled" (objective 8, Sections 1.4, 3.1, 3.2.1, 3.4, 4.2.2, 5.9, 6.3). That is true only while you are building it. After the bench test, replace "being assembled" with the measured results (SOS delay, GPS time to first fix, gas response); if the vest is not built before submission, the wording must change back.
 2. **Labour Force Survey and Chapter 2 citations.** Fixed on 1 Nov 2026 (see "References" below).
 4. **Epochs.** "Stopped after 102 of 150 epochs, best at epoch 77" comes from the team's earlier notes. The exported manifest has no per-epoch results, so keep the Colab log as evidence.
 5. **Title page.** It still says LAHORE and April 2026. Update the date and confirm the campus.

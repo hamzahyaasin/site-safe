@@ -211,6 +211,11 @@ def replace_chapter_body(doc: Document, first_heading: str, elements) -> None:
 def edit_chapters_1_to_3(doc: Document) -> None:
     for prefix, text in C.CHAPTER_1_TO_3_EDITS:
         U.set_paragraph_text(U.find_paragraph(doc, prefix, exact=False), text)
+    for old, new in C.HEADING_RENAMES:
+        runs = U.find_paragraph(doc, old).runs
+        runs[0].text = new
+        for run in runs[1:]:
+            run.text = ""
     comparison = U.table_after_caption(doc, "Table 2.1: Comparison of Existing Systems/Devices Against Site-Safe")
     for prefix, values in C.TABLE_21_ROWS:
         rows = [r for r in comparison.rows if r.cells[0].text.strip().startswith(prefix)]

@@ -76,11 +76,11 @@
         <mxCell id="c19" value="site video stream" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
           <mxGeometry x="26.8" y="24.1" width="76.0" height="9.4" as="geometry" />
         </mxCell>
-        <mxCell id="c20" value="Smart Vest Gateway" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
-          <mxGeometry x="8.9" y="5.9" width="111.8" height="13.1" as="geometry" />
+        <mxCell id="c20" value="Smart Vest" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="33.7" y="5.9" width="62.2" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c21" value="hardware or simulator" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
-          <mxGeometry x="16.7" y="24.1" width="96.3" height="9.4" as="geometry" />
+        <mxCell id="c21" value="device or simulator" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="22.8" y="24.1" width="84.0" height="9.4" as="geometry" />
         </mxCell>
         <mxCell id="c22" value="Admin" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
           <mxGeometry x="45.4" y="5.9" width="38.8" height="13.1" as="geometry" />
