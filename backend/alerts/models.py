@@ -11,6 +11,7 @@ class AlertType(models.TextChoices):
     FIRE = "FIRE", "Fire"
     SMOKE = "SMOKE", "Smoke"
     DANGER_AREA = "DANGER_AREA", "Danger area"
+    GAS = "GAS", "Gas"
 
 
 class Severity(models.TextChoices):

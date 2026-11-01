@@ -6,7 +6,7 @@
 // give counts, resolution times and violation-free days instead, and state
 // how each is defined.
 
-const ALERT_TYPES = ['PPE_VIOLATION', 'FALL', 'FIRE', 'SMOKE', 'DANGER_AREA', 'SOS', 'ZONE_BREACH', 'INACTIVITY', 'VEHICLE_PROXIMITY']
+const ALERT_TYPES = ['PPE_VIOLATION', 'FALL', 'FIRE', 'SMOKE', 'DANGER_AREA', 'SOS', 'GAS', 'ZONE_BREACH', 'INACTIVITY', 'VEHICLE_PROXIMITY']
 const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
 const UNATTRIBUTED = 'Unattributed'
 

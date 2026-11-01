@@ -7,6 +7,11 @@ export function formatType(type: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** A vest's last gas reading ("2,400 ppm"), or null if it has not sent one. */
+export function formatGas(vest: { gas_ppm?: number | null } | null | undefined): string | null {
+  return vest?.gas_ppm == null ? null : `${vest.gas_ppm.toLocaleString('en-US')} ppm`;
+}
+
 export function timeAgo(iso: string | null, now = Date.now()): string {
   if (!iso) return 'never';
   const mins = Math.floor((now - new Date(iso).getTime()) / 60000);

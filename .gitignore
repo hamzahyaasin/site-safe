@@ -52,3 +52,6 @@ ai-module/fire/datasets/
 # Model weights are large; their evidence folders (*_export) are tracked
 ai-module/models/*.pt
 ai-module/models/**/*.pt
+
+# Smart vest firmware: Wi-Fi password and device key
+firmware/smart_vest/config.h

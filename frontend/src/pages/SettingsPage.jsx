@@ -9,7 +9,7 @@ import { useSettings } from '../hooks/useSettings.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
 // Fire is never suppressed and SOS is the last resort: the API keeps both enabled.
-const ALWAYS_ENABLED = new Set(['SOS', 'FIRE'])
+const ALWAYS_ENABLED = new Set(['SOS', 'FIRE', 'GAS'])
 
 const TABS = [
   { id: 'alerts', label: 'Alert Configuration' },

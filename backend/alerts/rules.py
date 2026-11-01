@@ -2,16 +2,17 @@
 
 A zone-specific rule overrides the global rule (``zone`` null) for the same
 alert type. When neither exists the built-in default applies: enabled, with
-push and email notification on. SOS and FIRE can never be disabled: a panic
-button or a fire must always reach the command centre (hot work is handled
-by permits, which lower severity, never by switching fire alerts off).
+push and email notification on. SOS, FIRE and GAS can never be disabled: a
+panic button, a fire or a gas leak must always reach the command centre (hot
+work is handled by permits, which lower severity, never by switching fire
+alerts off).
 """
 
 from dataclasses import dataclass
 
 from .models import AlertConfig, AlertType
 
-ALWAYS_ENABLED = frozenset({AlertType.SOS, AlertType.FIRE})
+ALWAYS_ENABLED = frozenset({AlertType.SOS, AlertType.FIRE, AlertType.GAS})
 DEFAULT_THRESHOLD_SECONDS = 300
 
 

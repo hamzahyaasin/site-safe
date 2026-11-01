@@ -199,6 +199,12 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "sitesafe@localhost")
 
 # A vest that has not reported for this long is shown as offline.
 VEST_OFFLINE_AFTER_SECONDS = int(os.environ.get("VEST_OFFLINE_AFTER_SECONDS", "120"))
+# Vest gas sensor (MQ-2, uncalibrated, LPG-equivalent ppm estimated by the
+# vest). A reading at or above GAS_ALERT_PPM raises one GAS alert; the next
+# needs the level below it for GAS_CLEAR_SECONDS first. 2000 ppm is about a
+# tenth of LPG's lower explosive limit (2.1 % by volume).
+GAS_ALERT_PPM = int(os.environ.get("GAS_ALERT_PPM", "2000"))
+GAS_CLEAR_SECONDS = int(os.environ.get("GAS_CLEAR_SECONDS", "60"))
 
 # Camera-based location. A badge sighting places a worker in the camera's
 # zone for this long (cameras report sightings every 15 s); after that they

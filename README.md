@@ -125,16 +125,20 @@ python manage.py run_presence_monitor
 
 A vest counts as online only while it keeps reporting. If it is silent for longer than `VEST_OFFLINE_AFTER_SECONDS` (default 120), the API shows it as offline even without this process. The monitor records the change and pushes it to open dashboards every 30 seconds.
 
+### Smart Vest
+
+The vest is an ESP32 with a GPS module, an SOS button and an MQ-2 gas sensor that reports over Wi-Fi to `/api/v1/vests/telemetry/`. Parts, wiring, flashing and a bench test are in [firmware/README.md](firmware/README.md). A gas reading at or above `GAS_ALERT_PPM` (default 2000) raises one GAS alert per exposure; the next needs the level below it for `GAS_CLEAR_SECONDS` (60).
+
 ### Vest simulator (no hardware)
 
-The physical Smart Vest is proposed future work (see `docs/SCOPE_CHANGE_SMART_VEST.md`). To demonstrate the vest features, the simulator sends the same telemetry a vest gateway would:
+To demonstrate the vest features without the device, the simulator sends the same telemetry a vest does:
 
 ```bash
 python manage.py create_service_token vest-sim --kind VEST_GATEWAY --simulator
 SITESAFE_DEVICE_KEY=ss_... python tools/vest_simulator.py tools/vest_scenarios/demo.json --speedup 5
 ```
 
-Register the scenario's vests and assign them to workers first. Each vest walks its waypoints. A vest can press SOS on reaching a given waypoint (`sos_at`) or go silent after one (`stop_at`) to show offline detection. Everything sent with a `--simulator` token is marked SIMULATED: it is labelled in the dashboard and app and excluded from report figures. `--dry-run` prints the messages without sending them.
+Register the scenario's vests and assign them to workers first. Each vest walks its waypoints. A vest can press SOS on reaching a given waypoint (`sos_at`) or go silent after one (`stop_at`) to show offline detection. `gas_ppm` gives it a steady gas reading, and `gas_leak_at` raises that to `gas_leak_ppm` for `gas_leak_seconds` from a waypoint on. Everything sent with a `--simulator` token is marked SIMULATED: it is labelled in the dashboard and app and excluded from report figures. `--dry-run` prints the messages without sending them.
 
 ### Zones and automatic breaches
 

@@ -4,7 +4,7 @@ import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { Badge, Empty, ErrorText, Screen, styles } from '@/components/ui';
 import { C } from '@/constants/theme';
 import { useLiveList } from '@/hooks/useLiveList';
-import { describeLocation, timeAgo, workerPresence } from '@/lib/format';
+import { describeLocation, formatGas, timeAgo, workerPresence } from '@/lib/format';
 import { reduceWorkers } from '@/lib/reducers';
 import type { Worker } from '@/lib/types';
 
@@ -55,7 +55,8 @@ export default function Workers() {
               </Text>
               <Text style={styles.faint}>
                 {vest
-                  ? `${vest.vest_id} · last report ${timeAgo(vest.last_seen)} · battery ${vest.battery_level === null ? 'unknown' : `${vest.battery_level}%`}`
+                  ? `${vest.vest_id} · last report ${timeAgo(vest.last_seen)} · battery ${vest.battery_level === null ? 'unknown' : `${vest.battery_level}%`}` +
+                    (formatGas(vest) ? ` · gas ${formatGas(vest)}${vest.gas_over_limit ? ' (over limit)' : ''}` : '')
                   : 'No vest assigned'}
               </Text>
             </View>

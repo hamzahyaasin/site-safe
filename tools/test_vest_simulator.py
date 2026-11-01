@@ -39,6 +39,21 @@ class SimulatorTests(unittest.TestCase):
         self.assertLess(last.t, sim.route_seconds(self.vest(speed_mps=10.0)))
         self.assertAlmostEqual(last.payload["longitude"], 0.001, places=4)
 
+    def test_gas_baseline_then_leak_for_its_duration(self):
+        frames = sim.build_frames(
+            [self.vest(speed_mps=10.0, gas_ppm=300, gas_leak_at=1, gas_leak_ppm=2800, gas_leak_seconds=6)],
+            interval=2,
+            hold=20,
+        )
+        levels = [f.payload["gas_ppm"] for f in frames]
+        self.assertEqual(levels[0], 300)
+        self.assertEqual(levels.count(2800), 3, "6 s of leak at one report every 2 s")
+        self.assertEqual(levels[-1], 300, "back to the baseline after the leak")
+
+    def test_no_gas_field_without_a_sensor(self):
+        frames = sim.build_frames([self.vest(speed_mps=10.0)], interval=2)
+        self.assertFalse(any("gas_ppm" in f.payload for f in frames))
+
     def test_battery_drains_and_is_bounded(self):
         v = self.vest(battery_start=10, battery_drain_per_min=60)
         self.assertEqual(sim._battery(v, 0)["battery_level"], 10)
@@ -55,6 +70,7 @@ class SimulatorTests(unittest.TestCase):
         self.assertEqual([v.vest_id for v in vests], ["VEST-001", "VEST-002"])
         frames = sim.build_frames(vests, interval, hold)
         self.assertTrue(any(f.payload.get("sos_active") for f in frames if f.vest_id == "VEST-002"))
+        self.assertTrue(any(f.payload.get("gas_ppm", 0) >= 2000 for f in frames if f.vest_id == "VEST-001"))
 
     def test_dry_run_needs_no_key(self):
         with contextlib.redirect_stdout(io.StringIO()) as out:

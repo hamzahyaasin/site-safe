@@ -74,6 +74,9 @@ jobs:
       - run: python -m unittest test_vest_simulator
       - run: python -m unittest test_measure test_evaluate_clip
         working-directory: tools/measure
+      - name: Smart vest firmware logic
+        run: c++ -std=c++17 -Wall -Wextra -Werror -I firmware/smart_vest firmware/test/test_vest_logic.cpp -o vest_test && ./vest_test
+        working-directory: .
 
   report-service:
     runs-on: ubuntu-latest

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { CircleMarker, MapContainer, Polygon, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { formatTimestamp } from '../../lib/utils.js'
+import { formatGas, formatTimestamp } from '../../lib/utils.js'
 import CameraLayer from './CameraLayer.jsx'
 
 const RISK_COLOR = {
@@ -143,9 +143,9 @@ export default function SiteMap({
           <CircleMarker
             key={vest.id}
             center={[vest.latitude, vest.longitude]}
-            radius={vest.sos_active ? 9 : 7}
+            radius={vest.sos_active || vest.gas_over_limit ? 9 : 7}
             pathOptions={{
-              color: vest.sos_active ? '#ef4444' : vest.is_online ? '#22c55e' : '#71717a',
+              color: vest.sos_active || vest.gas_over_limit ? '#ef4444' : vest.is_online ? '#22c55e' : '#71717a',
               fillOpacity: 0.85,
               weight: 2,
             }}
@@ -153,6 +153,7 @@ export default function SiteMap({
             <Tooltip>
               {vest.worker_name || 'Unassigned'} ({vest.vest_id})
               {vest.sos_active ? ' · SOS' : vest.is_online ? ' · online' : ' · offline'}
+              {formatGas(vest) ? ` · gas ${formatGas(vest)}${vest.gas_over_limit ? ' (over limit)' : ''}` : ''}
               <br />
               Last report {formatTimestamp(vest.last_seen)}
             </Tooltip>

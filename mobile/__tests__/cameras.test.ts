@@ -99,6 +99,18 @@ test('site map data: zones with head counts, located vests, placed cameras with 
   expect(data.cameras[0].cone.length).toBeGreaterThan(3);
 });
 
+test('site map: a vest over the gas limit is red and shows its reading', () => {
+  const vests = [
+    { id: 1, vest_id: 'V1', worker_name: 'Ali', latitude: 1, longitude: 2, sos_active: false, is_online: true, gas_ppm: 2400, gas_over_limit: true },
+    { id: 2, vest_id: 'V2', worker_name: 'Sara', latitude: 1, longitude: 2, sos_active: false, is_online: true, gas_ppm: 350, gas_over_limit: false },
+  ] as SmartVest[];
+  const data = siteMapData([], vests, [], {}, 1000);
+  expect(data.vests.map((v) => [v.label, v.color])).toEqual([
+    ['Ali (V1) · gas 2,400 ppm (over limit)', '#ef4444'],
+    ['Sara (V2) · gas 350 ppm', '#22c55e'],
+  ]);
+});
+
 test('the map page pins Leaflet by integrity hash and escapes names it shows', () => {
   const html = siteMapHtml([33.68, 73.04]);
   expect(html).toContain('leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="');

@@ -121,6 +121,11 @@ export function getWorkerPresence(worker) {
   return { label: 'NOT SEEN YET', variant: 'neutral', lastSeen: null }
 }
 
+/** A vest's last gas reading ("2,400 ppm"), or null if it has not sent one (no sensor, or warming up). */
+export function formatGas(vest) {
+  return vest?.gas_ppm == null ? null : `${vest.gas_ppm.toLocaleString('en-US')} ppm`
+}
+
 /** "In Bay 1 · CAM-02", "Last seen in Bay 1 · CAM-02", or null if never placed. */
 export function describeLocation(worker) {
   const loc = worker.location

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Smart vest simulator for demonstrations and integration tests.
 
-Sends vest telemetry (GPS, battery, SOS) to the Site-Safe vest gateway API
+Sends vest telemetry (GPS, battery, SOS, gas) to the Site-Safe vest gateway API
 exactly as a physical vest gateway would, so zone history, restricted-zone
 and capacity breaches, SOS alerts, offline detection and the live map can be
 shown without hardware.
@@ -16,7 +16,9 @@ from report figures:
 A scenario lists vests (which must already be registered) with waypoints.
 Each vest walks its waypoints at the given speed and can press SOS when it
 reaches a waypoint index (``sos_at``) or go silent after one (``stop_at``)
-to show offline detection.
+to show offline detection. A vest with ``gas_ppm`` reports that gas level
+throughout, and ``gas_leak_at`` raises it to ``gas_leak_ppm`` for
+``gas_leak_seconds`` from that waypoint on, to show the GAS alert.
 """
 
 from __future__ import annotations
@@ -48,6 +50,10 @@ class Vest:
     battery_drain_per_min: float = 0.5
     sos_at: int | None = None
     stop_at: int | None = None
+    gas_ppm: int | None = None
+    gas_leak_at: int | None = None
+    gas_leak_ppm: int = 3000
+    gas_leak_seconds: float = 30.0
 
     @classmethod
     def from_dict(cls, d: dict) -> "Vest":
@@ -65,6 +71,10 @@ class Vest:
             battery_drain_per_min=float(d.get("battery_drain_per_min", 0.5)),
             sos_at=d.get("sos_at"),
             stop_at=d.get("stop_at"),
+            gas_ppm=d.get("gas_ppm"),
+            gas_leak_at=d.get("gas_leak_at"),
+            gas_leak_ppm=int(d.get("gas_leak_ppm", 3000)),
+            gas_leak_seconds=float(d.get("gas_leak_seconds", 30)),
         )
 
 
@@ -105,6 +115,7 @@ def build_frames(vests: list[Vest], interval: float, hold: float = 0.0) -> list[
         end = route_seconds(vest) + hold
         t = 0.0
         sos_sent = False
+        leak_from = None
         while t <= end + 1e-9:
             (lat, lng), reached = position_at(vest, t)
             if vest.stop_at is not None and reached >= vest.stop_at:
@@ -112,6 +123,12 @@ def build_frames(vests: list[Vest], interval: float, hold: float = 0.0) -> list[
                 frames.append(Frame(t, vest.vest_id, {**payload, **_battery(vest, t)}))
                 break  # goes silent: the backend should mark it offline
             payload = {"latitude": round(lat, 7), "longitude": round(lng, 7), **_battery(vest, t)}
+            if vest.gas_leak_at is not None and reached >= vest.gas_leak_at and leak_from is None:
+                leak_from = t
+            if leak_from is not None and t - leak_from < vest.gas_leak_seconds:
+                payload["gas_ppm"] = vest.gas_leak_ppm
+            elif vest.gas_ppm is not None:
+                payload["gas_ppm"] = vest.gas_ppm
             if vest.sos_at is not None and reached >= vest.sos_at and not sos_sent:
                 payload["sos_active"] = True
                 sos_sent = True

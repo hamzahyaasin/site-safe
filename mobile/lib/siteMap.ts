@@ -1,4 +1,5 @@
 import { type Alerting, cameraStatus, STATUS_COLOR, viewCone } from './cameras';
+import { formatGas } from './format';
 import type { MapCamera, SmartVest, Zone } from './types';
 
 // Same colours as the web site map.
@@ -43,8 +44,10 @@ export function siteMapData(
       .map((v) => ({
         id: v.id,
         at: [v.latitude as number, v.longitude as number],
-        color: v.sos_active ? '#ef4444' : v.is_online ? '#22c55e' : '#71717a',
-        label: `${v.worker_name || 'Unassigned'} (${v.vest_id})${v.sos_active ? ' · SOS' : v.is_online ? '' : ' · offline'}`,
+        color: v.sos_active || v.gas_over_limit ? '#ef4444' : v.is_online ? '#22c55e' : '#71717a',
+        label:
+          `${v.worker_name || 'Unassigned'} (${v.vest_id})${v.sos_active ? ' · SOS' : v.is_online ? '' : ' · offline'}` +
+          (formatGas(v) ? ` · gas ${formatGas(v)}${v.gas_over_limit ? ' (over limit)' : ''}` : ''),
       })),
     cameras: cameras
       .filter((c) => c.placement)

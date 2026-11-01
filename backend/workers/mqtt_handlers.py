@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -62,9 +63,11 @@ def _apply(vest_id, payload, source):
         vest.battery_level = payload["battery_level"]
     if "sos_active" in payload:
         vest.sos_active = payload["sos_active"]
+    now = timezone.now()
+    gas_alert = "gas_ppm" in payload and check_gas(vest, payload["gas_ppm"], now)
 
     vest.is_online = True
-    vest.last_seen = timezone.now()
+    vest.last_seen = now
     vest.save()
     # Simulated vests drive alerts and the map but never attendance records.
     if vest.worker and source != AlertSource.SIMULATED:
@@ -82,11 +85,49 @@ def _apply(vest_id, payload, source):
             location={"lat": vest.latitude, "lng": vest.longitude},
         )
 
+    if gas_alert:
+        where = {"lat": vest.latitude, "lng": vest.longitude} if vest.latitude is not None else None
+        Alert.objects.create(
+            worker=vest.worker,
+            alert_type=AlertType.GAS,
+            severity=Severity.CRITICAL,
+            source=source,
+            description=(
+                f"Gas {vest.gas_ppm:,} ppm on {vest.vest_id} (limit {settings.GAS_ALERT_PPM:,})"
+                + (f" at ({vest.latitude}, {vest.longitude})" if where else "")
+            ),
+            location=where,
+        )
+
     # Only a fresh position can move a worker between zones.
     if vest.worker and "latitude" in payload:
         place_by_gps(vest.worker, vest, source)
 
     return vest
+
+
+def check_gas(vest, ppm, now):
+    """Record a gas reading on ``vest``; returns True when it starts a new exposure (raise GAS).
+
+    One alert per exposure: after it, the level must stay below
+    GAS_ALERT_PPM for GAS_CLEAR_SECONDS before another can be raised, so a
+    reading that hovers around the limit does not alert every report.
+    The caller saves the vest.
+    """
+    vest.gas_ppm = ppm
+    over = ppm >= settings.GAS_ALERT_PPM
+    if over:
+        vest.gas_below_since = None
+        if vest.gas_alerted_at is None:
+            vest.gas_alerted_at = now
+            return True
+        return False
+    if vest.gas_alerted_at is not None:
+        if vest.gas_below_since is None:
+            vest.gas_below_since = now
+        elif (now - vest.gas_below_since).total_seconds() >= settings.GAS_CLEAR_SECONDS:
+            vest.gas_alerted_at = vest.gas_below_since = None
+    return False
 
 
 def place_by_gps(worker, vest, source):

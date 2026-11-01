@@ -106,6 +106,15 @@ class SmartVest(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     sos_active = models.BooleanField(default=False)
+    gas_ppm = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Gas level as last reported (MQ-2, LPG-equivalent ppm estimated by the vest); null if none",
+    )
+    # One GAS alert per exposure: set when it is raised, cleared once the
+    # level has stayed below the limit for GAS_CLEAR_SECONDS.
+    gas_alerted_at = models.DateTimeField(null=True, blank=True)
+    gas_below_since = models.DateTimeField(null=True, blank=True)
     is_online = models.BooleanField(default=False)
     last_seen = models.DateTimeField(null=True, blank=True)
     registered_at = models.DateTimeField(auto_now_add=True)

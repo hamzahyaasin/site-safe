@@ -32,6 +32,9 @@ export interface SmartVest {
   latitude: number | null;
   longitude: number | null;
   sos_active: boolean;
+  /** Last gas reading (ppm), null if the vest has not sent one. */
+  gas_ppm?: number | null;
+  gas_over_limit?: boolean;
   is_online: boolean;
   last_seen: string | null;
 }

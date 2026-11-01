@@ -39,7 +39,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-18 | Worker registry: create, edit, deactivate from the UI | M | All three operations work in the browser; one vest per worker | `pages/WorkersPage.jsx`, `WorkerSerializer` (vest assignment), migration workers 0004 | `workers/tests.py` (7); browser check 16 Oct (registered worker with VEST-003) | Integrated |
 | FR-19 | Zones with polygon boundaries and camera assignment | M | Invalid geometry/camera lists rejected; boundary drawn on a map | `sitemap/`, `components/map/SiteMap.jsx`, `ZonesPage.jsx` | `sitemap/tests.py` (7); browser check 16 Oct (3-click polygon saved) | Integrated |
 | FR-20 | Automatic restricted-zone breach and over-occupancy alerts | M | Entering a RESTRICTED polygon unassigned, or exceeding max occupancy, raises one ZONE_BREACH per entry; a restricted zone's camera raises one per stay for a person with no readable badge | `workers/mqtt_handlers.raise_zone_breaches`, `sitemap/geofence.py`; `ai-module/restricted_zone.py`, `CameraConfigView` `zone_restricted`, ZONE_BREACH in `CAMERA_ALERT_TYPES` | `workers/tests.py` ZoneBreachTests (9); `test_restricted_zone.py` (7), `alerts/test_unidentified_breach.py` (4); e2e 16 Oct (telemetry into Crane Pit → live breach); e2e 1 Nov (camera of a restricted zone, test video: 14 unidentified-person breaches with snapshots, badge holders none) | Integrated (GPS simulated by HTTP; camera with a test video) |
-| FR-21 | Smart vest: GPS position, SOS button, LoRa link | M→deferred* | Physical SOS reaches the dashboard; delay and packet loss measured | Server: `workers/`, `run_mqtt_consumer`; `tools/vest_simulator.py` | `workers/tests.py` (incl. SimulatorLabelling 3), `tools/test_vest_simulator.py` (8); e2e 16 Oct: demo scenario → simulated breach + SOS, offline after silence | Software path integrated with simulator; **hardware deferred pending supervisor approval** (`docs/SCOPE_CHANGE_SMART_VEST.md`) |
+| FR-21 | Smart vest: GPS position, SOS button and gas sensor over Wi-Fi (LoRa dropped by the owner, 1 Nov) | M | Physical SOS and a gas leak reach the dashboard; delay measured | Server: `workers/`, `run_mqtt_consumer`, GAS in `mqtt_handlers.check_gas`; `tools/vest_simulator.py`; firmware `firmware/smart_vest/` (ESP32, NEO-6M, MQ-2) | `workers/tests.py` (incl. SimulatorLabelling 3), `workers/test_gas.py` (10), `tools/test_vest_simulator.py` (10), `firmware/test/test_vest_logic.cpp` (7 groups); e2e 16 Oct: demo scenario → simulated breach + SOS, offline after silence; e2e 1 Nov: firmware-generated bodies with a vest key → SOS and one GAS alert, shown on web | Software and firmware tested; **hardware being bought** (pending C12) |
 | FR-22 | Vest telemetry is validated | M | Out-of-range latitude/longitude, a lone coordinate, or battery outside 0–100 returns 400 | `VestTelemetrySerializer` | `alerts/test_ingest.py` | Tested |
 | FR-23 | Vest offline detection | S | No report within `VEST_OFFLINE_AFTER_SECONDS` shows the vest offline | `workers/presence.py`, `run_presence_monitor` | `workers/tests.py` PresenceTests (4); browser check (occupancy dropped to 0 after timeout) | Integrated |
 | FR-24 | Worker activity history (check-in/out, idle, zone transitions) | M | Generated automatically and reconciled with annotated scenarios | `workers/activity.py`, `workers/timeline.py`, camera `SightingThrottle` + idle events, `WorkerTimeline.jsx`, report attendance tables | `workers/test_activity.py` (18), `test_activity_events.py` (5), report-service attendance tests; e2e 20 Oct: camera sightings + idle → 60 min on site, 20 min idle, auto check-out at last sighting; vest session open; timeline and PDF agree | Integrated (**no annotated real-camera scenario yet**) |
@@ -725,4 +725,33 @@ E2E (1 Nov, throwaway database, demo site with Site made RESTRICTED, CAM-01 on a
   The default grace (10 s) raised none on the same video, as each scene lasts 3 s.
 Limits: a whole camera picture counts as the zone (a camera covering two zones is decision B2); a worker who
   never turns their badge to the camera is reported as unidentified
+```
+
+```text
+Phase / task IDs: Smart Vest rebuilt as a real device with a gas sensor (owner, 1 Nov); FR-21, FR-22
+Decision (owner, 1 Nov): build the vest after all, add gas detection, skip LoRa (the vest reports over Wi-Fi)
+Server: SmartVest.gas_ppm (+ gas_alerted_at, gas_below_since; migration workers 0010); AlertType.GAS (alerts
+  0015, rule seeded in 0016), always enabled like SOS and FIRE. Telemetry accepts gas_ppm 0-100,000. A reading
+  >= GAS_ALERT_PPM (2000, about 10 % of LPG's lower explosive limit) raises one CRITICAL GAS alert with the
+  worker and position; the next needs the level below the limit for GAS_CLEAR_SECONDS (60). The vest list
+  gains gas_ppm and gas_over_limit.
+Clients: Gas column and panel row on Vest Management, a Gas chip on worker cards, gas in the map tooltip with
+  the vest dot red over the limit (web and mobile), GAS in the incident filter, Settings shows it always on,
+  Event Simulator button, GAS counted in incident reports.
+Simulator: gas_ppm baseline and gas_leak_at / gas_leak_ppm / gas_leak_seconds; demo.json: VEST-001 leaks
+  2,800 ppm for 20 s at its third waypoint.
+Firmware (firmware/smart_vest): ESP32 DevKit V1, NEO-6M on UART2, SOS button on GPIO27 (press raises, a new
+  3 s hold cancels), MQ-2 on GPIO34 through a 10 k / 20 k divider; 60 s heater warm-up, clean-air R0
+  calibration, LPG-equivalent ppm from the datasheet's two LPG points; reports every 5 s, SOS changes at once
+  and retried every second; no loop step blocks. Logic in vest_logic.h with host tests (run in CI).
+Tests: backend 255 (10 gas); tools 10 (2 new); mobile 26 (1 new); report-service 24; firmware logic 7 groups
+Build: the sketch compiles for "ESP32 Dev Module" with arduino-cli and the esp32 core 3.3.12 plus TinyGPSPlus
+  1.0.3, --warnings all: no warning from the sketch (one fall-through warning inside TinyGPSPlus); 1,037,808
+  bytes of flash (79 %), 49,128 bytes of RAM (14 %). Not yet run on a board.
+E2E (1 Nov, throwaway database, demo site, a non-simulator VEST_GATEWAY key): 7 bodies generated by
+  vest_logic.h (clean air, SOS raised, three over-limit readings, SOS cancelled, clean) all 200; one SOS and one
+  GAS alert (CRITICAL, SMART_VEST, Ali Raza, with position); Vest Management showed 5,442 ppm in red and
+  "over the alert limit"; Incidents listed GAS; Settings showed GAS cannot be disabled.
+Limits: no hardware yet; the MQ-2 is uncalibrated against a reference gas (indicative, not certified) and
+  responds to several gases; no battery level (a power bank does not report one); Wi-Fi range only
 ```

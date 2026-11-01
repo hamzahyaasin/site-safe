@@ -1,7 +1,7 @@
 import Badge from '../ui/Badge.jsx'
 import Button from '../ui/Button.jsx'
 import Input, { Select } from '../ui/Input.jsx'
-import { formatTimestamp } from '../../lib/utils.js'
+import { formatGas, formatTimestamp } from '../../lib/utils.js'
 
 export default function VestDrawer({
   vest,
@@ -112,6 +112,16 @@ export default function VestDrawer({
                   <span className="text-xs tabular-nums text-zinc-400">
                     {vest.battery_level == null ? 'not reported' : `${pct}%`}
                   </span>
+                </dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-xs text-zinc-500">Gas</dt>
+                <dd>
+                  {vest.gas_over_limit ? (
+                    <Badge variant="critical">{formatGas(vest)} — over the alert limit</Badge>
+                  ) : (
+                    <span className="text-xs tabular-nums text-zinc-400">{formatGas(vest) || 'not reported'}</span>
+                  )}
                 </dd>
               </div>
               <div className="flex items-center justify-between">

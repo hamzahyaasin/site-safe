@@ -49,7 +49,7 @@ On the site map:
 
 - A **camera** is green while its live view is current, grey with a dashed cone when offline, and red and pulsing for a minute after it raises an alert. Hover to see how many people it sees; click for its picture, alerts and a link to its live view.
 - A **zone** is coloured by risk (blue low, yellow medium, orange high, red restricted) and labelled with its head count, for example "Site: 2 / 4 present".
-- A **vest** is a dot: green online, grey offline, red during an SOS.
+- A **vest** is a dot: green online, grey offline, red during an SOS or while its gas reading is over the limit.
 
 The **Event Simulator** at the bottom (Safety Officers and Admins) raises test alerts marked SIMULATED, for training. They are kept out of every report figure.
 
@@ -67,6 +67,7 @@ The **Event Simulator** at the bottom (Safety Officers and Admins) raises test a
 | Fire / smoke | seen for 2 s (lower severity inside a zone with a hot-work permit) | the scene has been clear for 30 s |
 | Zone breach | a worker enters a restricted zone they are not assigned to; a restricted zone's camera sees someone without a readable badge for 10 s; or a zone goes over its capacity for 10 s | they leave (for someone unidentified, 10 s out of the camera's view), or the zone is back within capacity for 60 s |
 | SOS | a vest's SOS button is pressed | the SOS is cleared |
+| Gas | a vest's gas sensor reads 2,000 ppm or more (flammable gas such as LPG or methane) | the level has been below that for 1 min |
 
 A camera that reads a worker's QR badge names them on the alert; otherwise it says "Worker not identified". Camera alerts carry the **evidence frame** (the picture at that moment) and the **model version** that detected it.
 
@@ -127,7 +128,7 @@ Next to each area, **On/Off** switches it off while the hazard is absent (for ex
 
 **Timeline** shows a worker's day: when they were first and last seen, time on site, idle time and the zones they visited, from badge sightings and vest reports.
 
-**Vest Management** lists vests with battery, last report and position. **Register vest** adds one by its ID, and a vest is assigned to a worker there or on the worker's form. A vest that stops reporting shows as offline.
+**Vest Management** lists vests with battery, gas level, last report and position. A gas level over the alert limit is shown in red. The gas sensor needs a minute to warm up after the vest is switched on, and must be switched on in clean air; until then no gas level is shown. Its reading is an estimate for spotting a leak, not a certified measurement. On the vest, one press of the button raises an SOS (its light stays on); pressing again and holding for 3 s cancels it. Setting up and flashing a vest is in [firmware/README.md](../firmware/README.md). **Register vest** adds one by its ID, and a vest is assigned to a worker there or on the worker's form. A vest that stops reporting shows as offline.
 
 ## 7. Reports
 
