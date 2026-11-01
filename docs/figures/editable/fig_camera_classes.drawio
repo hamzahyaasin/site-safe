@@ -1,0 +1,169 @@
+<mxfile host="make_figures.py">
+  <diagram name="fig_camera_classes" id="fig_camera_classes">
+    <mxGraphModel grid="0" page="0" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="c3" value="" style="html=1;whiteSpace=wrap;fillColor=#e0f2fe;strokeColor=#0369a1;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="153.6" y="4.8" width="307.2" height="59.5" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" value="" style="html=1;whiteSpace=wrap;fillColor=none;strokeColor=#6b7280;strokeWidth=1.07;dashed=1;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="1.9" y="83.5" width="610.6" height="249.6" as="geometry" />
+        </mxCell>
+        <mxCell id="c5" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="9.6" y="107.5" width="192.0" height="65.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c6" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="211.2" y="107.5" width="192.0" height="65.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c7" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="412.8" y="107.5" width="192.0" height="65.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c8" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="9.6" y="182.4" width="192.0" height="65.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c9" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="211.2" y="182.4" width="192.0" height="65.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c10" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="412.8" y="182.4" width="192.0" height="65.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c11" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="9.6" y="257.3" width="192.0" height="65.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c12" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="211.2" y="257.3" width="192.0" height="65.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c13" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="412.8" y="257.3" width="192.0" height="65.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c14" value="" style="html=1;rounded=0;endArrow=block;endFill=1;startArrow=none;startFill=1;endSize=5;startSize=5;strokeColor=#4b5563;strokeWidth=1.07;dashed=0;exitX=0.500;exitY=1.000;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.500;entryY=0.000;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="c3" target="c4">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="307.2" y="64.3" as="sourcePoint" />
+            <mxPoint x="307.2" y="83.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c15" value="inference.main()" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="108.2" y="5.9" width="90.9" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c16" value="capture loop on raw frames; group_violations(), pick_device()," style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="3.8" y="23.4" width="264.9" height="10.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c17" value="queue_event(), activity_payload()" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="3.8" y="37.3" width="144.7" height="10.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c18" value="helper classes created and called by main()" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=9.1;fontColor=#6b7280;fontStyle=2;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
+          <mxGeometry x="5.8" y="3.0" width="229.7" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c19" value="EventOutbox" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="59.0" y="5.9" width="74.0" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c20" value="enqueue(), deliver_due(), stats()" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="3.8" y="23.4" width="140.1" height="10.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c21" value="SQLite queue, retry ≤ 30 s, dead letters" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="3.8" y="37.8" width="170.1" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c22" value="module: event_outbox.py" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="3.8" y="51.3" width="110.2" height="10.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c23" value="CameraRules" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
+          <mxGeometry x="58.2" y="5.9" width="75.7" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c24" value="refresh(), enabled(), threshold()" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
+          <mxGeometry x="3.8" y="23.8" width="136.7" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c25" value="dashboard rules polled every 60 s" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
+          <mxGeometry x="3.8" y="38.0" width="147.1" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c26" value="module: inference.py" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
+          <mxGeometry x="3.8" y="51.9" width="92.3" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c27" value="QrDecoder" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="64.8" y="5.9" width="62.4" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c28" value="decode()" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="3.8" y="24.1" width="41.5" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c29" value="OpenCV QR → SSW1 badge payloads" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="3.8" y="38.0" width="169.2" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c30" value="module: identity.py" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="3.8" y="51.7" width="82.5" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c31" value="IdentityTracker" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
+          <mxGeometry x="53.7" y="5.9" width="84.5" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c32" value="update(), identify(), identify_box()" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
+          <mxGeometry x="3.8" y="23.4" width="144.0" height="10.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c33" value="badge ↔ person; ambiguous = unknown" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
+          <mxGeometry x="3.8" y="38.0" width="175.6" height="9.5" as="geometry" />
+        </mxCell>
+        <mxCell id="c34" value="module: identity.py" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
+          <mxGeometry x="3.8" y="51.7" width="82.5" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c35" value="SightingThrottle" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="50.5" y="5.9" width="91.0" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c36" value="due()" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="3.8" y="24.1" width="26.1" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c37" value="≤ 1 sighting per badge per minute" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="3.8" y="37.8" width="146.3" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c38" value="module: inference.py" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="3.8" y="51.9" width="92.3" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c39" value="ProximityTracker" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
+          <mxGeometry x="48.0" y="5.9" width="96.0" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c40" value="update()" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
+          <mxGeometry x="3.8" y="23.9" width="39.3" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c41" value="person–vehicle gap (person heights)" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
+          <mxGeometry x="3.8" y="37.8" width="158.2" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c42" value="module: proximity.py" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
+          <mxGeometry x="3.8" y="51.7" width="90.7" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c43" value="InactivityTracker" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c11">
+          <mxGeometry x="49.3" y="5.9" width="93.5" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c44" value="update(), reset(), resumed" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c11">
+          <mxGeometry x="3.8" y="23.8" width="114.7" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c45" value="stationary timeout, resumed tracks" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c11">
+          <mxGeometry x="3.8" y="37.8" width="149.7" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c46" value="module: inactivity.py" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c11">
+          <mxGeometry x="3.8" y="51.7" width="89.0" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c47" value="FallTracker" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c12">
+          <mxGeometry x="64.0" y="5.9" width="63.9" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c48" value="update(), reset()" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c12">
+          <mxGeometry x="3.8" y="23.8" width="72.3" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c49" value="pose span, hips ≤ knees, held 3 s" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c12">
+          <mxGeometry x="3.8" y="37.9" width="144.9" height="9.7" as="geometry" />
+        </mxCell>
+        <mxCell id="c50" value="module: fall_detection.py" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c12">
+          <mxGeometry x="3.8" y="51.3" width="109.1" height="10.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c51" value="FireTracker" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c13">
+          <mxGeometry x="63.4" y="5.9" width="65.2" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c52" value="update(), reset()" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c13">
+          <mxGeometry x="3.8" y="23.8" width="72.3" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c53" value="held 2 s, latched until clear 30 s" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c13">
+          <mxGeometry x="3.8" y="37.8" width="137.5" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c54" value="module: fire_detection.py" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c13">
+          <mxGeometry x="3.8" y="51.3" width="110.2" height="10.8" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

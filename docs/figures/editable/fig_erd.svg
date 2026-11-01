@@ -1,0 +1,828 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="413.5735pt" height="428.2128pt" viewBox="0 0 413.5735 428.2128" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-27T15:04:24.343640</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.9, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 428.2128 
+L 413.5735 428.2128 
+L 413.5735 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 7.902 5.0976 
+L 79.326 5.0976 
+Q 82.116 5.0976 82.116 7.8696 
+L 82.116 50.004 
+Q 82.116 52.776 79.326 52.776 
+L 7.902 52.776 
+Q 5.112 52.776 5.112 50.004 
+L 5.112 7.8696 
+Q 5.112 5.0976 7.902 5.0976 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 7.902 66.0816 
+L 79.326 66.0816 
+Q 82.116 66.0816 82.116 68.8536 
+L 82.116 119.0268 
+Q 82.116 121.7988 79.326 121.7988 
+L 7.902 121.7988 
+Q 5.112 121.7988 5.112 119.0268 
+L 5.112 68.8536 
+Q 5.112 66.0816 7.902 66.0816 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 7.902 135.1044 
+L 79.326 135.1044 
+Q 82.116 135.1044 82.116 137.8764 
+L 82.116 204.1272 
+Q 82.116 206.8992 79.326 206.8992 
+L 7.902 206.8992 
+Q 5.112 206.8992 5.112 204.1272 
+L 5.112 137.8764 
+Q 5.112 135.1044 7.902 135.1044 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 7.902 220.2048 
+L 79.326 220.2048 
+Q 82.116 220.2048 82.116 222.9768 
+L 82.116 289.2276 
+Q 82.116 291.9996 79.326 291.9996 
+L 7.902 291.9996 
+Q 5.112 291.9996 5.112 289.2276 
+L 5.112 222.9768 
+Q 5.112 220.2048 7.902 220.2048 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 100.53 5.0976 
+L 171.954 5.0976 
+Q 174.744 5.0976 174.744 7.8696 
+L 174.744 58.0428 
+Q 174.744 60.8148 171.954 60.8148 
+L 100.53 60.8148 
+Q 97.74 60.8148 97.74 58.0428 
+L 97.74 7.8696 
+Q 97.74 5.0976 100.53 5.0976 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 100.53 74.1204 
+L 171.954 74.1204 
+Q 174.744 74.1204 174.744 76.8924 
+L 174.744 143.1432 
+Q 174.744 145.9152 171.954 145.9152 
+L 100.53 145.9152 
+Q 97.74 145.9152 97.74 143.1432 
+L 97.74 76.8924 
+Q 97.74 74.1204 100.53 74.1204 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 100.53 159.2208 
+L 171.954 159.2208 
+Q 174.744 159.2208 174.744 161.9928 
+L 174.744 252.36 
+Q 174.744 255.132 171.954 255.132 
+L 100.53 255.132 
+Q 97.74 255.132 97.74 252.36 
+L 97.74 161.9928 
+Q 97.74 159.2208 100.53 159.2208 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 193.158 5.0976 
+L 264.582 5.0976 
+Q 267.372 5.0976 267.372 7.8696 
+L 267.372 66.0816 
+Q 267.372 68.8536 264.582 68.8536 
+L 193.158 68.8536 
+Q 190.368 68.8536 190.368 66.0816 
+L 190.368 7.8696 
+Q 190.368 5.0976 193.158 5.0976 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 193.158 82.1592 
+L 264.582 82.1592 
+Q 267.372 82.1592 267.372 84.9312 
+L 267.372 151.182 
+Q 267.372 153.954 264.582 153.954 
+L 193.158 153.954 
+Q 190.368 153.954 190.368 151.182 
+L 190.368 84.9312 
+Q 190.368 82.1592 193.158 82.1592 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 193.158 167.2596 
+L 264.582 167.2596 
+Q 267.372 167.2596 267.372 170.0316 
+L 267.372 228.2436 
+Q 267.372 231.0156 264.582 231.0156 
+L 193.158 231.0156 
+Q 190.368 231.0156 190.368 228.2436 
+L 190.368 170.0316 
+Q 190.368 167.2596 193.158 167.2596 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 285.786 5.0976 
+L 357.21 5.0976 
+Q 360 5.0976 360 7.8696 
+L 360 74.1204 
+Q 360 76.8924 357.21 76.8924 
+L 285.786 76.8924 
+Q 282.996 76.8924 282.996 74.1204 
+L 282.996 7.8696 
+Q 282.996 5.0976 285.786 5.0976 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 285.786 90.198 
+L 357.21 90.198 
+Q 360 90.198 360 92.97 
+L 360 167.2596 
+Q 360 170.0316 357.21 170.0316 
+L 285.786 170.0316 
+Q 282.996 170.0316 282.996 167.2596 
+L 282.996 92.97 
+Q 282.996 90.198 285.786 90.198 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 285.786 183.3372 
+L 357.21 183.3372 
+Q 360 183.3372 360 186.1092 
+L 360 244.3212 
+Q 360 247.0932 357.21 247.0932 
+L 285.786 247.0932 
+Q 282.996 247.0932 282.996 244.3212 
+L 282.996 186.1092 
+Q 282.996 183.3372 285.786 183.3372 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 285.786 260.3988 
+L 357.21 260.3988 
+Q 360 260.3988 360 263.1708 
+L 360 329.4216 
+Q 360 332.1936 357.21 332.1936 
+L 285.786 332.1936 
+Q 282.996 332.1936 282.996 329.4216 
+L 282.996 263.1708 
+Q 282.996 260.3988 285.786 260.3988 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 285.786 345.4992 
+L 357.21 345.4992 
+Q 360 345.4992 360 348.2712 
+L 360 406.4832 
+Q 360 409.2552 357.21 409.2552 
+L 285.786 409.2552 
+Q 282.996 409.2552 282.996 406.4832 
+L 282.996 348.2712 
+Q 282.996 345.4992 285.786 345.4992 
+z
+" clip-path="url(#pb60454530e)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="line2d_1">
+    <path d="M 81.558 91.3068 
+L 85.464 91.3068 
+L 85.464 12.3048 
+L 98.298 12.3048 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 81.558 30.3228 
+L 88.533 30.3228 
+L 88.533 16.1856 
+L 98.298 16.1856 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 247.842 82.7136 
+L 247.842 68.2992 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_4">
+    <path d="M 283.554 123.462 
+L 279.648 123.462 
+L 279.648 89.3664 
+L 266.814 89.3664 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_5">
+    <path d="M 247.842 167.814 
+L 247.842 153.3996 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_6">
+    <path d="M 266.814 200.5236 
+L 270.72 200.5236 
+L 270.72 12.3048 
+L 266.814 12.3048 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_7">
+    <path d="M 174.186 99.3456 
+L 178.092 99.3456 
+L 178.092 12.3048 
+L 190.926 12.3048 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_8">
+    <path d="M 155.214 74.6748 
+L 155.214 60.2604 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_9">
+    <path d="M 174.186 208.5624 
+L 181.161 208.5624 
+L 181.161 89.3664 
+L 190.926 89.3664 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_10">
+    <path d="M 155.214 159.7752 
+L 155.214 145.3608 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_11">
+    <path d="M 283.554 30.3228 
+L 276.579 30.3228 
+L 276.579 16.1856 
+L 266.814 16.1856 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_12">
+    <path d="M 283.554 216.6012 
+L 273.51 216.6012 
+L 273.51 93.2472 
+L 266.814 93.2472 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_13">
+    <path d="M 81.558 200.5236 
+L 91.602 200.5236 
+L 91.602 20.0664 
+L 98.298 20.0664 
+" clip-path="url(#pb60454530e)" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="43.614" y="14.608716" transform="rotate(-0 43.614 14.608716)">user_preferences</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="23.731687" transform="rotate(-0 9.018 23.731687)">PK id</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="31.770488" transform="rotate(-0 9.018 31.770488)">FK user_id</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="39.8106" transform="rotate(-0 9.018 39.8106)">     notify_push</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="47.8494" transform="rotate(-0 9.018 47.8494)">     notify_email</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="43.614" y="75.592716" transform="rotate(-0 43.614 75.592716)">fcm_tokens</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="84.715688" transform="rotate(-0 9.018 84.715688)">PK id</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="92.754487" transform="rotate(-0 9.018 92.754487)">FK user_id</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="100.793287" transform="rotate(-0 9.018 100.793287)">     token</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="108.832088" transform="rotate(-0 9.018 108.832088)">     device_name</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="116.870887" transform="rotate(-0 9.018 116.870887)">     is_active</text>
+   </g>
+   <g id="text_12">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="43.614" y="144.576844" transform="rotate(-0 43.614 144.576844)">reports</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="153.738487" transform="rotate(-0 9.018 153.738487)">PK id</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="161.711663" transform="rotate(-0 9.018 161.711663)">     report_type</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="169.850212" transform="rotate(-0 9.018 169.850212)">     file_format</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="177.889012" transform="rotate(-0 9.018 177.889012)">     date_from</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="185.893687" transform="rotate(-0 9.018 185.893687)">     date_to</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="193.932488" transform="rotate(-0 9.018 193.932488)">     includes_evidence</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="201.938475" transform="rotate(-0 9.018 201.938475)">FK created_by_id</text>
+   </g>
+   <g id="text_20">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="43.614" y="229.675697" transform="rotate(-0 43.614 229.675697)">service_tokens</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="238.838888" transform="rotate(-0 9.018 238.838888)">PK id</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="246.877688" transform="rotate(-0 9.018 246.877688)">     name</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="254.916488" transform="rotate(-0 9.018 254.916488)">     kind</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="262.922475" transform="rotate(-0 9.018 262.922475)">     key_hash</text>
+   </g>
+   <g id="text_25">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="270.994087" transform="rotate(-0 9.018 270.994087)">     camera_ids</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="279.032888" transform="rotate(-0 9.018 279.032888)">     is_simulator</text>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="287.071688" transform="rotate(-0 9.018 287.071688)">     is_active</text>
+   </g>
+   <g id="text_28">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="136.242" y="14.570044" transform="rotate(-0 136.242 14.570044)">users</text>
+   </g>
+   <g id="text_29">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="23.731687" transform="rotate(-0 101.646 23.731687)">PK id</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="31.770488" transform="rotate(-0 101.646 31.770488)">     email</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="39.843412" transform="rotate(-0 101.646 39.843412)">     full_name</text>
+   </g>
+   <g id="text_32">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="47.848087" transform="rotate(-0 101.646 47.848087)">     role</text>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="55.886888" transform="rotate(-0 101.646 55.886888)">     is_active</text>
+   </g>
+   <g id="text_34">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="136.242" y="83.591297" transform="rotate(-0 136.242 83.591297)">hot_work_permits</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="92.754487" transform="rotate(-0 101.646 92.754487)">PK id</text>
+   </g>
+   <g id="text_36">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="100.793287" transform="rotate(-0 101.646 100.793287)">FK zone_id</text>
+   </g>
+   <g id="text_37">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="108.832088" transform="rotate(-0 101.646 108.832088)">     description</text>
+   </g>
+   <g id="text_38">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="116.870887" transform="rotate(-0 101.646 116.870887)">     starts_at</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="124.909687" transform="rotate(-0 101.646 124.909687)">     ends_at</text>
+   </g>
+   <g id="text_40">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="132.915675" transform="rotate(-0 101.646 132.915675)">FK issued_by_id</text>
+   </g>
+   <g id="text_41">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="140.987287" transform="rotate(-0 101.646 140.987287)">     revoked_at</text>
+   </g>
+   <g id="text_42">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="136.242" y="168.693244" transform="rotate(-0 136.242 168.693244)">alerts</text>
+   </g>
+   <g id="text_43">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="177.854888" transform="rotate(-0 101.646 177.854888)">PK id</text>
+   </g>
+   <g id="text_44">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="185.860875" transform="rotate(-0 101.646 185.860875)">     alert_type</text>
+   </g>
+   <g id="text_45">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="193.899675" transform="rotate(-0 101.646 193.899675)">     severity</text>
+   </g>
+   <g id="text_46">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="201.971288" transform="rotate(-0 101.646 201.971288)">     source</text>
+   </g>
+   <g id="text_47">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="210.010088" transform="rotate(-0 101.646 210.010088)">FK worker_id</text>
+   </g>
+   <g id="text_48">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="218.048888" transform="rotate(-0 101.646 218.048888)">     camera_id</text>
+   </g>
+   <g id="text_49">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="226.087688" transform="rotate(-0 101.646 226.087688)">FK hot_work_permit_id</text>
+   </g>
+   <g id="text_50">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="234.126488" transform="rotate(-0 101.646 234.126488)">     confidence</text>
+   </g>
+   <g id="text_51">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="242.165288" transform="rotate(-0 101.646 242.165288)">     event_id</text>
+   </g>
+   <g id="text_52">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="101.646" y="250.204088" transform="rotate(-0 101.646 250.204088)">     is_resolved</text>
+   </g>
+   <g id="text_53">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="228.87" y="14.570044" transform="rotate(-0 228.87 14.570044)">zones</text>
+   </g>
+   <g id="text_54">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="23.731687" transform="rotate(-0 194.274 23.731687)">PK id</text>
+   </g>
+   <g id="text_55">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="31.770488" transform="rotate(-0 194.274 31.770488)">     name</text>
+   </g>
+   <g id="text_56">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="39.809287" transform="rotate(-0 194.274 39.809287)">     risk_level</text>
+   </g>
+   <g id="text_57">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="47.848087" transform="rotate(-0 194.274 47.848087)">     boundaries</text>
+   </g>
+   <g id="text_58">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="55.886888" transform="rotate(-0 194.274 55.886888)">     camera_ids</text>
+   </g>
+   <g id="text_59">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="63.860063" transform="rotate(-0 194.274 63.860063)">     max_occupancy</text>
+   </g>
+   <g id="text_60">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="228.87" y="91.631644" transform="rotate(-0 228.87 91.631644)">workers</text>
+   </g>
+   <g id="text_61">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="100.793287" transform="rotate(-0 194.274 100.793287)">PK id</text>
+   </g>
+   <g id="text_62">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="108.832088" transform="rotate(-0 194.274 108.832088)">     name</text>
+   </g>
+   <g id="text_63">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="116.870887" transform="rotate(-0 194.274 116.870887)">     role</text>
+   </g>
+   <g id="text_64">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="124.909687" transform="rotate(-0 194.274 124.909687)">FK zone_id</text>
+   </g>
+   <g id="text_65">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="132.915675" transform="rotate(-0 194.274 132.915675)">     badge_code</text>
+   </g>
+   <g id="text_66">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="140.987287" transform="rotate(-0 194.274 140.987287)">     last_seen_at</text>
+   </g>
+   <g id="text_67">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="149.026087" transform="rotate(-0 194.274 149.026087)">     is_active</text>
+   </g>
+   <g id="text_68">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="228.87" y="176.688731" transform="rotate(-0 228.87 176.688731)">activity_logs</text>
+   </g>
+   <g id="text_69">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="185.893687" transform="rotate(-0 194.274 185.893687)">PK id</text>
+   </g>
+   <g id="text_70">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="193.932488" transform="rotate(-0 194.274 193.932488)">FK worker_id</text>
+   </g>
+   <g id="text_71">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="201.971288" transform="rotate(-0 194.274 201.971288)">FK zone_id</text>
+   </g>
+   <g id="text_72">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="210.010088" transform="rotate(-0 194.274 210.010088)">     action</text>
+   </g>
+   <g id="text_73">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="218.048888" transform="rotate(-0 194.274 218.048888)">     timestamp</text>
+   </g>
+   <g id="text_74">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="194.274" y="226.087688" transform="rotate(-0 194.274 226.087688)">     metadata</text>
+   </g>
+   <g id="text_75">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="321.498" y="14.56695" transform="rotate(-0 321.498 14.56695)">alert_config</text>
+   </g>
+   <g id="text_76">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="23.731687" transform="rotate(-0 286.902 23.731687)">PK id</text>
+   </g>
+   <g id="text_77">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="31.770488" transform="rotate(-0 286.902 31.770488)">FK zone_id</text>
+   </g>
+   <g id="text_78">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="39.776475" transform="rotate(-0 286.902 39.776475)">     alert_type</text>
+   </g>
+   <g id="text_79">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="47.848087" transform="rotate(-0 286.902 47.848087)">     is_enabled</text>
+   </g>
+   <g id="text_80">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="55.886888" transform="rotate(-0 286.902 55.886888)">     threshold_seconds</text>
+   </g>
+   <g id="text_81">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="63.927" transform="rotate(-0 286.902 63.927)">     notify_push</text>
+   </g>
+   <g id="text_82">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="71.9658" transform="rotate(-0 286.902 71.9658)">     notify_email</text>
+   </g>
+   <g id="text_83">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="321.498" y="99.66735" transform="rotate(-0 321.498 99.66735)">smart_vests</text>
+   </g>
+   <g id="text_84">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="108.832088" transform="rotate(-0 286.902 108.832088)">PK id</text>
+   </g>
+   <g id="text_85">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="116.870887" transform="rotate(-0 286.902 116.870887)">     vest_id</text>
+   </g>
+   <g id="text_86">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="124.909687" transform="rotate(-0 286.902 124.909687)">FK worker_id</text>
+   </g>
+   <g id="text_87">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="132.915675" transform="rotate(-0 286.902 132.915675)">     battery_level</text>
+   </g>
+   <g id="text_88">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="140.987287" transform="rotate(-0 286.902 140.987287)">     latitude</text>
+   </g>
+   <g id="text_89">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="148.993275" transform="rotate(-0 286.902 148.993275)">     longitude</text>
+   </g>
+   <g id="text_90">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="157.064887" transform="rotate(-0 286.902 157.064887)">     sos_active</text>
+   </g>
+   <g id="text_91">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="165.103688" transform="rotate(-0 286.902 165.103688)">     last_seen</text>
+   </g>
+   <g id="text_92">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="321.498" y="192.809644" transform="rotate(-0 321.498 192.809644)">detections</text>
+   </g>
+   <g id="text_93">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="201.971288" transform="rotate(-0 286.902 201.971288)">PK id</text>
+   </g>
+   <g id="text_94">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="210.010088" transform="rotate(-0 286.902 210.010088)">     camera_id</text>
+   </g>
+   <g id="text_95">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="218.048888" transform="rotate(-0 286.902 218.048888)">FK worker_id</text>
+   </g>
+   <g id="text_96">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="226.087688" transform="rotate(-0 286.902 226.087688)">     class_name</text>
+   </g>
+   <g id="text_97">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="234.126488" transform="rotate(-0 286.902 234.126488)">     confidence</text>
+   </g>
+   <g id="text_98">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="242.165288" transform="rotate(-0 286.902 242.165288)">     bbox</text>
+   </g>
+   <g id="text_99">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="321.498" y="269.871244" transform="rotate(-0 321.498 269.871244)">cameras</text>
+   </g>
+   <g id="text_100">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="279.032888" transform="rotate(-0 286.902 279.032888)">PK id</text>
+   </g>
+   <g id="text_101">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="287.071687" transform="rotate(-0 286.902 287.071687)">     camera_id</text>
+   </g>
+   <g id="text_102">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="295.110487" transform="rotate(-0 286.902 295.110487)">     people_count</text>
+   </g>
+   <g id="text_103">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="303.149288" transform="rotate(-0 286.902 303.149288)">     counted_at</text>
+   </g>
+   <g id="text_104">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="311.188088" transform="rotate(-0 286.902 311.188088)">     latitude</text>
+   </g>
+   <g id="text_105">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="319.194075" transform="rotate(-0 286.902 319.194075)">     longitude</text>
+   </g>
+   <g id="text_106">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="327.232875" transform="rotate(-0 286.902 327.232875)">     heading</text>
+   </g>
+   <g id="text_107">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="321.498" y="354.96855" transform="rotate(-0 321.498 354.96855)">camera_areas</text>
+   </g>
+   <g id="text_108">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="364.133288" transform="rotate(-0 286.902 364.133288)">PK id</text>
+   </g>
+   <g id="text_109">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="372.172087" transform="rotate(-0 286.902 372.172087)">     camera_id</text>
+   </g>
+   <g id="text_110">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="380.210888" transform="rotate(-0 286.902 380.210888)">     name</text>
+   </g>
+   <g id="text_111">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="388.216875" transform="rotate(-0 286.902 388.216875)">     polygon</text>
+   </g>
+   <g id="text_112">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="396.255675" transform="rotate(-0 286.902 396.255675)">     severity</text>
+   </g>
+   <g id="text_113">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="286.902" y="404.327288" transform="rotate(-0 286.902 404.327288)">     is_active</text>
+   </g>
+   <g id="patch_17">
+    <path d="M 87.466179 12.3048 
+Q 91.881151 12.3048 95.513499 12.3048 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 93.113499 11.1048 
+L 95.513499 12.3048 
+L 93.113499 13.5048 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_114">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: end; fill: #1f2937" x="78.768" y="92.80785" transform="rotate(-0 78.768 92.80785)">N:1</text>
+   </g>
+   <g id="patch_18">
+    <path d="M 90.53082 16.1856 
+Q 93.415068 16.1856 95.516693 16.1856 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 93.116693 14.9856 
+L 95.516693 16.1856 
+L 93.116693 17.3856 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_115">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: end; fill: #1f2937" x="78.768" y="31.82385" transform="rotate(-0 78.768 31.82385)">1:1</text>
+   </g>
+   <g id="patch_19">
+    <path d="M 247.842 80.711209 
+Q 247.842 75.506711 247.842 71.084836 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 246.642 73.484836 
+L 247.842 71.084836 
+L 249.042 73.484836 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_116">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="250.074" y="71.74065" transform="rotate(-0 250.074 71.74065)">N:1</text>
+   </g>
+   <g id="patch_20">
+    <path d="M 277.645821 89.3664 
+Q 273.230849 89.3664 269.598501 89.3664 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 271.998501 90.5664 
+L 269.598501 89.3664 
+L 271.998501 88.1664 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_117">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: end; fill: #1f2937" x="356.652" y="124.96305" transform="rotate(-0 356.652 124.96305)">1:1</text>
+   </g>
+   <g id="patch_21">
+    <path d="M 247.842 165.811609 
+Q 247.842 160.607111 247.842 156.185236 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 246.642 158.585236 
+L 247.842 156.185236 
+L 249.042 158.585236 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_118">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="250.074" y="156.84105" transform="rotate(-0 250.074 156.84105)">N:1</text>
+   </g>
+   <g id="patch_22">
+    <path d="M 268.717412 12.3048 
+Q 267.765706 12.3048 267.596624 12.3048 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 269.996624 13.5048 
+L 267.596624 12.3048 
+L 269.996624 11.1048 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_119">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: end; fill: #1f2937" x="264.024" y="202.02465" transform="rotate(-0 264.024 202.02465)">N:1</text>
+   </g>
+   <g id="patch_23">
+    <path d="M 180.094179 12.3048 
+Q 184.509151 12.3048 188.141499 12.3048 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 185.741499 11.1048 
+L 188.141499 12.3048 
+L 185.741499 13.5048 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_120">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: end; fill: #1f2937" x="171.396" y="100.84665" transform="rotate(-0 171.396 100.84665)">N:1</text>
+   </g>
+   <g id="patch_24">
+    <path d="M 155.214 72.672409 
+Q 155.214 67.467911 155.214 63.046036 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 154.014 65.446036 
+L 155.214 63.046036 
+L 156.414 65.446036 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_121">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="157.446" y="63.70185" transform="rotate(-0 157.446 63.70185)">N:1</text>
+   </g>
+   <g id="patch_25">
+    <path d="M 183.15882 89.3664 
+Q 186.043068 89.3664 188.144693 89.3664 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 185.744693 88.1664 
+L 188.144693 89.3664 
+L 185.744693 90.5664 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_122">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: end; fill: #1f2937" x="171.396" y="210.06345" transform="rotate(-0 171.396 210.06345)">N:1</text>
+   </g>
+   <g id="patch_26">
+    <path d="M 155.214 157.772809 
+Q 155.214 152.568311 155.214 148.146436 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 154.014 150.546436 
+L 155.214 148.146436 
+L 156.414 150.546436 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_123">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="157.446" y="148.80225" transform="rotate(-0 157.446 148.80225)">N:1</text>
+   </g>
+   <g id="patch_27">
+    <path d="M 274.58118 16.1856 
+Q 271.696932 16.1856 269.595307 16.1856 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 271.995307 17.3856 
+L 269.595307 16.1856 
+L 271.995307 14.9856 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_124">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: end; fill: #1f2937" x="356.652" y="31.82385" transform="rotate(-0 356.652 31.82385)">N:1</text>
+   </g>
+   <g id="patch_28">
+    <path d="M 271.512316 93.2472 
+Q 270.161092 93.2472 269.592491 93.2472 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 271.992491 94.4472 
+L 269.592491 93.2472 
+L 271.992491 92.0472 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_125">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: end; fill: #1f2937" x="356.652" y="218.10225" transform="rotate(-0 356.652 218.10225)">N:1</text>
+   </g>
+   <g id="patch_29">
+    <path d="M 93.599684 20.0664 
+Q 94.950908 20.0664 95.519509 20.0664 
+" style="fill: none; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+    <path d="M 93.119509 18.8664 
+L 95.519509 20.0664 
+L 93.119509 21.2664 
+z
+" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_126">
+    <text style="font-size: 5px; font-family: 'Arial'; text-anchor: end; fill: #1f2937" x="78.768" y="202.02465" transform="rotate(-0 78.768 202.02465)">N:1</text>
+   </g>
+   <g id="text_127">
+    <text style="font-style: italic; font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #4b5563" x="5.67" y="419.7888" transform="rotate(-0 5.67 419.7888)">Generated from the Django models. Arrows run from a foreign key to the table it references; N:1 many-to-one, 1:1 one-to-one. Cameras are matched by camera_id.</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pb60454530e">
+   <rect x="2.88" y="2.88" width="357.12" height="422.4528"/>
+  </clipPath>
+ </defs>
+</svg>

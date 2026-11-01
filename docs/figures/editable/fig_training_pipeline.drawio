@@ -1,0 +1,142 @@
+<mxfile host="make_figures.py">
+  <diagram name="fig_training_pipeline" id="fig_training_pipeline">
+    <mxGraphModel grid="0" page="0" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="c3" value="" style="html=1;whiteSpace=wrap;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="4.8" y="26.9" width="136.3" height="86.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" value="" style="html=1;whiteSpace=wrap;fillColor=#fafafa;strokeColor=#9ca3af;strokeWidth=1.20;dashed=1;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="4.8" y="124.8" width="136.3" height="84.5" as="geometry" />
+        </mxCell>
+        <mxCell id="c5" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="158.4" y="26.9" width="136.3" height="100.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c6" value="" style="html=1;whiteSpace=wrap;fillColor=#fff7ed;strokeColor=#c2410c;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="312.0" y="26.9" width="136.3" height="86.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c7" value="" style="html=1;whiteSpace=wrap;fillColor=#e0f2fe;strokeColor=#0369a1;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+          <mxGeometry x="465.6" y="26.9" width="144.0" height="86.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c8" value="" style="html=1;rounded=0;endArrow=block;endFill=1;startArrow=none;startFill=1;endSize=5;startSize=5;strokeColor=#4b5563;strokeWidth=1.07;dashed=0;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.000;entryY=0.430;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="c3" target="c5">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="141.1" y="70.1" as="sourcePoint" />
+            <mxPoint x="158.4" y="70.2" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c9" value="" style="html=1;rounded=0;endArrow=block;endFill=1;startArrow=none;startFill=1;endSize=5;startSize=5;strokeColor=#4b5563;strokeWidth=1.07;dashed=0;exitX=1.000;exitY=0.430;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="c5" target="c6">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="294.7" y="70.2" as="sourcePoint" />
+            <mxPoint x="312.0" y="70.1" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c10" value="" style="html=1;rounded=0;endArrow=block;endFill=1;startArrow=none;startFill=1;endSize=5;startSize=5;strokeColor=#4b5563;strokeWidth=1.07;dashed=0;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="c6" target="c7">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="448.3" y="70.1" as="sourcePoint" />
+            <mxPoint x="465.6" y="70.1" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c11" value="" style="html=1;rounded=0;endArrow=block;endFill=1;startArrow=none;startFill=1;endSize=5;startSize=5;strokeColor=#4b5563;strokeWidth=1.07;dashed=1;exitX=0.500;exitY=1.000;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.500;entryY=0.000;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="c3" target="c4">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="73.0" y="113.3" as="sourcePoint" />
+            <mxPoint x="73.0" y="124.8" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c12" value="Data" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=9.3;fontColor=#4b5563;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
+          <mxGeometry x="57.8" y="3.0" width="30.3" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c13" value="Training" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=9.3;fontColor=#4b5563;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
+          <mxGeometry x="200.9" y="3.0" width="51.2" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c14" value="Evaluation" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=9.3;fontColor=#4b5563;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
+          <mxGeometry x="347.6" y="3.0" width="65.2" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c15" value="Use in pipeline" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=9.3;fontColor=#4b5563;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
+          <mxGeometry x="489.3" y="3.0" width="89.0" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c16" value="Roboflow PPE dataset" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#047857;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="6.3" y="5.9" width="123.7" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c17" value="5,140 images, 10 classes" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="3.8" y="24.1" width="112.2" height="9.5" as="geometry" />
+        </mxCell>
+        <mxCell id="c18" value="licence CC BY 4.0" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="3.8" y="38.0" width="81.3" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c19" value="split 3,597 / 1,026 / 517" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="3.8" y="51.7" width="103.2" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c20" value="as published (not re-split)" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="3.8" y="65.6" width="111.1" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c21" value="audit_dataset.py" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#9ca3af;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
+          <mxGeometry x="21.6" y="5.8" width="93.2" height="13.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c22" value="573 source groups and" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
+          <mxGeometry x="3.8" y="24.1" width="101.2" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c23" value="30 exact duplicates span" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
+          <mxGeometry x="3.8" y="37.8" width="108.7" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c24" value="the splits, so the test" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
+          <mxGeometry x="3.8" y="51.7" width="90.5" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c25" value="set is not sealed" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
+          <mxGeometry x="3.8" y="65.9" width="72.6" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c26" value="yolo11m.pt (COCO)" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="14.4" y="5.9" width="107.6" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c27" value="Colab Tesla T4, 640 px" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="3.8" y="24.1" width="101.4" height="9.5" as="geometry" />
+        </mxCell>
+        <mxCell id="c28" value="batch 16, AdamW lr 0.001" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="3.8" y="37.8" width="114.4" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c29" value="150 epochs max, patience 25" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="3.8" y="51.7" width="128.5" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c30" value="seed 42, deterministic" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="3.8" y="65.6" width="96.9" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c31" value="Ultralytics 8.4.41" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="3.8" y="79.6" width="75.1" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c32" value="Held-out test split" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#c2410c;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
+          <mxGeometry x="18.6" y="5.9" width="99.1" height="13.1" as="geometry" />
+        </mxCell>
+        <mxCell id="c33" value="517 images" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
+          <mxGeometry x="3.8" y="24.1" width="53.4" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c34" value="mAP@0.5 0.562" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
+          <mxGeometry x="3.8" y="38.0" width="74.3" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c35" value="mAP@0.5:0.95 0.345" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
+          <mxGeometry x="3.8" y="51.9" width="95.7" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c36" value="P 0.467  R 0.728" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
+          <mxGeometry x="3.8" y="65.9" width="75.5" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c37" value="models/sitesafe_v5.pt" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="11.4" y="5.8" width="121.2" height="13.3" as="geometry" />
+        </mxCell>
+        <mxCell id="c38" value="PyTorch weights, every frame" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="3.8" y="23.8" width="129.3" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c39" value="candidate threshold 0.15" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="3.8" y="38.0" width="108.2" height="9.4" as="geometry" />
+        </mxCell>
+        <mxCell id="c40" value="Apple M4 GPU: 15.7 FPS with" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="3.8" y="51.7" width="132.4" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c41" value="all detectors (Table 5.5)" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="3.8" y="65.6" width="103.1" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c42" value="Dashed: finding that limits what the test score can claim (Section 5.5)." style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#4b5563;fontStyle=2;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
+          <mxGeometry x="310.1" y="138.2" width="297.9" height="9.9" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

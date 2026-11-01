@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="362.88pt" height="199.8pt" viewBox="0 0 362.88 199.8" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-27T15:04:27.040385</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.9, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 199.8 
+L 362.88 199.8 
+L 362.88 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 94.392 5.0976 
+L 268.488 5.0976 
+Q 271.278 5.0976 271.278 7.8696 
+L 271.278 37.8072 
+Q 271.278 40.5792 268.488 40.5792 
+L 94.392 40.5792 
+Q 91.602 40.5792 91.602 37.8072 
+L 91.602 7.8696 
+Q 91.602 5.0976 94.392 5.0976 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #e0f2fe; stroke: #0369a1; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 6.786 50.5584 
+L 356.094 50.5584 
+Q 359.442 50.5584 359.442 53.8848 
+L 359.442 192.4848 
+Q 359.442 195.8112 356.094 195.8112 
+L 6.786 195.8112 
+Q 3.438 195.8112 3.438 192.4848 
+L 3.438 53.8848 
+Q 3.438 50.5584 6.786 50.5584 
+L 6.786 50.5584 
+z
+" clip-path="url(#pdd187264bb)" style="fill: none; stroke-dasharray: 3.2,1.6; stroke-dashoffset: 0; stroke: #6b7280; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 10.692 64.4184 
+L 117.828 64.4184 
+Q 120.618 64.4184 120.618 67.1904 
+L 120.618 100.4544 
+Q 120.618 103.2264 117.828 103.2264 
+L 10.692 103.2264 
+Q 7.902 103.2264 7.902 100.4544 
+L 7.902 67.1904 
+Q 7.902 64.4184 10.692 64.4184 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 127.872 64.4184 
+L 235.008 64.4184 
+Q 237.798 64.4184 237.798 67.1904 
+L 237.798 100.4544 
+Q 237.798 103.2264 235.008 103.2264 
+L 127.872 103.2264 
+Q 125.082 103.2264 125.082 100.4544 
+L 125.082 67.1904 
+Q 125.082 64.4184 127.872 64.4184 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 245.052 64.4184 
+L 352.188 64.4184 
+Q 354.978 64.4184 354.978 67.1904 
+L 354.978 100.4544 
+Q 354.978 103.2264 352.188 103.2264 
+L 245.052 103.2264 
+Q 242.262 103.2264 242.262 100.4544 
+L 242.262 67.1904 
+Q 242.262 64.4184 245.052 64.4184 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 10.692 107.6616 
+L 117.828 107.6616 
+Q 120.618 107.6616 120.618 110.4336 
+L 120.618 143.6976 
+Q 120.618 146.4696 117.828 146.4696 
+L 10.692 146.4696 
+Q 7.902 146.4696 7.902 143.6976 
+L 7.902 110.4336 
+Q 7.902 107.6616 10.692 107.6616 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 127.872 107.6616 
+L 235.008 107.6616 
+Q 237.798 107.6616 237.798 110.4336 
+L 237.798 143.6976 
+Q 237.798 146.4696 235.008 146.4696 
+L 127.872 146.4696 
+Q 125.082 146.4696 125.082 143.6976 
+L 125.082 110.4336 
+Q 125.082 107.6616 127.872 107.6616 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 245.052 107.6616 
+L 352.188 107.6616 
+Q 354.978 107.6616 354.978 110.4336 
+L 354.978 143.6976 
+Q 354.978 146.4696 352.188 146.4696 
+L 245.052 146.4696 
+Q 242.262 146.4696 242.262 143.6976 
+L 242.262 110.4336 
+Q 242.262 107.6616 245.052 107.6616 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 10.692 150.9048 
+L 117.828 150.9048 
+Q 120.618 150.9048 120.618 153.6768 
+L 120.618 186.9408 
+Q 120.618 189.7128 117.828 189.7128 
+L 10.692 189.7128 
+Q 7.902 189.7128 7.902 186.9408 
+L 7.902 153.6768 
+Q 7.902 150.9048 10.692 150.9048 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 127.872 150.9048 
+L 235.008 150.9048 
+Q 237.798 150.9048 237.798 153.6768 
+L 237.798 186.9408 
+Q 237.798 189.7128 235.008 189.7128 
+L 127.872 189.7128 
+Q 125.082 189.7128 125.082 186.9408 
+L 125.082 153.6768 
+Q 125.082 150.9048 127.872 150.9048 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 245.052 150.9048 
+L 352.188 150.9048 
+Q 354.978 150.9048 354.978 153.6768 
+L 354.978 186.9408 
+Q 354.978 189.7128 352.188 189.7128 
+L 245.052 189.7128 
+Q 242.262 189.7128 242.262 186.9408 
+L 242.262 153.6768 
+Q 242.262 150.9048 245.052 150.9048 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 181.44 41.023695 
+Q 181.44 45.568226 181.44 49.21833 
+" clip-path="url(#pdd187264bb)" style="fill: none; stroke: #4b5563; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 182.84 46.41833 
+L 181.44 49.21833 
+L 180.04 46.41833 
+z
+" clip-path="url(#pdd187264bb)" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #0369a1" x="181.44" y="14.56695" transform="rotate(-0 181.44 14.56695)">inference.main()</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="95.508" y="23.733" transform="rotate(-0 95.508 23.733)">capture loop on raw frames; group_violations(), pick_device(),</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="95.508" y="31.7718" transform="rotate(-0 95.508 31.7718)">queue_event(), activity_payload()</text>
+   </g>
+   <g id="text_4">
+    <text style="font-style: italic; font-size: 6.8px; font-family: 'Arial'; text-anchor: start; fill: #6b7280" x="8.46" y="58.4163" transform="rotate(-0 8.46 58.4163)">helper classes created and called by main()</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #4338ca" x="64.26" y="73.890844" transform="rotate(-0 64.26 73.890844)">EventOutbox</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="11.808" y="83.0538" transform="rotate(-0 11.808 83.0538)">enqueue(), deliver_due(), stats()</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="11.808" y="91.09435" transform="rotate(-0 11.808 91.09435)">SQLite queue, retry ≤ 30 s, dead letters</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="11.808" y="99.097275" transform="rotate(-0 11.808 99.097275)">module: event_outbox.py</text>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #4338ca" x="181.44" y="73.890844" transform="rotate(-0 181.44 73.890844)">CameraRules</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="128.988" y="83.0538" transform="rotate(-0 128.988 83.0538)">refresh(), enabled(), threshold()</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="128.988" y="91.066788" transform="rotate(-0 128.988 91.066788)">dashboard rules polled every 60 s</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="128.988" y="99.1314" transform="rotate(-0 128.988 99.1314)">module: inference.py</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #4338ca" x="298.62" y="73.890844" transform="rotate(-0 298.62 73.890844)">QrDecoder</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="246.168" y="83.0538" transform="rotate(-0 246.168 83.0538)">decode()</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="246.168" y="91.09435" transform="rotate(-0 246.168 91.09435)">OpenCV QR → SSW1 badge payloads</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="246.168" y="99.097275" transform="rotate(-0 246.168 99.097275)">module: identity.py</text>
+   </g>
+   <g id="text_17">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #4338ca" x="64.26" y="117.090731" transform="rotate(-0 64.26 117.090731)">IdentityTracker</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="11.808" y="126.297" transform="rotate(-0 11.808 126.297)">update(), identify(), identify_box()</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="11.808" y="134.301675" transform="rotate(-0 11.808 134.301675)">badge ↔ person; ambiguous = unknown</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="11.808" y="142.340475" transform="rotate(-0 11.808 142.340475)">module: identity.py</text>
+   </g>
+   <g id="text_21">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #4338ca" x="181.44" y="117.13095" transform="rotate(-0 181.44 117.13095)">SightingThrottle</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="128.988" y="126.297" transform="rotate(-0 128.988 126.297)">due()</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="128.988" y="134.309987" transform="rotate(-0 128.988 134.309987)">≤ 1 sighting per badge per minute</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="128.988" y="142.3746" transform="rotate(-0 128.988 142.3746)">module: inference.py</text>
+   </g>
+   <g id="text_25">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #4338ca" x="298.62" y="117.090731" transform="rotate(-0 298.62 117.090731)">ProximityTracker</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="246.168" y="126.297" transform="rotate(-0 246.168 126.297)">update()</text>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="246.168" y="134.3358" transform="rotate(-0 246.168 134.3358)">person–vehicle gap (person heights)</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="246.168" y="142.340475" transform="rotate(-0 246.168 142.340475)">module: proximity.py</text>
+   </g>
+   <g id="text_29">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #4338ca" x="64.26" y="160.333931" transform="rotate(-0 64.26 160.333931)">InactivityTracker</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="11.808" y="169.5402" transform="rotate(-0 11.808 169.5402)">update(), reset(), resumed</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="11.808" y="177.544875" transform="rotate(-0 11.808 177.544875)">stationary timeout, resumed tracks</text>
+   </g>
+   <g id="text_32">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="11.808" y="185.583675" transform="rotate(-0 11.808 185.583675)">module: inactivity.py</text>
+   </g>
+   <g id="text_33">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #4338ca" x="181.44" y="160.377244" transform="rotate(-0 181.44 160.377244)">FallTracker</text>
+   </g>
+   <g id="text_34">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="128.988" y="169.5402" transform="rotate(-0 128.988 169.5402)">update(), reset()</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="128.988" y="177.586" transform="rotate(-0 128.988 177.586)">pose span, hips ≤ knees, held 3 s</text>
+   </g>
+   <g id="text_36">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="128.988" y="185.6178" transform="rotate(-0 128.988 185.6178)">module: fall_detection.py</text>
+   </g>
+   <g id="text_37">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #4338ca" x="298.62" y="160.377244" transform="rotate(-0 298.62 160.377244)">FireTracker</text>
+   </g>
+   <g id="text_38">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="246.168" y="169.5402" transform="rotate(-0 246.168 169.5402)">update(), reset()</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="246.168" y="177.577687" transform="rotate(-0 246.168 177.577687)">held 2 s, latched until clear 30 s</text>
+   </g>
+   <g id="text_40">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="246.168" y="185.6178" transform="rotate(-0 246.168 185.6178)">module: fire_detection.py</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pdd187264bb">
+   <rect x="2.88" y="2.88" width="357.12" height="194.04"/>
+  </clipPath>
+ </defs>
+</svg>

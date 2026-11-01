@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="362.88pt" height="130.5pt" viewBox="0 0 362.88 130.5" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-27T15:04:27.327225</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.9, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 130.5 
+L 362.88 130.5 
+L 362.88 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 7.902 17.8488 
+L 82.674 17.8488 
+Q 85.464 17.8488 85.464 20.6208 
+L 85.464 66.0816 
+Q 85.464 68.8536 82.674 68.8536 
+L 7.902 68.8536 
+Q 5.112 68.8536 5.112 66.0816 
+L 5.112 20.6208 
+Q 5.112 17.8488 7.902 17.8488 
+z
+" clip-path="url(#p6858e8752a)" style="fill: #ecfdf5; stroke: #047857; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 7.902 74.3976 
+L 82.674 74.3976 
+Q 85.464 74.3976 85.464 77.1696 
+L 85.464 121.5216 
+Q 85.464 124.2936 82.674 124.2936 
+L 7.902 124.2936 
+Q 5.112 124.2936 5.112 121.5216 
+L 5.112 77.1696 
+Q 5.112 74.3976 7.902 74.3976 
+z
+" clip-path="url(#p6858e8752a)" style="fill: #fafafa; stroke-dasharray: 2.7,1.8; stroke-dashoffset: 0; stroke: #9ca3af; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 97.182 17.8488 
+L 171.954 17.8488 
+Q 174.744 17.8488 174.744 20.6208 
+L 174.744 74.3976 
+Q 174.744 77.1696 171.954 77.1696 
+L 97.182 77.1696 
+Q 94.392 77.1696 94.392 74.3976 
+L 94.392 20.6208 
+Q 94.392 17.8488 97.182 17.8488 
+z
+" clip-path="url(#p6858e8752a)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 186.462 17.8488 
+L 261.234 17.8488 
+Q 264.024 17.8488 264.024 20.6208 
+L 264.024 66.0816 
+Q 264.024 68.8536 261.234 68.8536 
+L 186.462 68.8536 
+Q 183.672 68.8536 183.672 66.0816 
+L 183.672 20.6208 
+Q 183.672 17.8488 186.462 17.8488 
+z
+" clip-path="url(#p6858e8752a)" style="fill: #fff7ed; stroke: #c2410c; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 275.742 17.8488 
+L 354.978 17.8488 
+Q 357.768 17.8488 357.768 20.6208 
+L 357.768 66.0816 
+Q 357.768 68.8536 354.978 68.8536 
+L 275.742 68.8536 
+Q 272.952 68.8536 272.952 66.0816 
+L 272.952 20.6208 
+Q 272.952 17.8488 275.742 17.8488 
+z
+" clip-path="url(#p6858e8752a)" style="fill: #e0f2fe; stroke: #0369a1; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 85.901572 43.359443 
+Q 89.924323 43.39275 93.052677 43.418651 
+" clip-path="url(#p6858e8752a)" style="fill: none; stroke: #4b5563; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 90.264364 41.995517 
+L 93.052677 43.418651 
+L 90.241182 44.795421 
+z
+" clip-path="url(#p6858e8752a)" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 175.181572 43.426117 
+Q 179.204323 43.39281 182.332677 43.366909 
+" clip-path="url(#p6858e8752a)" style="fill: none; stroke: #4b5563; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 179.521182 41.990139 
+L 182.332677 43.366909 
+L 179.544364 44.790043 
+z
+" clip-path="url(#p6858e8752a)" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 264.461572 43.3512 
+Q 268.484323 43.3512 271.612646 43.3512 
+" clip-path="url(#p6858e8752a)" style="fill: none; stroke: #4b5563; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 268.812646 41.9512 
+L 271.612646 43.3512 
+L 268.812646 44.7512 
+z
+" clip-path="url(#p6858e8752a)" style="fill: #4b5563; stroke: #4b5563; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 45.288 69.29647 
+Q 45.288 71.623025 45.288 73.055152 
+" clip-path="url(#p6858e8752a)" style="fill: none; stroke-dasharray: 2.4,1.6; stroke-dashoffset: 0; stroke: #4b5563; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 46.688 70.255152 
+L 45.288 73.055152 
+L 43.888 70.255152 
+z
+" clip-path="url(#p6858e8752a)" style="fill: #4b5563; stroke-dasharray: 2.4,1.6; stroke-dashoffset: 0; stroke: #4b5563; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 7px; font-family: 'Arial'; text-anchor: middle; fill: #4b5563" x="45.288" y="10.238531" transform="rotate(-0 45.288 10.238531)">Data</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 7px; font-family: 'Arial'; text-anchor: middle; fill: #4b5563" x="134.568" y="10.192594" transform="rotate(-0 134.568 10.192594)">Training</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 7px; font-family: 'Arial'; text-anchor: middle; fill: #4b5563" x="223.848" y="10.238531" transform="rotate(-0 223.848 10.238531)">Evaluation</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 7px; font-family: 'Arial'; text-anchor: middle; fill: #4b5563" x="313.128" y="10.238531" transform="rotate(-0 313.128 10.238531)">Use in pipeline</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #047857" x="45.288" y="27.321244" transform="rotate(-0 45.288 27.321244)">Roboflow PPE dataset</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="36.458388" transform="rotate(-0 9.018 36.458388)">5,140 images, 10 classes</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="44.521687" transform="rotate(-0 9.018 44.521687)">licence CC BY 4.0</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="52.594612" transform="rotate(-0 9.018 52.594612)">split 3,597 / 1,026 / 517</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="60.6006" transform="rotate(-0 9.018 60.6006)">as published (not re-split)</text>
+   </g>
+   <g id="text_10">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #9ca3af" x="45.288" y="83.826731" transform="rotate(-0 45.288 83.826731)">audit_dataset.py</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="93.007188" transform="rotate(-0 9.018 93.007188)">573 source groups and</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="101.0788" transform="rotate(-0 9.018 101.0788)">30 exact duplicates span</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="109.109287" transform="rotate(-0 9.018 109.109287)">the splits, so the test</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="9.018" y="117.148088" transform="rotate(-0 9.018 117.148088)">set is not sealed</text>
+   </g>
+   <g id="text_15">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #4338ca" x="134.568" y="27.31815" transform="rotate(-0 134.568 27.31815)">yolo11m.pt (COCO)</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="98.298" y="36.517013" transform="rotate(-0 98.298 36.517013)">Colab Tesla T4, 640 px</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="98.298" y="44.521687" transform="rotate(-0 98.298 44.521687)">batch 16, AdamW lr 0.001</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="98.298" y="52.5688" transform="rotate(-0 98.298 52.5688)">150 epochs max, patience 25</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="98.298" y="60.599288" transform="rotate(-0 98.298 60.599288)">seed 42, deterministic</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="98.298" y="68.613587" transform="rotate(-0 98.298 68.613587)">Ultralytics 8.4.41</text>
+   </g>
+   <g id="text_21">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #c2410c" x="223.848" y="27.321244" transform="rotate(-0 223.848 27.321244)">Held-out test split</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="187.578" y="36.458388" transform="rotate(-0 187.578 36.458388)">517 images</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="187.578" y="44.526062" transform="rotate(-0 187.578 44.526062)">mAP@0.5 0.562</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="187.578" y="52.564862" transform="rotate(-0 187.578 52.564862)">mAP@0.5:0.95 0.345</text>
+   </g>
+   <g id="text_25">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="187.578" y="60.599288" transform="rotate(-0 187.578 60.599288)">P 0.467  R 0.728</text>
+   </g>
+   <g id="text_26">
+    <text style="font-weight: 700; font-size: 6.6px; font-family: 'Arial'; text-anchor: middle; fill: #0369a1" x="315.36" y="27.359916" transform="rotate(-0 315.36 27.359916)">models/sitesafe_v5.pt</text>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="276.858" y="36.4842" transform="rotate(-0 276.858 36.4842)">PyTorch weights, every frame</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="276.858" y="44.521687" transform="rotate(-0 276.858 44.521687)">candidate threshold 0.15</text>
+   </g>
+   <g id="text_29">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="276.858" y="52.594612" transform="rotate(-0 276.858 52.594612)">Apple M4 GPU: 15.7 FPS with</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #1f2937" x="276.858" y="60.6006" transform="rotate(-0 276.858 60.6006)">all detectors (Table 5.5)</text>
+   </g>
+   <g id="text_31">
+    <text style="font-style: italic; font-size: 5.6px; font-family: 'Arial'; text-anchor: start; fill: #4b5563" x="184.23" y="87.344625" transform="rotate(-0 184.23 87.344625)">Dashed: finding that limits what the test score can claim (Section 5.5).</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p6858e8752a">
+   <rect x="2.88" y="2.88" width="357.12" height="124.74"/>
+  </clipPath>
+ </defs>
+</svg>
