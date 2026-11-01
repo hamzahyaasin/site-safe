@@ -2,15 +2,34 @@
 
 `docs/SiteSafe_FYP_Report_V8.docx` is built from the submitted V7 (left unchanged) by `docs/build_report_v8.py`. The text lives in `docs/report_v8_content.py` and the figures come from `docs/figures/make_figures.py`. Edit those files and rebuild; don't hand-edit the .docx, or the next build will overwrite the edits. The build, render and page-number commands are in the docstring of `build_report_v8.py`.
 
-The rendered PDF (`docs/SiteSafe_FYP_Report_V8.pdf`, 95 pages) is exported from Microsoft Word, and the contents and list page numbers were measured from that Word render (all 147 entries match, re-checked against the final render on 27 Oct 2026).
+The .docx (rebuilt 1 Nov 2026, 92 pages) has its contents and list page numbers measured from a Word render: all 150 entries match the final render. `docs/SiteSafe_FYP_Report_V8.pdf` is still the 27 Oct export (95 pages, old figures, references and layout); export it again from Word before submission.
 
 Fixed on 21 Oct 2026: the shared table helper in `update_fyp_report.py` wrote widths in EMUs where Word expects twips, so 18 tables claimed to be about 3,800 inches wide. Word laid them out off the page, which made Table 4.1 look broken and pushed later chapters out of view. LibreOffice had silently clamped the widths, so this didn't show in the earlier checks. V7 already had five such tables from the same helper.
 
 ## Length
 
-Body text of Chapters 1–6, excluding headings, captions, tables, front matter, chapter title pages, appendices and references: **10,470 words** (the guideline allows 8,500–10,500). Tables in the chapters add 2,969 words and the appendices 2,006.
+Body text of Chapters 1–6, excluding headings, captions, tables, front matter, chapter title pages, appendices and references: **about 10,494 words** (the guideline allows 8,500–10,500). The Chapter 5 charts of 1 Nov 2026 added 4 words net (the text tightened to pay for the references to them). The reference fix of 1 Nov 2026 added 20 words, all of them citation numbers; the rewritten Chapter 1 and 2 paragraphs are no longer than before. Tables in the chapters add 2,969 words and the appendices 2,006.
 
 Tables 4.7, 4.8, 5.2, 5.7 and 5.8 (1,309 words) moved to Appendices III and IV on 26 Oct 2026; the builder renumbers the tables left behind and rewrites every reference. The new requirements tables in Chapter 3 add 1,676 words, so if the examiners count table text, the chapters are over the cap either way; moving Table 3.4 (functional requirements, 580 words) to an appendix would be the next step.
+
+## Figures redrawn on 27 Oct 2026
+
+V7's Figures 3.1–3.8 were placed in boxes of a different shape from their images, so seven of them printed stretched (up to 1.8 times taller). They are now drawn by `make_figures.py` in the style of the Chapter 3 and 4 diagrams, and placed at their true proportions.
+
+| Figure | Change |
+|---|---|
+| 3.1 | Use cases numbered and linked to actors as in Table 3.5; «include» from UC-3 to UC-4. |
+| 3.2 | The system boundary holds the camera pipeline, API, web, mobile app and report service; Emergency Services (never built) removed. |
+| 3.3 | Tiers named Edge, Network and Application as in Section 3.2.1, with the per-model frame rates. |
+| 3.4 | Redrawn as five processes, three stores and the entities of Figure 3.10, so the two levels balance; Firebase is no longer a data store. |
+| 3.5 | Same content, readable. |
+| 3.6 | Battery 2500 mAh as in the text (was 2000), pins as in Table 4.3, TP4056 charger shown. |
+| 3.7 | The "no fix" branch now rejoins the flow; SOS and zone breach branches end in notification. |
+| 3.8 | Drawn as phone screens; no overlapping elements. |
+| 4.1, 4.5, 4.6, 4.7 | Text that ran over box borders shortened. |
+| 4.3 | The two screenshots are stacked, not side by side; the text says top and bottom. |
+
+Every figure is now referred to before it appears (new sentences in 3.1, 3.2, 3.3.4, 3.4.2 and 3.6.3), Figures 3.4 and 3.6 moved next to the text that describes them, and figure and table captions use Arial Narrow 10 pt as the guideline requires. Editable copies of every diagram are in `docs/figures/editable/` (.drawio for diagrams.net, .svg for Figma, Inkscape or Illustrator).
 
 ## Updated on 27 Oct 2026 (Phase 4: final features and measurements)
 
@@ -30,6 +49,18 @@ The text now covers everything built in Phases 0–2, and the body stays within 
 | Appendices | Table I.1/I.2 tasks for cameras, danger areas, camera placement and the mobile map; Table II.1 adds `setup_demo`; Tables III.1/III.2 add the camera endpoints and tables. The full manual is `docs/USER_MANUAL.md`. |
 
 Rebuilt and rendered in Word on 27 Oct 2026: 95 pages; every one of the 147 contents and list entries matches the page it lands on in the final render.
+
+## Updated on 1 Nov 2026 (layout, Chapter 5 charts, sharper screenshots)
+
+| Where | Change |
+|---|---|
+| Layout | Chapter and appendix title pages unnumbered; the four stray blank pages removed (see "Layout"). 92 pages. |
+| 5.5 | Figure 5.1, per-class mAP@0.5 with each item beside its missing class, and Figure 5.2, the confusion matrix at the pipeline's 0.15 threshold; the text says what the matrix shows (15 of 19 missing boots read as boots, 20 of 31 bare hands missed). |
+| 5.6 | Figure 5.3, the latency distribution of the 1,431 soak probes. |
+| Table 5.2, Table IV.2 | FR-29 and FR-30 now cite the 27 Oct live webcam run (14 alerts with frame and model version). |
+| Figure 4.3 | Retaken at 1600 px wide (was 800), so the dashboard text is readable in print. |
+
+The charts are drawn by `docs/figures/make_charts.py` from the saved results only: `held_out_test_metrics.json`, `held_out_confusion_matrix.json` and the soak CSV. The Colab run kept no confusion matrix, so `ai-module/scripts/held_out_confusion.py` recomputed it from the same weights (`sitesafe_v5.pt@7e8e092d0603`) and test split; its reference pass reproduces mAP@0.5 0.5621, and the matrix columns match the per-class instance counts.
 
 ## Added on 26 Oct 2026 (SOP Appendix D gaps)
 
@@ -64,11 +95,13 @@ Rebuilt and rendered in Word on 27 Oct 2026: 95 pages; every one of the 147 cont
 | 3.6.1 | Redux removed (not used). |
 | 3.7 | "upload floor plans" removed (zones are drawn on the map). |
 | Abbreviations | Added ASGI, CI, FR, NFR and QR. Removed ONNX (no longer mentioned). |
-| References | [4] now names the dataset actually used (ppe-detection-qlq3d). [11] updated to React Native 0.88. Added [21] Expo, [22] Channels and [23] Leaflet. |
+| References | Rebuilt on 1 Nov 2026 (see "References" below): 32 IEEE entries, numbered in order of first citation, every one cited. |
 
 ## Layout
 
-Each chapter now opens on its own title page: chapter number 18 pt bold, name 22 pt bold, with the first section starting on the next page, as the guideline requires. Headings and figures stay with the text that follows them. The guideline also says title pages carry no page number; that is not done yet.
+Each chapter now opens on its own title page: chapter number 18 pt bold, name 22 pt bold, with the first section starting on the next page, as the guideline requires. Headings and figures stay with the text that follows them.
+
+Since 1 Nov 2026 each chapter and appendix is its own Word section that starts a new page and leaves its first page (the title page) without a page number; numbering runs on from the previous section. `title_page_sections()` in `build_report_v8.py` does this and removes the empty spacer paragraphs V7 used to push title pages down, which were what spilled onto extra pages: the blank pages after the Chapter 2 and 4 title pages, before Chapter 5 and after the abstract are gone.
 
 ## Chapters 4–6: rebuilt
 
@@ -94,18 +127,34 @@ Each chapter now opens on its own title page: chapter number 18 pt bold, name 22
 ## Please check before submission
 
 1. **Smart Vest approval.** The report says the hardware "was moved to future work through a scope-change request to the supervisor". Once `docs/SCOPE_CHANGE_SMART_VEST.md` is signed, change this to "approved by the supervisor" (in objective 8, Section 1.4 and Section 4.2.2).
-2. **Labour Force Survey.** The text says "2020–21 … over 3.6 million workers", but reference [17] is the 2022–23 survey. Check the figure against the survey you cite, and fix the year or the number.
-3. **Unverified Chapter 2 citations** (not changed, because the correct sources could not be confirmed here):
-   - "Sacks et al. (2022) … 4.2 full-time monitoring personnel [6]": [6] is a Fang/Li/Ong review.
-   - "Nath, Behzadan, and Paal (2020) … 91.2% … YOLOv3 [5]": [5] lists different authors (Nath, Alsharef, Nahangi, 2023). The 2020 paper is in Automation in Construction, vol. 112.
-   - "Ramli et al. (2020) … smart helmet [4]": [4] is the dataset.
-
-   References [2], [7], [9], [13], [14], [18], [19] and [20] were already uncited or are cited only in tables; check that each exists as written.
+2. **Labour Force Survey and Chapter 2 citations.** Fixed on 1 Nov 2026 (see "References" below).
 4. **Epochs.** "Stopped after 102 of 150 epochs, best at epoch 77" comes from the team's earlier notes. The exported manifest has no per-epoch results, so keep the Colab log as evidence.
 5. **Title page.** It still says LAHORE and April 2026. Update the date and confirm the campus.
 6. **Screenshots** (Figures 4.3 and 4.4) were taken from the demo site with a test video as the camera and simulated vests. The mobile screens were captured from the app's web build, as the text says.
 7. **Front-matter pages** are blank templates: fill in the committee names, dates, signatures and the Turnitin figures, and insert the Turnitin report. Dedication and acknowledgement (optional) are not included.
 8. **Push and QR range.** These are reported as not yet done (the fire model and the two-hour soak are now reported as done). When they are measured, re-run `tools/measure/make_tables.py`, update `report_v8_content.py` and rebuild.
 9. **Task division.** Table 3.9 has a placeholder for the human effort row (task division and person-months).
-10. **Figure 3.4** (Level-1 DFD, from V7) still shows Firebase as a telemetry store; Firebase only sends push notifications. Redraw it to match Figure 3.10.
-11. **Blank pages** after the Chapter 2, 4 and 5 title pages in the Word render existed before these changes.
+10. **Chapter 3 figures** were redrawn on 27 Oct (below). Check that they still show the design you proposed: the Level-1 DFD now balances Figure 3.10, and the use case diagram follows Table 3.5.
+11. **Export the PDF** from Word once you have checked the .docx (`osascript docs/word_to_pdf.applescript ...`, see `build_report_v8.py`); the PDF in `docs/` predates the 1 Nov changes.
+
+## References (1 Nov 2026)
+
+The reference list is `REFERENCES` in `report_v8_content.py`. The text cites entries as `[@key]`, and `number_references()` in `build_report_v8.py` numbers them in order of first citation (IEEE). The build fails if a numeric citation is left from V7, a citation has no entry, or an entry is never cited. Journal and conference entries were checked against Crossref by DOI; software versions are the installed ones.
+
+V7's list had citations that did not support their sentences, entries with wrong details, and entries that could not be found:
+
+| Was | Now |
+|---|---|
+| ILO: "30 to 40 percent of fatal accidents, 7 percent of the workforce" | The ILO page says at least 108,000 deaths a year, about 30% of fatal occupational injuries, and 3 to 4 times the risk of other work; the text says that. |
+| "Labour Force Survey 2020–21 … over 3.6 million", citing the 2022–23 survey | 9.5% of 67.25 million employed (about 6.4 million), citing the 2020–21 survey. |
+| "Sacks et al. (2022) … 4.2 monitoring personnel", citing a Fang/Li/Ong review | No such source found; replaced by CCTV monitoring figures from Stainer et al. (2013). |
+| "Nath, Behzadan, and Paal (2020) … 91.2%", citing a different 2023 review | The real 2020 paper: 72.3% mAP at 11 frames per second. The unsourced "above 92%" sentence was removed. |
+| "Ramli et al. (2020) smart helmet … GSM", citing the dataset | No such paper found; replaced by Raghunath and Ghaffar (2025). Their link type is not stated, and Table 2.1 says so. |
+| Pillar and Triax as "BLE worker tags" | Pillar's environmental sensors and Triax's Spot-r clip, each with its own source. |
+| Fang/Li/Ong 2023, Nath/Alsharef/Nahangi 2023, Li/Luo/Gong 2023, Siddiqui et al. 2022 | Not found in Crossref or by search, so removed. |
+| Awolusi et al., Fang et al. (harness): wrong volume, year or title | Corrected from Crossref and now cited. |
+| YOLOv7, LeCun et al., SafetyCulture: listed but never cited | Cited where the text relies on them. |
+| DRF credited to the Django Software Foundation; Mosquitto as a web page | Encode OSS; Light (2017), J. Open Source Softw. |
+| No source for YOLOv1, COCO, D-Fire, OpenCV, the Apple Watch, SmartCap or Safesite | Each is cited where it is first used. |
+
+Similarity is not something this pass can measure: run Turnitin on the final PDF (the SOP allows at most 18%).

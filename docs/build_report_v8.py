@@ -10,6 +10,7 @@ Paragraph, heading, caption and table formatting is cloned from V7 so the
 new text matches the document.
 
     .venv/bin/python docs/figures/make_figures.py
+    .venv/bin/python docs/figures/make_charts.py
     .venv/bin/python docs/build_report_v8.py build docs/SiteSafe_FYP_Report_V7.docx docs/SiteSafe_FYP_Report_V8.docx
     osascript docs/word_to_pdf.applescript "$PWD/docs/SiteSafe_FYP_Report_V8.docx" "$PWD/<out>.pdf"
     .venv/bin/python docs/build_report_v8.py finalize docs/SiteSafe_FYP_Report_V8.docx <out>.pdf docs/SiteSafe_FYP_Report_V8.docx
@@ -211,11 +212,12 @@ def edit_chapters_1_to_3(doc: Document) -> None:
     for prefix, text in C.CHAPTER_1_TO_3_EDITS:
         U.set_paragraph_text(U.find_paragraph(doc, prefix, exact=False), text)
     comparison = U.table_after_caption(doc, "Table 2.1: Comparison of Existing Systems/Devices Against Site-Safe")
-    last = comparison.rows[-1]
-    assert last.cells[0].text.strip().startswith("Site-Safe"), "Table 2.1 last row is not Site-Safe"
-    size = last.cells[0].paragraphs[0].runs[0].font.size
-    for cell, value in zip(last.cells, C.TABLE_21_SITE_SAFE_ROW):
-        U.set_cell_text(cell, value, size=size.pt if size else 9.0)
+    for prefix, values in C.TABLE_21_ROWS:
+        rows = [r for r in comparison.rows if r.cells[0].text.strip().startswith(prefix)]
+        assert len(rows) == 1, f"Expected one Table 2.1 row for {prefix!r}; found {len(rows)}"
+        size = rows[0].cells[0].paragraphs[0].runs[0].font.size
+        for cell, value in zip(rows[0].cells, values, strict=True):
+            U.set_cell_text(cell, value, size=size.pt if size else 9.0)
 
 
 def replace_abstract(doc: Document) -> list:
@@ -251,6 +253,74 @@ def extend_chapter_3(doc: Document, templates: Templates) -> None:
     limitations = U.find_paragraph(doc, old)
     U.insert_before(limitations._p, render_blocks(doc, templates, C.CHAPTER_3_ADDITIONS))
     U.set_paragraph_text(limitations, new)
+
+
+def is_blank(element) -> bool:
+    return (element is not None and element.tag == qn("w:p") and not text_of(element)
+            and not element.findall(".//" + qn("w:drawing")) and not element.findall(".//" + qn("w:sectPr"))
+            and not has_page_break(element) and not style_of(element).startswith("Heading"))
+
+
+def remove_v7_figure(doc: Document, caption: str) -> None:
+    """Remove a V7 figure: its caption, the picture (in the caption
+    paragraph or just before it) and the blank spacers around them."""
+    cap = U.find_paragraph(doc, caption)._p
+    doomed = [cap]
+    node = cap
+    while not node.findall(".//" + qn("w:drawing")):
+        node = node.getprevious()
+        assert is_blank(node) or node.findall(".//" + qn("w:drawing")), f"No picture just before {caption!r}"
+        doomed.insert(0, node)
+    before, after = doomed[0].getprevious(), cap.getnext()
+    while is_blank(before):
+        doomed.insert(0, before)
+        before = before.getprevious()
+    while is_blank(after):
+        doomed.append(after)
+        after = after.getnext()
+    for element in doomed:
+        element.getparent().remove(element)
+
+
+def replace_chapter_3_figures(doc: Document, templates: Templates) -> None:
+    """Redrawn Chapter 3 figures replace V7's pictures, which were placed
+    at a different aspect ratio and so printed stretched. Each figure goes
+    after the paragraph that first refers to it, as the guidelines require."""
+    for caption, *_ in C.CHAPTER_3_FIGURES:
+        remove_v7_figure(doc, caption)
+    heading, text = C.ARCHITECTURE_INTRO
+    U.find_paragraph(doc, heading)._p.addnext(paragraph(templates.body, text))
+    for prefix, sentence in C.FIGURE_REFERENCES:
+        U.find_paragraph(doc, prefix, exact=False).add_run(" " + sentence)
+    for caption, filename, width, after in C.CHAPTER_3_FIGURES:
+        anchor = U.find_paragraph(doc, after, exact=after == "Figure 3.1: Use Case Diagram")._p
+        for element in reversed(render_blocks(doc, templates, [("fig", filename, width, caption)])):
+            anchor.addnext(element)
+    power = U.find_paragraph(doc, C.VEST_POWER_PARAGRAPH, exact=False)._p
+    U.find_paragraph(doc, "Figure 3.6: Smart Vest Block Diagram")._p.addnext(power)
+    drop_unused_images(doc)
+
+
+def caption_fonts(doc: Document) -> None:
+    """Figure and table captions in Arial Narrow 10 pt (FYP guidelines)."""
+    start = U.body_start_index(doc)
+    for p in doc.paragraphs[start:]:
+        if re.match(r"^(Table|Figure) (?:\d+|[IVX]+)\.\d+:", U.normalized(p.text)):
+            for run in p.runs:
+                fonts = run._element.get_or_add_rPr().get_or_add_rFonts()
+                for attr in ("w:ascii", "w:hAnsi", "w:cs"):
+                    fonts.set(qn(attr), "Arial Narrow")
+                run.font.size = Pt(10)
+
+
+def drop_unused_images(doc: Document) -> None:
+    """V7 pictures replaced above stay in the package unless their
+    relationships go too."""
+    r_ns = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+    used = {v for e in doc.element.iter() for k, v in e.attrib.items() if k.startswith(r_ns)}
+    for rid, rel in list(doc.part.rels.items()):
+        if rel.reltype.endswith("/image") and rid not in used:
+            doc.part.rels.pop(rid)
 
 
 def without_moved_tables(blocks):
@@ -399,6 +469,10 @@ def add_front_matter_pages(doc: Document) -> None:
                 elements.append(front_paragraph(after=240))
             else:
                 elements.append(front_paragraph(values[0]))
+    # The abstract fills its page, so its trailing spacers would spill onto a
+    # page of their own before the certificate's page break.
+    while is_spacer(contents.getprevious()):
+        contents.getparent().remove(contents.getprevious())
     U.insert_before(contents, elements)
 
 
@@ -444,14 +518,38 @@ def edit_abbreviations(doc: Document) -> None:
         entries.append(new)
 
 
-def edit_references(doc: Document) -> None:
-    for prefix, text in C.REFERENCE_EDITS:
-        U.set_paragraph_text(U.find_paragraph(doc, prefix, exact=False), text)
-    last = U.find_paragraph(doc, "[20] ", exact=False)._p
-    for text in C.REFERENCES_ADD:
-        new = paragraph(last, text)
-        last.addnext(new)
-        last = new
+CITATION = re.compile(r"\[@([a-z0-9]+)\]")
+
+
+def number_references(doc: Document) -> None:
+    """IEEE style: number the [@key] citations in order of first appearance
+    and replace V7's reference list with C.REFERENCES in that order. Fails
+    on a numeric citation left from V7, a citation with no entry, or an
+    entry that is never cited."""
+    heading = U.find_paragraph(doc, "References")._p
+    old = [e for e in heading.itersiblings() if e.tag == qn("w:p") and re.match(r"\[\d+\]", text_of(e))]
+    assert old, "No reference list after the References heading"
+    before = list(heading.itersiblings(preceding=True))[::-1]
+    paragraphs = [p for element in before for p in ([element] if element.tag == qn("w:p") else element.iter(qn("w:p")))]
+    stale = [text_of(p)[:80] for p in paragraphs if re.search(r"\[\d+\]", text_of(p))]
+    assert not stale, f"Numeric citations left from V7: {stale}"
+    number: dict[str, int] = {}
+    for p in paragraphs:
+        for key in CITATION.findall(text_of(p)):
+            number.setdefault(key, len(number) + 1)
+    assert not set(number) - set(C.REFERENCES), f"Cited without an entry: {sorted(set(number) - set(C.REFERENCES))}"
+    assert not set(C.REFERENCES) - set(number), f"Never cited: {sorted(set(C.REFERENCES) - set(number))}"
+    for p in paragraphs:
+        for t in p.iter(qn("w:t")):
+            if t.text and "[@" in t.text:
+                t.text = CITATION.sub(lambda m: f"[{number[m.group(1)]}]", t.text)
+    split = [text_of(p)[:80] for p in paragraphs if "[@" in text_of(p)]
+    assert not split, f"Citation split across runs: {split}"
+    for key, n in sorted(number.items(), key=lambda item: item[1]):
+        old[0].addprevious(paragraph(old[0], f"[{n}] {C.REFERENCES[key]}"))
+    for element in old:
+        element.getparent().remove(element)
+    print(f"  references: {len(number)} entries, numbered by first citation")
 
 
 def chapter_title_pages(doc: Document) -> None:
@@ -466,13 +564,73 @@ def chapter_title_pages(doc: Document) -> None:
             p.alignment = 1  # centre
             for run in p.runs:
                 U.set_run_font(run, size=size, bold=True)
-        # Chapters 1-4 centre the title with blank lines above it; 5 and 6 have none.
-        if not paragraphs[idx - 1].text.strip() and not paragraphs[idx - 2].text.strip():
-            label.paragraph_format.space_before = None
-        else:
-            label.paragraph_format.space_before = Pt(220)
+        label.paragraph_format.space_before = Pt(220)
         first_section = next(p for p in paragraphs[idx + 2:] if p.text.strip() and p.style.name == "Heading 2")
         first_section.paragraph_format.page_break_before = True
+
+
+def is_spacer(element) -> bool:
+    """An empty paragraph V7 used for layout: blank lines, empty headings and
+    bare page breaks. Spacers around a title page are what pushed a stray
+    line onto the next page and left a blank page in the Word render."""
+    return (element is not None and element.tag == qn("w:p") and not text_of(element)
+            and not element.findall(".//" + qn("w:drawing")) and not element.findall(".//" + qn("w:sectPr"))
+            and not element.findall(".//" + qn("w:bookmarkStart")) and not element.findall(".//" + qn("w:fldChar")))
+
+
+def section_break(template, *, keep_start: bool):
+    """A copy of the body's section properties that starts a new page and
+    leaves the first page of its section unnumbered."""
+    sect_pr = deepcopy(template)
+    pg = sect_pr.find(qn("w:pgNumType"))
+    if not keep_start and pg is not None and pg.get(qn("w:start")) is not None:
+        del pg.attrib[qn("w:start")]
+    if sect_pr.find(qn("w:titlePg")) is None:
+        later = [qn(t) for t in ("w:textDirection", "w:bidi", "w:rtlGutter", "w:docGrid", "w:printerSettings", "w:sectPrChange")]
+        following = next((c for c in sect_pr if c.tag in later), None)
+        title_pg = OxmlElement("w:titlePg")
+        if following is not None:
+            following.addprevious(title_pg)
+        else:
+            sect_pr.append(title_pg)
+    return sect_pr
+
+
+def title_page_sections(doc: Document) -> None:
+    """Guideline: chapter title pages carry no page number. Each chapter and
+    appendix becomes its own section whose first page (the title page) has
+    no footer, numbering running on from the previous section. The section
+    break also starts the new page, so the spacers V7 used for that go."""
+    body = doc.element.body
+    final = body.find(qn("w:sectPr"))
+    labels = [p._p for p in doc.paragraphs
+              if re.fullmatch(r"Chapter \d|Appendix [IVX]+", p.text.strip())]
+    assert text_of(labels[0]) == "Chapter 1", "Expected Chapter 1 to be the first title page"
+    for label in labels:
+        title = label.getnext()
+        while is_spacer(title.getnext()):
+            body.remove(title.getnext())
+        while is_spacer(label.getprevious()):
+            body.remove(label.getprevious())
+        p_pr = label.find(qn("w:pPr"))
+        if p_pr is not None and p_pr.find(qn("w:pageBreakBefore")) is not None:
+            p_pr.remove(p_pr.find(qn("w:pageBreakBefore")))
+    references = U.find_paragraph(doc, "References")._p
+    while is_spacer(references.getprevious()):
+        body.remove(references.getprevious())
+    # Section N ends just before title page N+1; the first body section restarts at page 1.
+    for number, label in enumerate(labels[1:]):
+        before = label.getprevious()
+        if before.tag != qn("w:p") or before.find(qn("w:pPr") + "/" + qn("w:sectPr")) is not None:
+            before = OxmlElement("w:p")
+            label.addprevious(before)
+        p_pr = before.find(qn("w:pPr"))
+        if p_pr is None:
+            p_pr = OxmlElement("w:pPr")
+            before.insert(0, p_pr)
+        p_pr.append(section_break(final, keep_start=number == 0))
+    body.replace(final, section_break(final, keep_start=False))
+    print(f"  title pages: {len(labels)} sections, unnumbered first pages")
 
 
 def build(input_path: Path, output_path: Path) -> None:
@@ -481,14 +639,16 @@ def build(input_path: Path, output_path: Path) -> None:
     abstract = replace_abstract(doc)
     edit_chapters_1_to_3(doc)
     extend_chapter_3(doc, templates)
+    replace_chapter_3_figures(doc, templates)
     replace_chapter_body(doc, "4.1 Development Environment", render_blocks(doc, templates, without_moved_tables(C.CHAPTER_4)))
     replace_chapter_body(doc, "5.1 Testing Approach", render_blocks(doc, templates, without_moved_tables(C.CHAPTER_5)))
     replace_chapter_body(doc, "6.1 Conclusion", render_blocks(doc, templates, C.CHAPTER_6))
     add_appendices(doc, templates)
     renumber_tables(doc)
     edit_abbreviations(doc)
-    edit_references(doc)
+    number_references(doc)
     U.normalize_typography(doc)
+    caption_fonts(doc)
     for element in abstract:
         for run in element.iter(qn("w:r")):
             from docx.text.run import Run
@@ -496,6 +656,7 @@ def build(input_path: Path, output_path: Path) -> None:
             U.set_run_font(Run(run, None), size=12)
     chapter_title_pages(doc)
     appendix_title_pages(doc)
+    title_page_sections(doc)
     add_front_matter_pages(doc)
     roman_front_matter(doc)
     U.write_front_matter(doc)
