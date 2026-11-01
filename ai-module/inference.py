@@ -35,6 +35,7 @@ import live_feed
 from latest_sender import LatestSender
 import ppe_episodes
 import proximity
+import restricted_zone
 
 # ============== CONFIG ==============
 MODEL_PATH = "models/sitesafe_v5.pt"
@@ -388,6 +389,7 @@ class CameraRules:
         self.rules: dict[str, dict] = {}
         self.zone: str | None = None
         self.areas: list[danger_areas.Area] = []
+        self.zone_restricted = False
         self._stop = threading.Event()
 
     def refresh(self) -> bool:
@@ -405,6 +407,7 @@ class CameraRules:
         self.rules = data.get("rules") or {}
         self.zone = data.get("zone")
         self.areas = danger_areas.parse_areas(data.get("areas"))
+        self.zone_restricted = bool(data.get("zone_restricted"))
         return True
 
     def enabled(self, alert_type: str) -> bool:
@@ -828,6 +831,14 @@ def parse_args() -> argparse.Namespace:
         "(for one PPE alert per person) whenever the person detector runs.",
     )
     parser.add_argument(
+        "--restricted-grace",
+        type=float,
+        default=restricted_zone.DEFAULT_GRACE_SECONDS,
+        help="In a restricted zone, seconds a person may stay in view without a "
+        "readable badge before a ZONE_BREACH alert (default "
+        f"{restricted_zone.DEFAULT_GRACE_SECONDS:g}). Needs QR identification.",
+    )
+    parser.add_argument(
         "--no-fire",
         action="store_true",
         help="Disable fire/smoke detection (it is also off when models/fire_smoke.pt is missing).",
@@ -895,6 +906,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--fire-conf must be between zero and one")
     if args.fire_persistence <= 0:
         parser.error("--fire-persistence must be greater than zero")
+    if args.restricted_grace <= 0:
+        parser.error("--restricted-grace must be greater than zero")
     if not 0.0 < args.live_fps <= 15.0:
         parser.error("--live-fps must be greater than zero and at most 15")
     if args.video_clock and args.loop:
@@ -1056,11 +1069,14 @@ def main() -> None:
     if danger_tracker is None:
         print(f"[{camera_id}] danger areas need the person detector; disabled", file=sys.stderr)
     sightings = None
+    restricted_watcher = None
     if not args.no_qr:
         if coco_model is not None:
             qr_decoder = identity.QrDecoder()
             sightings = SightingThrottle()
             print(f"[{camera_id}] QR badge identification enabled")
+            # Only identification can tell an unknown person from a worker.
+            restricted_watcher = restricted_zone.RestrictedZoneWatcher(grace_seconds=args.restricted_grace)
         else:
             print(
                 f"[{camera_id}] QR badge identification needs the person detector; disabled",
@@ -1227,6 +1243,7 @@ def main() -> None:
             confirmed_proximity: list[dict] = []
             confirmed_inactivity: list[dict] = []
             confirmed_danger: list[dict] = []
+            confirmed_restricted: list[dict] = []
             if coco_model is not None and total_frames % PROXIMITY_FRAME_INTERVAL == 0:
                 p_result = coco_model.predict(
                     raw_frame, verbose=False, conf=PROXIMITY_CONF, device=device
@@ -1259,6 +1276,14 @@ def main() -> None:
                         fh, fw = raw_frame.shape[:2]
                         feet = [(t.track_id, danger_areas.foot_point(t.box, fw, fh)) for t in in_view]
                         confirmed_danger = danger_tracker.update(feet, rules.areas, now=t_now)
+                    if restricted_watcher is not None:
+                        fh, fw = raw_frame.shape[:2]
+                        confirmed_restricted = restricted_watcher.update(
+                            [(t.track_id, danger_areas.foot_point(t.box, fw, fh), t.badge) for t in in_view],
+                            {t.track_id for t in identity_tracker.tracks},
+                            rules.zone if rules.zone_restricted else None,
+                            now=t_now,
+                        )
                     # Attendance evidence: identified people currently in view.
                     for track in identity_tracker.tracks:
                         if track.badge and track.last_seen == t_now and sightings and sightings.due(track.badge, t_now):
@@ -1376,6 +1401,14 @@ def main() -> None:
                     alerts_sent += 1
                     who = f" [{badge}]" if badge else ""
                     print(f"[ALERT] {danger_areas.describe(event, camera_id)}{who} → queued")
+
+            # Someone with no readable badge stayed in view of a restricted zone's
+            # camera; identified workers are checked by the API from their sightings.
+            for event in confirmed_restricted:
+                payload = with_model(restricted_zone.alert_payload(event, camera_id), coco_version)
+                if queue_event(outbox, rules, payload, snapshot):
+                    alerts_sent += 1
+                    print(f"[ALERT] {restricted_zone.describe(event, camera_id)} → queued")
 
             # FireTracker latches per class until the scene is clear, so no
             # extra cooldown is needed; the server applies hot-work permits.

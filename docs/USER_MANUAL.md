@@ -65,7 +65,7 @@ The **Event Simulator** at the bottom (Safety Officers and Admins) raises test a
 | Fall | a camera sees a collapsed posture for 3 s | the posture clears |
 | Inactivity | a person has not moved for the inactivity time (5 min by default) | they move again |
 | Fire / smoke | seen for 2 s (lower severity inside a zone with a hot-work permit) | the scene has been clear for 30 s |
-| Zone breach | a worker enters a restricted zone they are not assigned to, or a zone goes over its capacity for 10 s | they leave, or the zone is back within capacity for 60 s |
+| Zone breach | a worker enters a restricted zone they are not assigned to; a restricted zone's camera sees someone without a readable badge for 10 s; or a zone goes over its capacity for 10 s | they leave (for someone unidentified, 10 s out of the camera's view), or the zone is back within capacity for 60 s |
 | SOS | a vest's SOS button is pressed | the SOS is cleared |
 
 A camera that reads a worker's QR badge names them on the alert; otherwise it says "Worker not identified". Camera alerts carry the **evidence frame** (the picture at that moment) and the **model version** that detected it.
@@ -107,7 +107,7 @@ Next to each area, **On/Off** switches it off while the hazard is absent (for ex
 **Adding or editing a zone (Admins):** choose **Add Zone** or **Edit** and set:
 
 - **Name** and **Description**.
-- **Risk Level:** low, medium, high or restricted. A restricted zone raises a breach when a worker not assigned to it enters.
+- **Risk Level:** low, medium, high or restricted. A restricted zone raises a breach when a worker not assigned to it enters, and its cameras raise one, with the picture, for anyone they see for 10 s without being able to read a badge. Ask everyone allowed in to wear their badge where the camera can see it.
 - **Max Occupancy:** the head count that raises an over-capacity alert (0 means unlimited).
 - **Camera IDs:** the cameras that watch the zone. A camera belongs to one zone. A worker whose badge a camera reads is placed in that camera's zone.
 - **These cameras can see the same people:** on, the head count is the largest single camera's count, so nobody is counted twice; off, the counts are added.

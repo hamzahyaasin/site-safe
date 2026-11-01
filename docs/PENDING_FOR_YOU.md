@@ -2,25 +2,22 @@
 
 Everything that has been skipped or deferred, or that needs your hardware, accounts, decisions or signatures. When you are ready for one, say "do item A1" (or similar), and it is picked up from here. Items move to the **Done** list at the bottom when finished; the traceability matrix ledger records the evidence.
 
-Kept since 27 October 2026; last reviewed 1 November 2026, after every item that needed no input from you was done (A2, A6, A8, A9, A11, A12). Update this file whenever something is skipped or deferred.
+Kept since 27 October 2026; last reviewed 1 November 2026, after your answers on A3, A5 and B1–B4. Update this file whenever something is skipped or deferred.
 
 ## A. Skipped or deferred in sessions
 
 | # | Item | Skipped | What it takes | What it unblocks |
 |---|---|---|---|---|
 | A1 | **Record and score a webcam clip for PPE episodes** | 27 Oct (Phase 1) | 60 s of you in front of the webcam without helmet/vest/goggles: sit, lean in and out, turn, move left and right, step out of view for about 3 s and come back. Record with `python tools/measure/record_clip.py --out tools/measure/results/clips/webcam_one_person_01.mp4 --seconds 60` from your own Terminal (it has camera permission), then say which PPE items you were missing. Scoring is automatic. | FR-05 scored on real video (target: one alert per missing item), Chapter 5 evidence |
-| A3 | **Push the branch so CI runs** | 27 Oct (Phase 0 and 1) | Your go-ahead to push `stage-0-1-security-events` to GitHub. | CI runs every suite on GitHub; first step of NFR-06 |
-| A5 | **Gas detection** | 27 Oct | Supervisor approval of a scope change. If approved: a scope-change note (offered), then software with a labelled simulator, then optional demo sensors (ESP32 + MQ-series, not certified). | A visible gas-monitoring feature |
-| A10 | **Export the V8 PDF from Word** | 27 Oct (figures), 1 Nov (references, layout, charts; held back at your request) | Say "do item A10" when you have looked at `docs/SiteSafe_FYP_Report_V8.docx`. Word is closed now, so nothing else is needed from you. The .docx (92 pages) already carries everything; `docs/SiteSafe_FYP_Report_V8.pdf` is still the 95-page 27 Oct export with the old figures, references and blank pages. | A PDF that matches the .docx |
+| A10 | **Export the V8 PDF from Word** | 27 Oct (figures), 1 Nov (references, layout, charts; held back at your request) | Say "do item A10" when you have looked at `docs/SiteSafe_FYP_Report_V8.docx`. Word is closed now, so nothing else is needed from you. The .docx already carries everything, including the B1 wording; `docs/SiteSafe_FYP_Report_V8.pdf` is still the 95-page 27 Oct export with the old figures, references and blank pages. | A PDF that matches the .docx |
+| A13 | **Cameras that see two zones** (your answer to B2: sometimes) | 1 Nov (needs your go-ahead: it changes the data model) | Proposed design: an Admin draws on the camera's picture which part belongs to which zone, with the same tool as danger areas. A camera may then be listed in several zones, and the API requires each such zone to have its part drawn. The camera counts people per part (by where their feet are), a badge read places the worker in the zone of the part they stand in, and the B1 check applies only to people in a restricted zone's part. The site map shows the camera under both zones. Touches the zone and camera-area models (one migration), the zone API, camera config, the pipeline, the count and sighting APIs, the Cameras page, tests and the manual. Say "do item A13". | Correct head counts, attendance and restricted-zone alerts for a camera on a zone boundary |
 
 ## B. Decisions waiting on you
 
 | # | Question | Default if you don't decide |
 |---|---|---|
-| B1 | An **unidentified person** (no readable badge) in a **restricted zone**: raise an alert, or only count them? Today they are counted in the zone's head count (visible on the map) but raise nothing. Since 27 Oct a danger area drawn over the restricted part of a camera's picture alerts anyone, badge or not, so this decision only concerns zones without such an area. | Counted only; no alert until decided |
-| B2 | Does any camera on your site look at **two zones**? A camera id belongs to one zone only (the API refuses a second). Since 27 Oct a hazardous part of its view can be drawn as a danger area instead (FR-32). Counting people separately for two zones seen by one camera would be a further change; say if you need it. | One zone per camera; danger areas for parts of a view |
-| B3 | Snapshot **retention period** and whether snapshots are allowed on site at all. Since 27 Oct reports can also carry snapshots (FR-34); each report can leave them out, and the history shows which include them | 30 days, snapshots on, included in reports unless unticked |
-| B4 | Revoke the **WEBCAM-TEST** device token in Django admin after testing | Left active |
+| B3 | **Alert photos: how long to keep them, and may you keep them at all?** Every camera alert saves the picture from that moment (the "snapshot"), so a supervisor can see what happened; these are photos of identifiable workers. Two questions, which your site's privacy rules or supervisor may decide: (1) after how many days should the photos be deleted automatically (the alert itself stays)? (2) Are such photos allowed on site at all? If not, cameras still raise alerts, without a picture. Reports can include the photos; each report has a tick box to leave them out. | Keep for 30 days; photos on; included in reports unless unticked |
+| B4 | Revoke the **WEBCAM-TEST** device token in Django admin when testing is over (owner, 1 Nov: not yet, still testing) | Left active |
 
 ## C. Needs your hardware, accounts, people or signatures
 
@@ -47,6 +44,9 @@ Kept since 27 October 2026; last reviewed 1 November 2026, after every item that
 
 | Item | Done | Evidence |
 |---|---|---|
+| Branch pushed and CI run (was A3) | 1 Nov | `stage-0-1-security-events` on GitHub; CI run 41298279460 passed all six jobs (backend, ai-module, tools, report-service, frontend, mobile) |
+| Gas detection checked against V7 (was A5) | 1 Nov | Not required: V7's objectives (1.3), scope (1.4) and requirements never include gas sensing. Gas appears only in the problem statement (Chapter 1) and as a gap of other products (Chapter 2). Optional: one line in Chapter 6 future work so the problem statement is not left open |
+| Unidentified person in a restricted zone raises an alert (was B1) | 1 Nov | `ai-module/restricted_zone.py`, `zone_restricted` in the camera config, ZONE_BREACH accepted from cameras; 12 new tests; end to end on a test video (matrix ledger, 1 Nov). Also fixed: the QR decoder missed small badges (now OpenCV's ArUco-based detector) |
 | Live webcam run written up in the matrix (was A2) | 1 Nov | `REQUIREMENTS_TRACEABILITY.md` FR-29/FR-30 rows and ledger: 14 WEBCAM-TEST alerts of 27 Oct, each with its frame on disk and model version `sitesafe_v5.pt@7e8e092d0603`; report Table 5.2 and Table IV.2 updated |
 | Report layout: unnumbered title pages, no blank pages (was A6) | 1 Nov | `title_page_sections()` in `build_report_v8.py`; Word render checked: 92 pages, no blank page, every chapter and appendix title page unnumbered, the abstract no longer spills onto a blank page; all 150 contents and list entries match |
 | Dev database migrated (was A8) | 1 Nov | Backup `backups/sitesafe_db_before_phase2_20261101_1455.dump`; the 8 migrations applied, `showmigrations` has none left |

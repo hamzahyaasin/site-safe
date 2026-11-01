@@ -147,7 +147,9 @@ def decode_snapshot(value):
     return data
 
 
-# Alert types a camera can observe. SOS and zone breaches come from vests.
+# Alert types a camera can observe. SOS comes from vests. A camera raises a
+# zone breach only for someone without a readable badge in a restricted zone
+# (identified workers are checked from their sightings).
 CAMERA_ALERT_TYPES = (
     AlertType.PPE_VIOLATION,
     AlertType.VEHICLE_PROXIMITY,
@@ -156,6 +158,7 @@ CAMERA_ALERT_TYPES = (
     AlertType.FIRE,
     AlertType.SMOKE,
     AlertType.DANGER_AREA,
+    AlertType.ZONE_BREACH,
 )
 
 

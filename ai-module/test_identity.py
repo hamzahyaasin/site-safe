@@ -41,6 +41,13 @@ class DecoderTests(unittest.TestCase):
         self.assertAlmostEqual(cx, 120, delta=15)
         self.assertAlmostEqual(cy, 120, delta=15)
 
+    def test_small_badge_on_a_dark_background(self):
+        # Regression: OpenCV's classic multi-code detector missed badges this size.
+        frame = np.full((720, 1280, 3), 60, dtype=np.uint8)
+        qr = cv2.copyMakeBorder(cv2.QRCodeEncoder.create().encode(ALI), 2, 2, 2, 2, cv2.BORDER_CONSTANT, value=255)
+        frame[300:410, 600:710] = cv2.cvtColor(cv2.resize(qr, (110, 110), interpolation=cv2.INTER_NEAREST), cv2.COLOR_GRAY2BGR)
+        self.assertEqual([h[0] for h in identity.QrDecoder().decode(frame)], [ALI])
+
     def test_blank_frame(self):
         self.assertEqual(identity.QrDecoder().decode(qr_frame([])), [])
 

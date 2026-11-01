@@ -8,7 +8,7 @@ Fixed on 21 Oct 2026: the shared table helper in `update_fyp_report.py` wrote wi
 
 ## Length
 
-Body text of Chapters 1–6, excluding headings, captions, tables, front matter, chapter title pages, appendices and references: **about 10,494 words** (the guideline allows 8,500–10,500). The Chapter 5 charts of 1 Nov 2026 added 4 words net (the text tightened to pay for the references to them). The reference fix of 1 Nov 2026 added 20 words, all of them citation numbers; the rewritten Chapter 1 and 2 paragraphs are no longer than before. Tables in the chapters add 2,969 words and the appendices 2,006.
+Body text of Chapters 1–6, excluding headings, captions, tables, front matter, chapter title pages, appendices and references: **about 10,498 words** (the guideline allows 8,500–10,500, so there is no room left). The Chapter 5 charts of 1 Nov 2026 added 4 words net (the text tightened to pay for the references to them), and the restricted-zone sentence in 3.3.2 (decision B1) 3 more. The reference fix of 1 Nov 2026 added 20 words, all of them citation numbers; the rewritten Chapter 1 and 2 paragraphs are no longer than before. Tables in the chapters add 2,969 words and the appendices 2,006.
 
 Tables 4.7, 4.8, 5.2, 5.7 and 5.8 (1,309 words) moved to Appendices III and IV on 26 Oct 2026; the builder renumbers the tables left behind and rewrites every reference. The new requirements tables in Chapter 3 add 1,676 words, so if the examiners count table text, the chapters are over the cap either way; moving Table 3.4 (functional requirements, 580 words) to an appendix would be the next step.
 
@@ -59,6 +59,7 @@ Rebuilt and rendered in Word on 27 Oct 2026: 95 pages; every one of the 147 cont
 | 5.6 | Figure 5.3, the latency distribution of the 1,431 soak probes. |
 | Table 5.2, Table IV.2 | FR-29 and FR-30 now cite the 27 Oct live webcam run (14 alerts with frame and model version). |
 | Figure 4.3 | Retaken at 1600 px wide (was 800), so the dashboard text is readable in print. |
+| 3.3.2, Table 3.4, Table 5.2 | Decision B1: a restricted zone's camera also raises a breach for anyone it cannot identify (FR-20). |
 
 The charts are drawn by `docs/figures/make_charts.py` from the saved results only: `held_out_test_metrics.json`, `held_out_confusion_matrix.json` and the soak CSV. The Colab run kept no confusion matrix, so `ai-module/scripts/held_out_confusion.py` recomputed it from the same weights (`sitesafe_v5.pt@7e8e092d0603`) and test split; its reference pass reproduces mAP@0.5 0.5621, and the matrix columns match the per-class instance counts.
 

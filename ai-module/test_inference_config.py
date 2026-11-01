@@ -124,6 +124,23 @@ class CameraRulesTests(unittest.TestCase):
         self.assertEqual(len(box.items), 1)
         self.assertEqual(rules.threshold("INACTIVITY"), 90.0)
 
+    def test_refresh_reads_whether_the_zone_is_restricted(self):
+        class Session:
+            def __init__(self, body):
+                self.body = body
+
+            def get(self, *args, **kwargs):
+                body = self.body
+                return type("R", (), {"status_code": 200, "json": lambda self: body})()
+
+        rules = inference.CameraRules(session=Session({"zone": "Crane", "zone_restricted": True}), camera_id="CAM-09")
+        self.assertFalse(rules.zone_restricted, "nothing is restricted until the config is loaded")
+        self.assertTrue(rules.refresh())
+        self.assertEqual((rules.zone, rules.zone_restricted), ("Crane", True))
+        rules.session = Session({"zone": "Crane"})
+        rules.refresh()
+        self.assertFalse(rules.zone_restricted, "an older API without the field means not restricted")
+
     def test_device_key_header(self):
         session = inference.build_api_session("ss_test")
         self.assertEqual(session.headers["Authorization"], "Device ss_test")

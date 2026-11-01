@@ -316,7 +316,8 @@ class CameraEventView(APIView):
     """POST a confirmed event from an authenticated camera worker.
 
     Responses: 201 stored, 200 already stored (same ``event_id``), 202
-    suppressed by a disabled rule. A camera treats all three as delivered.
+    suppressed by a disabled rule, or a ZONE_BREACH from a camera whose zone
+    is no longer restricted. A camera treats all three as delivered.
 
     Alert evidence (FR-29): ``model_version`` names the weights, and
     ``snapshot`` is an optional base64-encoded JPEG in the same JSON body
@@ -368,7 +369,16 @@ class CameraEventView(APIView):
 
         from . import fire_policy
 
-        fire_policy.apply(alert, Zone.objects.for_camera(alert.camera_id).first())
+        zone = Zone.objects.for_camera(alert.camera_id).first()
+        restricted = zone is not None and zone.is_active and zone.risk_level == Zone.RiskLevel.RESTRICTED
+        if alert.alert_type == AlertType.ZONE_BREACH and not restricted:
+            # The camera learnt the zone was restricted from its last config
+            # fetch; an event that arrives after the zone changed is dropped.
+            return Response(
+                {"status": "suppressed", "alert_type": alert.alert_type, "reason": "Camera's zone is not restricted."},
+                status=status.HTTP_202_ACCEPTED,
+            )
+        fire_policy.apply(alert, zone)
         if data["snapshot"] and settings.ALERT_SNAPSHOTS_ENABLED:
             # Written before the insert so the alert is broadcast once, with
             # its snapshot; a random name keeps files unguessable.
@@ -541,6 +551,7 @@ class CameraConfigView(APIView):
 
     Inactivity uses ``threshold_seconds`` as its stationary timeout. ``areas``
     lists the camera's active danger areas (polygons in image fractions).
+    ``zone_restricted`` tells the camera to report people it cannot identify.
     """
 
     permission_classes = [IsCameraService]
@@ -563,6 +574,7 @@ class CameraConfigView(APIView):
             {
                 "camera_id": camera_id,
                 "zone": zone.name if zone else None,
+                "zone_restricted": bool(zone and zone.is_active and zone.risk_level == Zone.RiskLevel.RESTRICTED),
                 "rules": {
                     t: {"is_enabled": r.is_enabled, "threshold_seconds": r.threshold_seconds}
                     for t, r in rules.items()

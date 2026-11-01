@@ -38,7 +38,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-17 | Email notifications | S | Mail to opted-in users when the rule enables it | `alerts/notify.py` | `alerts/test_ingest.py` (locmem) | Tested |
 | FR-18 | Worker registry: create, edit, deactivate from the UI | M | All three operations work in the browser; one vest per worker | `pages/WorkersPage.jsx`, `WorkerSerializer` (vest assignment), migration workers 0004 | `workers/tests.py` (7); browser check 16 Oct (registered worker with VEST-003) | Integrated |
 | FR-19 | Zones with polygon boundaries and camera assignment | M | Invalid geometry/camera lists rejected; boundary drawn on a map | `sitemap/`, `components/map/SiteMap.jsx`, `ZonesPage.jsx` | `sitemap/tests.py` (7); browser check 16 Oct (3-click polygon saved) | Integrated |
-| FR-20 | Automatic restricted-zone breach and over-occupancy alerts | M | Entering a RESTRICTED polygon unassigned, or exceeding max occupancy, raises one ZONE_BREACH per entry | `workers/mqtt_handlers.raise_zone_breaches`, `sitemap/geofence.py` | `workers/tests.py` ZoneBreachTests (9); e2e 16 Oct (telemetry into Crane Pit → live breach) | Integrated (GPS simulated by HTTP, no hardware) |
+| FR-20 | Automatic restricted-zone breach and over-occupancy alerts | M | Entering a RESTRICTED polygon unassigned, or exceeding max occupancy, raises one ZONE_BREACH per entry; a restricted zone's camera raises one per stay for a person with no readable badge | `workers/mqtt_handlers.raise_zone_breaches`, `sitemap/geofence.py`; `ai-module/restricted_zone.py`, `CameraConfigView` `zone_restricted`, ZONE_BREACH in `CAMERA_ALERT_TYPES` | `workers/tests.py` ZoneBreachTests (9); `test_restricted_zone.py` (7), `alerts/test_unidentified_breach.py` (4); e2e 16 Oct (telemetry into Crane Pit → live breach); e2e 1 Nov (camera of a restricted zone, test video: 14 unidentified-person breaches with snapshots, badge holders none) | Integrated (GPS simulated by HTTP; camera with a test video) |
 | FR-21 | Smart vest: GPS position, SOS button, LoRa link | M→deferred* | Physical SOS reaches the dashboard; delay and packet loss measured | Server: `workers/`, `run_mqtt_consumer`; `tools/vest_simulator.py` | `workers/tests.py` (incl. SimulatorLabelling 3), `tools/test_vest_simulator.py` (8); e2e 16 Oct: demo scenario → simulated breach + SOS, offline after silence | Software path integrated with simulator; **hardware deferred pending supervisor approval** (`docs/SCOPE_CHANGE_SMART_VEST.md`) |
 | FR-22 | Vest telemetry is validated | M | Out-of-range latitude/longitude, a lone coordinate, or battery outside 0–100 returns 400 | `VestTelemetrySerializer` | `alerts/test_ingest.py` | Tested |
 | FR-23 | Vest offline detection | S | No report within `VEST_OFFLINE_AFTER_SECONDS` shows the vest offline | `workers/presence.py`, `run_presence_monitor` | `workers/tests.py` PresenceTests (4); browser check (occupancy dropped to 0 after timeout) | Integrated |
@@ -474,7 +474,7 @@ Design: a camera badge sighting places the worker in that camera's zone (a camer
   people counts combined by largest count when views overlap, else sum); counts older than 30 s drop out.
   Over capacity uses hysteresis: alert after 10 s over the limit, re-armed after 60 s back within it.
   Restricted-zone breach from cameras for unassigned badge holders. Unidentified people in restricted zones
-  are counted but raise nothing until decision B1 (docs/PENDING_FOR_YOU.md).
+  were counted but raised nothing until decision B1; since 1 Nov they raise a breach (see the 1 Nov entry).
 Visible: worker cards and mobile Workers tab show "In Bay 1 · CAM-02" / "Last seen in ...", Workers page and
   dashboard "on site" count camera-seen workers (split by camera/vest), Zones page shows each head count with
   its basis ("cameras 2 (largest of 2) · 1 identified") and an Over capacity badge, zone form gains "These
@@ -700,4 +700,29 @@ Note: these are the alerts that exposed the FR-05 re-alerting (several no-helmet
   person), fixed in Phase 1; they were raised before the fix and are not FR-05 evidence
 Also 1 Nov: dev database backed up (backups/sitesafe_db_before_phase2_20261101_1455.dump) and the 8 pending
   migrations applied (alerts 0013-0014, reports 0003, sitemap 0004-0006, workers 0008-0009); was item A8
+```
+
+```text
+Phase / task IDs: decision B1 (1 Nov) — unidentified person in a restricted zone; FR-20, FR-10
+Decision (owner, 1 Nov): someone without a readable badge in a restricted zone raises an alert
+Design: the camera decides, because only it knows which tracked person has shown a badge. The camera config
+  gains zone_restricted (zone active and RESTRICTED). restricted_zone.RestrictedZoneWatcher runs while QR
+  decoding is on: a person in view who has not shown a badge for --restricted-grace (10 s) raises one
+  ZONE_BREACH (HIGH, with snapshot and model version); stays follow DangerAreaTracker over the whole picture
+  (again only after 10 s out of view). A track that showed a badge at any time is never reported, because an
+  identity lapses 30 s after its badge was last seen. Identified workers stay with the API's existing check.
+  The API accepts ZONE_BREACH from cameras and drops it (202) if the camera's zone is not, or no longer,
+  restricted; the ZONE_BREACH rule can switch it off.
+Found and fixed: identity.QrDecoder used OpenCV's classic detectAndDecodeMulti, which read none of 12 badges
+  about 110 px wide in the test video while the single-code and ArUco-based detectors read all 12; it now uses
+  cv2.QRCodeDetectorAruco (OpenCV 4.8+, already required), also faster (10 vs 14.5 ms a frame). Regression
+  test test_small_badge_on_a_dark_background fails on the old decoder. This also affects QR range (C1).
+Tests: ai-module 152 (7 + 1 new and 1 decoder regression); backend 245 on SQLite (4 new)
+E2E (1 Nov, throwaway database, demo site with Site made RESTRICTED, CAM-01 on a 24-scene test video with
+  the demo badge on 12 scenes, --video-clock --restricted-grace 2): 14 ZONE_BREACH alerts, all unattributed,
+  all with snapshots; no scene whose only person wore a readable badge alerted; in a four-person scene the
+  three without badges did; the badge holder (assigned to Site) was placed in Site and raised no breach.
+  The default grace (10 s) raised none on the same video, as each scene lasts 3 s.
+Limits: a whole camera picture counts as the zone (a camera covering two zones is decision B2); a worker who
+  never turns their badge to the camera is reported as unidentified
 ```

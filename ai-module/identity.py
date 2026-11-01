@@ -60,12 +60,19 @@ def iou(a: Box, b: Box) -> float:
 
 
 class QrDecoder:
-    """Thin wrapper over OpenCV's built-in QR detector (no extra dependency)."""
+    """Thin wrapper over OpenCV's built-in QR detectors (no extra dependency).
+
+    The ArUco-based detector (OpenCV 4.8+) is used: the classic
+    ``QRCodeDetector.detectAndDecodeMulti`` missed every badge about 110 px
+    wide in test frames that the ArUco one read, and badges are that small
+    a few metres from a camera.
+    """
 
     def __init__(self):
         import cv2
 
-        self._detector = cv2.QRCodeDetector()
+        aruco = getattr(cv2, "QRCodeDetectorAruco", None)
+        self._detector = aruco() if aruco is not None else cv2.QRCodeDetector()
 
     def decode(self, frame) -> list[tuple[str, Point]]:
         """Return (badge_payload, centre) for each Site-Safe badge in the frame."""
