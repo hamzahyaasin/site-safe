@@ -292,7 +292,7 @@ def replace_chapter_3_figures(doc: Document, templates: Templates) -> None:
     at a different aspect ratio and so printed stretched. Each figure goes
     after the paragraph that first refers to it, as the guidelines require."""
     for caption, *_ in C.CHAPTER_3_FIGURES:
-        remove_v7_figure(doc, caption)
+        remove_v7_figure(doc, C.V7_FIGURE_CAPTIONS.get(caption, caption))
     heading, text = C.ARCHITECTURE_INTRO
     U.find_paragraph(doc, heading)._p.addnext(paragraph(templates.body, text))
     for prefix, sentence in C.FIGURE_REFERENCES:
@@ -302,7 +302,7 @@ def replace_chapter_3_figures(doc: Document, templates: Templates) -> None:
         for element in reversed(render_blocks(doc, templates, [("fig", filename, width, caption)])):
             anchor.addnext(element)
     power = U.find_paragraph(doc, C.VEST_POWER_PARAGRAPH, exact=False)._p
-    U.find_paragraph(doc, "Figure 3.6: Smart Vest Block Diagram")._p.addnext(power)
+    U.find_paragraph(doc, "Figure 3.6: Smart Vest and Gas Monitor Block Diagram")._p.addnext(power)
     drop_unused_images(doc)
 
 

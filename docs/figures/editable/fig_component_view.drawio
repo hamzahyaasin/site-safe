@@ -154,11 +154,11 @@
         <mxCell id="c41" value="Attendance sightings, idle start/end" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
           <mxGeometry x="3.8" y="121.3" width="152.2" height="9.9" as="geometry" />
         </mxCell>
-        <mxCell id="c42" value="Smart Vest / simulator" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
-          <mxGeometry x="27.2" y="5.9" width="122.3" height="13.1" as="geometry" />
+        <mxCell id="c42" value="Vest, gas monitor / simulator" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="9.2" y="5.9" width="158.2" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c43" value="GPS, SOS, gas over Wi-Fi" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
-          <mxGeometry x="3.8" y="24.1" width="116.6" height="9.5" as="geometry" />
+        <mxCell id="c43" value="GPS, SOS; zone gas over Wi-Fi" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
+          <mxGeometry x="3.8" y="24.1" width="139.8" height="9.5" as="geometry" />
         </mxCell>
         <mxCell id="c44" value="simulator alerts labelled" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
           <mxGeometry x="3.8" y="38.0" width="104.3" height="9.4" as="geometry" />
@@ -169,14 +169,14 @@
         <mxCell id="c46" value="sitesafe/vest/+/telemetry, /sos" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
           <mxGeometry x="3.8" y="23.8" width="129.1" height="9.9" as="geometry" />
         </mxCell>
-        <mxCell id="c47" value="Smart Vest firmware" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
-          <mxGeometry x="32.1" y="5.9" width="112.5" height="13.1" as="geometry" />
+        <mxCell id="c47" value="Device firmware" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="43.0" y="5.9" width="90.5" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c48" value="ESP32: NEO-6M GPS, SOS button," style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
-          <mxGeometry x="3.8" y="23.8" width="156.0" height="9.9" as="geometry" />
+        <mxCell id="c48" value="ESP32 vest: SOS button, GPS;" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="3.8" y="23.8" width="136.2" height="9.9" as="geometry" />
         </mxCell>
-        <mxCell id="c49" value="MQ-2 gas sensor" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
-          <mxGeometry x="3.8" y="38.0" width="77.4" height="9.4" as="geometry" />
+        <mxCell id="c49" value="gas monitor: MQ-2 sensor" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="3.8" y="37.8" width="114.5" height="9.8" as="geometry" />
         </mxCell>
         <mxCell id="c50" value="(firmware/smart_vest)" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
           <mxGeometry x="3.8" y="51.3" width="96.6" height="10.8" as="geometry" />
@@ -205,8 +205,8 @@
         <mxCell id="c58" value="sitemap: zones, geofence, breaches," style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
           <mxGeometry x="3.8" y="107.4" width="159.6" height="9.9" as="geometry" />
         </mxCell>
-        <mxCell id="c59" value="   hot-work permits" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
-          <mxGeometry x="3.8" y="121.3" width="82.5" height="9.8" as="geometry" />
+        <mxCell id="c59" value="   hot-work permits, gas monitors" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
+          <mxGeometry x="3.8" y="121.3" width="142.6" height="9.9" as="geometry" />
         </mxCell>
         <mxCell id="c60" value="reports: generate, store, download" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
           <mxGeometry x="3.8" y="135.2" width="148.9" height="9.9" as="geometry" />
@@ -226,8 +226,8 @@
         <mxCell id="c65" value="Presence monitor" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#4338ca;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c12">
           <mxGeometry x="-0.5" y="5.9" width="98.9" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c66" value="offline vests," style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c12">
-          <mxGeometry x="3.8" y="23.8" width="56.6" height="9.9" as="geometry" />
+        <mxCell id="c66" value="offline devices," style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c12">
+          <mxGeometry x="3.8" y="24.1" width="66.7" height="9.5" as="geometry" />
         </mxCell>
         <mxCell id="c67" value="auto check-out" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c12">
           <mxGeometry x="3.8" y="38.0" width="66.2" height="9.4" as="geometry" />

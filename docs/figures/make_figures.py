@@ -150,9 +150,9 @@ def component_view():
         "Event outbox (SQLite, retry ≤ 30 s)",
         "Attendance sightings, idle start/end",
     ], kind="edge")
-    gw = d.box(0.1, 2.12, 1.84, 0.62, "Smart Vest / simulator", ["GPS, SOS, gas over Wi-Fi", "simulator alerts labelled"], kind="edge")
+    gw = d.box(0.1, 2.12, 1.84, 0.62, "Vest, gas monitor / simulator", ["GPS, SOS; zone gas over Wi-Fi", "simulator alerts labelled"], kind="edge")
     mqtt = d.box(0.1, 2.94, 1.84, 0.62, "MQTT broker (Mosquitto)", ["sitesafe/vest/+/telemetry, /sos"], kind="edge")
-    d.box(0.1, 3.76, 1.84, 0.82, "Smart Vest firmware", ["ESP32: NEO-6M GPS, SOS button,", "MQ-2 gas sensor", "(firmware/smart_vest)"], kind="edge")
+    d.box(0.1, 3.76, 1.84, 0.82, "Device firmware", ["ESP32 vest: SOS button, GPS;", "gas monitor: MQ-2 sensor", "(firmware/smart_vest)"], kind="edge")
 
     api = d.box(2.26, 0.3, 2.14, 3.32, "Django API (DRF + Channels)", [
         "accounts: JWT, roles, device tokens",
@@ -162,12 +162,12 @@ def component_view():
         "workers: registry, vest telemetry,",
         "   presence, attendance timelines",
         "sitemap: zones, geofence, breaches,",
-        "   hot-work permits",
+        "   hot-work permits, gas monitors",
         "reports: generate, store, download",
         "WebSocket /ws/dashboard (JWT)",
     ])
     cons = d.box(2.26, 3.78, 1.02, 0.8, "MQTT consumer", ["run_mqtt_consumer:", "vest messages"], kind="server")
-    mon = d.box(3.38, 3.78, 1.02, 0.8, "Presence monitor", ["offline vests,", "auto check-out"], kind="server")
+    mon = d.box(3.38, 3.78, 1.02, 0.8, "Presence monitor", ["offline devices,", "auto check-out"], kind="server")
 
     db = d.box(4.7, 0.3, 1.6, 0.5, "PostgreSQL 18", ["alerts, workers, zones, logs"], kind="data")
     chl = d.box(4.7, 0.95, 1.6, 0.5, "Channel layer", ["Redis (multi-process)"], kind="data")
@@ -434,20 +434,20 @@ def sequence_vest():
     names = ["Smart Vest\nor gateway", "VestTelemetry\nView", "Telemetry\nhandler", "Activity", "Geofence", "PostgreSQL", "Channel\nlayer", "Presence\nmonitor"]
     steps = [
         (0, 1, "POST /v1/vests/telemetry/  [device token]"),
-        (1, 1, "validate position, battery, SOS, gas"),
+        (1, 1, "validate position, battery, SOS"),
         (1, 2, "apply_vest_telemetry()"),
         (2, 5, "lock vest row; update position, last_seen"),
         (2, 3, "record_seen(): check-in if no session"),
         (2, 4, "zone at position (highest risk)"),
         (4, 5, "ZONE_ENTER log; breach? ZONE_BREACH alert"),
         (2, 5, "SOS rising edge → SOS alert (CRITICAL)"),
-        (2, 5, "gas ≥ limit, new exposure → GAS alert (CRITICAL)"),
         (5, 6, "on commit: vest_updated, alert_created"),
         (7, 5, "every 30 s: silent vests offline"),
         (7, 3, "not seen 30 min → CHECK_OUT at last sighting"),
     ]
     sequence(names, steps, "fig_seq_vest_telemetry.png",
-             "Simulator tokens: alerts are marked SIMULATED and no attendance is recorded. MQTT messages take the same path through run_mqtt_consumer.",
+             "Simulator tokens: alerts are marked SIMULATED and no attendance is recorded. MQTT messages take the same path through run_mqtt_consumer.\n"
+             "A gas monitor posts to /v1/gas-monitors/telemetry/; a reading over the limit raises GAS for its zone.",
              step_y=0.29)
 
 
@@ -570,7 +570,7 @@ def activity_workflow():
     hazard = decision(d, cx[1], y(6), "Hazard confirmed?")
     evidence = activity_node(d, cx[1], y(7), "Attach badge identity,\nconfidence, model, snapshot", kind="edge")
     outbox = activity_node(d, cx[1], y(8), "Queue in outbox; POST\nwith device token", kind="edge")
-    vest = activity_node(d, cx[2], y(7), "Vest telemetry: position,\nSOS (Figure 4.8)", kind="future", dashed=True)
+    vest = activity_node(d, cx[2], y(7), "Vest and gas monitor\ntelemetry (Figure 4.8)", kind="future", dashed=True)
     validate = activity_node(d, cx[2], y(8), "Authenticate device;\nvalidate payload")
     enabled = decision(d, cx[2], y(9), "Rule enabled?")
     stop = terminal(d, cx[2] + 0.98, y(9), end=True)
@@ -598,7 +598,7 @@ def activity_workflow():
     d.ax.text(cx[2] + 0.79, y(9) - 0.11, "no: 202", ha="center", fontsize=5.6, color=INK)
     d.arrow(mid(store, "r"), mid(live, "l"))
     d.ax.text(cx[2] + 0.8, y(11) - 0.24, "on commit", ha="center", va="center", fontsize=5.6, color=INK)
-    d.ax.text(0.06, height - 0.08, "Every hazard type follows the camera path; the vest path (dashed) enters at validation. "
+    d.ax.text(0.06, height - 0.08, "Every hazard type follows the camera path; the vest and gas monitor path (dashed) enters at validation. "
               "Failed delivery leaves the event in the outbox for retry (Figure 4.9).",
               fontsize=5.6, style="italic", color=LINE, va="bottom")
     d.save("fig_activity_workflow.png")
@@ -619,13 +619,13 @@ def dfd_level0():
         return d.box(x, y, 1.35, 0.5, title, [sub], kind="external", align="center")
 
     camera = entity(0.05, 0.3, "IP Camera", "site video stream")
-    vest = entity(0.05, 2.75, "Smart Vest", "device or simulator")
+    vest = entity(0.05, 2.75, "Vest, gas monitor", "devices or simulator")
     admin = entity(5.0, 0.15, "Admin", "site configuration")
     officer = entity(5.0, 1.45, "Safety Officer", "web and mobile user")
     notify = entity(5.0, 2.75, "Notification Services", "Firebase push, e-mail")
 
     d.arrow(mid(camera, "r"), (cx - 0.55, cy - 0.38), "video frames\n(badges in view)", label_pos=0.45, offset=(0.3, -0.05))
-    d.arrow(mid(vest, "r"), (cx - 0.55, cy + 0.38), "position,\nbattery, SOS", label_pos=0.45, offset=(0.25, 0.05))
+    d.arrow(mid(vest, "r"), (cx - 0.55, cy + 0.38), "position, SOS,\ngas reading", label_pos=0.45, offset=(0.25, 0.05))
     d.arrow(mid(admin, "l", 0.3), (cx + 0.45, cy - 0.46), "workers, zones, cameras,\nalert rules", label_pos=0.35, offset=(-0.05, -0.17))
     d.arrow((cx + 0.6, cy - 0.36), mid(admin, "l", 0.8), "QR badges, reports", label_pos=0.62, offset=(0.05, 0.13))
     d.arrow(mid(officer, "l", 0.3), (cx + 0.8, cy - 0.06), "permits, resolutions,\nreport requests", label_pos=0.5, offset=(0, -0.2))
@@ -724,14 +724,14 @@ def system_context():
 
     ent = dict(kind="external", align="center")
     ipc = d.box(0.05, 0.47, 1.12, 0.58, "IP cameras", ["see QR badges"], **ent)
-    vest = d.box(0.05, 1.69, 1.12, 0.58, "Smart Vest", ["GPS, SOS button"], **ent)
+    vest = d.box(0.05, 1.69, 1.12, 0.58, "Field devices", ["vest; gas monitors"], **ent)
     worker = d.box(0.05, 2.91, 1.12, 0.58, "Worker", ["QR badge, vest"], **ent)
     admin = d.box(5.23, 0.47, 1.12, 0.58, "Admin", ["configures site"], **ent)
     officer = d.box(5.23, 1.69, 1.12, 0.58, "Safety Officer", ["monitors, responds"], **ent)
     notify = d.box(5.23, 3.38, 1.12, 0.58, "Notifications", ["FCM push, e-mail"], **ent)
 
     d.arrow(mid(ipc, "r"), mid(cam, "l", 0.5), "video", label_pos=0.5, offset=(0, -0.08))
-    d.arrow(mid(vest, "r"), mid(api, "l", 0.5), "GPS,\nSOS", label_pos=0.5, offset=(0, -0.15))
+    d.arrow(mid(vest, "r"), mid(api, "l", 0.5), "SOS,\ngas", label_pos=0.5, offset=(0, -0.15))
     d.arrow(mid(worker, "t"), mid(vest, "b"), "wears", label_pos=0.5, offset=(0, 0))
     d.arrow(mid(cam, "b"), (2.28, 1.62), "events, snapshots", label_pos=0.5, offset=(0, 0))
     d.arrow(mid(web, "b"), (4.12, 1.62), "", both=True)
@@ -764,7 +764,7 @@ def three_tier():
         "fire and smoke: every 5th frame",
         "local outbox for unsent events",
     ], kind="edge")
-    vest = d.box(4.45, 0.32, 1.8, 0.62, "Smart Vest", ["ESP32, NEO-6M GPS,", "SOS button, MQ-2 gas"], kind="edge")
+    vest = d.box(4.45, 0.32, 1.8, 0.62, "Smart Vest, gas monitors", ["vest: ESP32, GPS, SOS;", "zone monitor: ESP32, MQ-2"], kind="edge")
 
     http = d.box(1.8, 1.94, 2.3, 0.62, "HTTPS to the API", ["per-camera device token;", "outbox retries while offline"], kind="external")
     wifi = d.box(4.45, 1.94, 0.85, 0.62, "Wi-Fi", ["HTTPS, device", "token"], kind="external")
@@ -781,7 +781,7 @@ def three_tier():
     d.arrow(mid(edge, "b"), mid(http, "t"), "confirmed events", label_pos=0.72, offset=(0.52, 0))
     d.arrow(mid(http, "b"), mid(api, "t"), "")
     d.arrow(mid(vest, "b", 0.24), mid(wifi, "t"), "GPS, SOS, gas", label_pos=0.35, offset=(0.42, 0))
-    elbow(d, [mid(wifi, "b"), (4.875, 2.98), (4.27, 2.98), (4.27, 3.34), mid(api, "r", 0.25)], "vest telemetry", (5.3, 2.98))
+    elbow(d, [mid(wifi, "b"), (4.875, 2.98), (4.27, 2.98), (4.27, 3.34), mid(api, "r", 0.25)], "device telemetry", (5.3, 2.98))
     d.ax.plot([5.825, 5.825, 4.875], [2.56, 2.98, 2.98], color=LINE, lw=0.8)
     d.arrow(mid(api, "l"), mid(db, "r"), "", both=True)
     d.arrow(mid(api, "r", 0.75), mid(fcm, "l", 0.75), "")
@@ -789,7 +789,7 @@ def three_tier():
     d.arrow(mid(ws, "l"), mid(web, "r"), "")
     d.arrow(mid(ws, "r"), mid(mob, "l"), "")
     d.arrow(mid(fcm, "b"), mid(mob, "t"), "push", label_pos=0.5, offset=(0.18, 0))
-    d.ax.text(0.05, 4.95, "The vest posts its telemetry over Wi-Fi; a gateway may instead publish it to the MQTT broker.",
+    d.ax.text(0.05, 4.95, "The vest and gas monitors post over Wi-Fi; a gateway may instead publish vest telemetry to the MQTT broker.",
               fontsize=5.6, style="italic", color=LINE, va="center")
     d.save("fig_three_tier.png")
 
@@ -804,13 +804,13 @@ def dfd_level1():
 
     camera = entity(0.05, 0.3, "IP Camera", "site video stream")
     notify = entity(0.05, 1.6, "Notification Services", "Firebase push, e-mail")
-    vest = entity(0.05, 2.9, "Smart Vest", "device or simulator")
+    vest = entity(0.05, 2.9, "Vest, gas monitor", "devices or simulator")
     admin = entity(5.1, 0.3, "Admin", "site configuration")
     officer = entity(5.1, 2.25, "Safety Officer", "web and mobile user")
 
     p1 = oval(d, 2.45, 0.55, 1.15, 0.56, "1  Analyse\nframes", kind="edge")
     p3 = oval(d, 2.45, 1.85, 1.15, 0.56, "3  Evaluate and\nrecord alerts")
-    p2 = oval(d, 2.45, 3.15, 1.15, 0.56, "2  Process vest\ntelemetry")
+    p2 = oval(d, 2.45, 3.15, 1.15, 0.56, "2  Process device\ntelemetry")
     p4 = oval(d, 4.15, 0.55, 1.15, 0.56, "4  Manage\nsite set-up")
     p5 = oval(d, 4.15, 2.5, 1.15, 0.56, "5  Supervise\nand report", kind="client")
     d3 = store(d, 2.95, 1.1, 1.3, "D3", "Site configuration")
@@ -825,13 +825,13 @@ def dfd_level1():
 
     flow(mid(camera, "r"), on_oval(p1, 180), "video\nframes", off=(0, -0.16))
     flow(on_oval(p3, 180), mid(notify, "r"), "alert\nnotifications", off=(0, -0.16))
-    flow(mid(vest, "r"), on_oval(p2, 180), "position,\nSOS", off=(0, -0.16))
+    flow(mid(vest, "r"), on_oval(p2, 180), "position,\nSOS, gas", off=(0, -0.16))
     flow(mid(admin, "l", 0.3), on_oval(p4, -12), "")
     flow(on_oval(p4, 12), mid(admin, "l", 0.75), "")
     note(4.98, 0.18, "workers, zones,\ncameras, rules")
     note(4.95, 0.88, "QR badges")
     flow(on_oval(p1, 90), on_oval(p3, -90), "confirmed events,\nsnapshots", off=(-0.5, 0))
-    flow(on_oval(p2, -90), on_oval(p3, 90), "SOS, zone\nposition", off=(-0.38, 0))
+    flow(on_oval(p2, -90), on_oval(p3, 90), "SOS, gas,\nzone position", off=(-0.42, 0))
     flow(on_oval(p4, 100), (3.95, 1.1), "")
     flow((3.1, 1.1), on_oval(p1, 30), "")
     note(3.15, 0.93, "camera rules", ha="left")
@@ -895,29 +895,31 @@ def activity_pipeline():
 
 
 def vest_block():
-    """Figure 3.6: the vest as built (firmware/smart_vest), with the pins of Table 4.3; GPS not yet fitted."""
+    """Figure 3.6: the bench board as built (firmware/smart_vest), with the pins of Table 4.3: the
+    vest role (SOS button, GPS not yet fitted) and the gas monitor role (MQ-2). On a site they are
+    separate boards: the vest is worn, the gas monitor is fixed in a zone."""
     d = Diagram(6.4, 3.1)
-    esp = d.box(2.5, 0.1, 1.6, 1.9, "ESP32", ["DevKit V1, Wi-Fi", "", "reads GPS and gas,", "watches the SOS",
-                                               "button, reports", "every 5 s"], kind="server", align="center", title_size=7.5)
+    esp = d.box(2.5, 0.1, 1.6, 1.9, "ESP32", ["DevKit V1, Wi-Fi", "", "vest role: SOS, GPS", "gas monitor role:", "MQ-2; each reports",
+                                               "every 5 s"], kind="server", align="center", title_size=7.5)
     gps = d.box(0.1, 0.1, 1.4, 0.66, "NEO-6M GPS", ["supported, not yet", "fitted; 2.5 m CEP"], kind="edge", align="center", dashed=True)
-    gas = d.box(0.1, 1.34, 1.4, 0.66, "MQ-2 gas sensor", ["LPG, methane, smoke;", "5 V heater"], kind="edge", align="center")
-    sos = d.box(4.9, 0.1, 1.4, 0.66, "SOS button", ["press: raise;", "hold 3 s: cancel"], kind="client", align="center")
+    gas = d.box(0.1, 1.34, 1.4, 0.66, "MQ-2 gas sensor", ["gas monitor, fixed", "in a zone; 5 V heater"], kind="edge", align="center")
+    sos = d.box(4.9, 0.1, 1.4, 0.66, "SOS button", ["vest; press: raise,", "hold 3 s: cancel"], kind="client", align="center")
     led = d.box(4.9, 1.34, 1.4, 0.66, "On-board LED", ["on during SOS,", "flash per report"], kind="external", align="center")
-    wifi = d.box(0.1, 2.4, 1.4, 0.6, "Wi-Fi to the API", ["/v1/vests/telemetry/"], kind="external", align="center")
-    bank = d.box(4.9, 2.4, 1.4, 0.6, "USB power bank", ["or 5 V charger"], kind="external", align="center")
+    wifi = d.box(0.1, 2.4, 1.4, 0.6, "Wi-Fi to the API", ["vests/, gas-monitors/", "telemetry/"], kind="external", align="center")
+    bank = d.box(4.9, 2.4, 1.4, 0.6, "USB power", ["vest: power bank;", "monitor: charger"], kind="external", align="center")
 
     d.arrow(mid(gps, "r"), mid(esp, "l", 0.174), "UART, 9600 baud\nGPIO 16 / 17", both=True, offset=(0, -0.16))
     d.arrow(mid(gas, "r"), mid(esp, "l", 0.826), "analogue, GPIO 34\nvia 22 k + 22 k", offset=(0, -0.16))
     d.arrow(mid(sos, "l"), mid(esp, "r", 0.174), "GPIO 27\nto GND", offset=(0, -0.16))
     d.arrow(mid(esp, "r", 0.826), mid(led, "l"), "GPIO 2", offset=(0, -0.09))
-    elbow(d, [mid(esp, "b", 0.25), (2.9, 2.7), mid(wifi, "r")], "JSON, device token", (2.2, 2.6))
-    elbow(d, [mid(bank, "l"), (3.7, 2.7), mid(esp, "b", 0.75)], "USB 5 V; VIN to the MQ-2 heater", (4.3, 2.84))
+    elbow(d, [mid(esp, "b", 0.25), (2.9, 2.7), mid(wifi, "r")], "JSON, a key per role", (2.2, 2.6))
+    elbow(d, [mid(bank, "l"), (3.7, 2.7), mid(esp, "b", 0.75)], "USB 5 V; VIN to the MQ-2 heater", (4.12, 2.84))
     d.save("fig_vest_block.png")
 
 
 def sos_flowchart():
     """Figure 3.7: an SOS press or a periodic report, from the vest to an alert."""
-    d = Diagram(6.4, 7.0)
+    d = Diagram(6.4, 6.4)
     cx, right = 2.3, 4.85
     step = 0.62
 
@@ -927,22 +929,20 @@ def sos_flowchart():
     def node(row, text, kind="server", x=cx, w=2.2, dashed=False):
         return activity_node(d, x, y(row), text, w=w, h=0.42, kind=kind, dashed=dashed)
 
-    start = activity_node(d, cx, y(0), "SOS press or cancel,\nor 5 s report timer", w=2.2, h=0.42, kind="client")
-    read = node(1, "ESP32 reads the NEO-6M GPS\nand the MQ-2 gas sensor", kind="edge")
+    start = activity_node(d, cx, y(0), "SOS press, repeat or cancel,\nor 5 s report timer", w=2.2, h=0.42, kind="client")
+    read = node(1, "ESP32 reads the SOS button\nand the NEO-6M GPS", kind="edge")
     fix = decision(d, cx, y(2), "GPS fix valid?", w=1.6, h=0.46)
     last = node(2, "Send without a\nposition", kind="edge", x=right, w=1.7)
-    packet = node(3, "Build JSON: vest ID, position,\ngas level, SOS state", kind="edge")
+    packet = node(3, "Build JSON: vest ID, position,\nSOS state, press count", kind="edge")
     tx = node(4, "POST over Wi-Fi with a device token;\nSOS retried every second", kind="edge", w=2.6)
-    consume = node(5, "API validates; update position,\ngas level and last seen")
-    sos = decision(d, cx, y(6), "SOS newly pressed?", w=1.8, h=0.46)
-    critical = node(6, "Raise CRITICAL\nSOS alert", kind="client", x=right, w=1.7)
-    gas = decision(d, cx, y(7), "Gas over the limit?", w=1.9, h=0.46)
-    gas_alert = node(7, "Raise CRITICAL GAS\nalert (once per leak)", kind="client", x=right, w=1.7)
-    zone = decision(d, cx, y(8), "Inside a restricted zone?", w=2.2, h=0.46)
-    breach = node(8, "Raise ZONE_BREACH\nalert", kind="client", x=right, w=1.7)
-    log = node(9, "Log zone entry; show the vest\non the site map")
-    notify = node(10, "Notify: WebSocket to dashboard and app,\nFCM push and e-mail per rule", kind="client", x=right, w=2.5)
-    end = terminal(d, cx, y(10), end=True)
+    consume = node(5, "API validates; update position,\nSOS state and last seen")
+    sos = decision(d, cx, y(6), "New SOS press?", w=1.8, h=0.46)
+    critical = node(6, "Raise CRITICAL SOS alert\n(cancel resolves it)", kind="client", x=right, w=1.7)
+    zone = decision(d, cx, y(7), "Inside a restricted zone?", w=2.2, h=0.46)
+    breach = node(7, "Raise ZONE_BREACH\nalert", kind="client", x=right, w=1.7)
+    log = node(8, "Log zone entry; show the vest\non the site map")
+    notify = node(9, "Notify: WebSocket to dashboard and app,\nFCM push and e-mail per rule", kind="client", x=right, w=2.5)
+    end = terminal(d, cx, y(9), end=True)
 
     for a, b in [(start, read), (read, fix), (packet, tx), (tx, consume), (consume, sos), (log, end)]:
         d.arrow(mid(a, "b"), mid(b, "t"))
@@ -951,17 +951,17 @@ def sos_flowchart():
     d.arrow(mid(fix, "r"), mid(last, "l"))
     d.ax.text((cx + 0.8 + right - 0.85) / 2, y(2) - 0.08, "no", fontsize=5.8, color=INK, ha="center")
     elbow(d, [mid(last, "b"), (right, y(2.65)), (cx + 0.35, y(2.65)), (cx + 0.35, y(3) - 0.21)])
-    for dec, row, alert, half in ((sos, 6, critical, 0.9), (gas, 7, gas_alert, 0.95), (zone, 8, breach, 1.1)):
+    for dec, row, alert, half in ((sos, 6, critical, 0.9), (zone, 7, breach, 1.1)):
         d.arrow(mid(dec, "r"), mid(alert, "l"))
         d.ax.text((cx + half + right - 0.85) / 2, y(row) - 0.08, "yes", fontsize=5.8, color=INK, ha="center")
-    for upper, lower, row in ((sos, gas, 6), (gas, zone, 7), (zone, log, 8)):
+    for upper, lower, row in ((sos, zone, 6), (zone, log, 7)):
         d.arrow(mid(upper, "b"), mid(lower, "t"))
         d.ax.text(cx + 0.08, (y(row) + y(row + 1)) / 2 - 0.04, "no", fontsize=5.8, color=INK, va="center")
-    elbow(d, [mid(critical, "r"), (right + 1.1, y(6)), (right + 1.1, y(10) - 0.38), (right + 0.5, y(10) - 0.38), (right + 0.5, y(10) - 0.21)])
-    d.ax.plot([right + 0.85, right + 1.1], [y(7), y(7)], color=LINE, lw=0.8)
-    d.arrow(mid(breach, "b"), (right, y(10) - 0.21))
+    elbow(d, [mid(critical, "r"), (right + 1.1, y(6)), (right + 1.1, y(9) - 0.38), (right + 0.5, y(9) - 0.38), (right + 0.5, y(9) - 0.21)])
+    d.arrow(mid(breach, "b"), (right, y(9) - 0.21))
     d.arrow(mid(notify, "l"), mid(end, "r"))
-    d.ax.text(0.05, y(10.7), "The first five steps run on the vest and the rest on the server, as implemented in Figure 4.8.",
+    d.ax.text(0.05, y(9.7), "The first five steps run on the vest and the rest on the server, as implemented in Figure 4.8. "
+              "Gas is reported by fixed zone monitors, not the vest (Section 4.2.2).",
               fontsize=5.6, style="italic", color=LINE, va="center")
     d.save("fig_sos_flowchart.png")
 

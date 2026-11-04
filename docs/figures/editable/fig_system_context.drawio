@@ -178,11 +178,11 @@
         <mxCell id="c46" value="see QR badges" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
           <mxGeometry x="18.7" y="24.1" width="70.1" height="9.4" as="geometry" />
         </mxCell>
-        <mxCell id="c47" value="Smart Vest" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
-          <mxGeometry x="22.7" y="5.9" width="62.2" height="13.1" as="geometry" />
+        <mxCell id="c47" value="Field devices" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
+          <mxGeometry x="16.5" y="5.9" width="74.6" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c48" value="GPS, SOS button" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
-          <mxGeometry x="14.5" y="23.8" width="78.5" height="9.9" as="geometry" />
+        <mxCell id="c48" value="vest; gas monitors" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c10">
+          <mxGeometry x="13.1" y="23.8" width="81.4" height="9.9" as="geometry" />
         </mxCell>
         <mxCell id="c49" value="Worker" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c11">
           <mxGeometry x="32.3" y="5.9" width="42.9" height="13.1" as="geometry" />
@@ -211,8 +211,8 @@
         <mxCell id="c57" value="video" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="118.4" y="60.6" width="27.2" height="9.4" as="geometry" />
         </mxCell>
-        <mxCell id="c58" value="GPS,&#10;SOS" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
-          <mxGeometry x="118.2" y="166.6" width="27.5" height="18.2" as="geometry" />
+        <mxCell id="c58" value="SOS,&#10;gas" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="118.2" y="166.6" width="27.7" height="18.2" as="geometry" />
         </mxCell>
         <mxCell id="c59" value="wears" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="43.5" y="243.9" width="30.2" height="9.4" as="geometry" />

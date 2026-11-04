@@ -274,8 +274,8 @@
         <mxCell id="c65" value="Queue in outbox; POST&#10;with device token" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.6;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c15">
           <mxGeometry x="14.3" y="7.1" width="107.7" height="18.3" as="geometry" />
         </mxCell>
-        <mxCell id="c66" value="Vest telemetry: position,&#10;SOS (Figure 4.8)" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.6;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c16">
-          <mxGeometry x="14.2" y="7.1" width="107.9" height="18.3" as="geometry" />
+        <mxCell id="c66" value="Vest and gas monitor&#10;telemetry (Figure 4.8)" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.6;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c16">
+          <mxGeometry x="19.5" y="6.9" width="97.4" height="18.8" as="geometry" />
         </mxCell>
         <mxCell id="c67" value="Authenticate device;&#10;validate payload" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.6;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c17">
           <mxGeometry x="22.2" y="6.9" width="91.9" height="18.9" as="geometry" />
@@ -319,8 +319,8 @@
         <mxCell id="c80" value="on commit" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
           <mxGeometry x="436.8" y="520.4" width="48.0" height="9.4" as="geometry" />
         </mxCell>
-        <mxCell id="c81" value="Every hazard type follows the camera path; the vest path (dashed) enters at validation. Failed delivery leaves the event in the outbox for retry (Figure 4.9)." style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#4b5563;fontStyle=2;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
-          <mxGeometry x="3.8" y="733.1" width="652.3" height="10.0" as="geometry" />
+        <mxCell id="c81" value="Every hazard type follows the camera path; the vest and gas monitor path (dashed) enters at validation. Failed delivery leaves the event in the outbox for retry (Figure 4.9)." style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#4b5563;fontStyle=2;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
+          <mxGeometry x="3.8" y="733.1" width="723.2" height="10.0" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

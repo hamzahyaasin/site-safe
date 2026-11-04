@@ -76,11 +76,11 @@
         <mxCell id="c19" value="site video stream" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
           <mxGeometry x="26.8" y="24.1" width="76.0" height="9.4" as="geometry" />
         </mxCell>
-        <mxCell id="c20" value="Smart Vest" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
-          <mxGeometry x="33.7" y="5.9" width="62.2" height="13.1" as="geometry" />
+        <mxCell id="c20" value="Vest, gas monitor" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="15.7" y="5.9" width="98.1" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c21" value="device or simulator" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
-          <mxGeometry x="22.8" y="24.1" width="84.0" height="9.4" as="geometry" />
+        <mxCell id="c21" value="devices or simulator" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="20.4" y="24.1" width="88.8" height="9.4" as="geometry" />
         </mxCell>
         <mxCell id="c22" value="Admin" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
           <mxGeometry x="45.4" y="5.9" width="38.8" height="13.1" as="geometry" />
@@ -103,8 +103,8 @@
         <mxCell id="c28" value="video frames&#10;(badges in view)" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="160.0" y="73.1" width="75.5" height="18.1" as="geometry" />
         </mxCell>
-        <mxCell id="c29" value="position,&#10;battery, SOS" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
-          <mxGeometry x="163.0" y="244.3" width="59.9" height="19.3" as="geometry" />
+        <mxCell id="c29" value="position, SOS,&#10;gas reading" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="159.5" y="244.6" width="67.0" height="18.7" as="geometry" />
         </mxCell>
         <mxCell id="c30" value="workers, zones, cameras,&#10;alert rules" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="356.5" y="35.6" width="116.4" height="18.2" as="geometry" />

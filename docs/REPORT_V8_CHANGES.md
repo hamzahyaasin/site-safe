@@ -50,6 +50,20 @@ The text now covers everything built in Phases 0–2, and the body stays within 
 
 Rebuilt and rendered in Word on 27 Oct 2026: 95 pages; every one of the 147 contents and list entries matches the page it lands on in the final render.
 
+## Updated on 4 Nov 2026 (gas moves to fixed zone monitors)
+
+The owner decided that gas belongs to a zone, not a worker: the MQ-2 sensor is now a fixed gas monitor installed in a zone, and its GAS alert names the zone. The vest keeps SOS (and GPS, when fitted). The bench board runs both roles.
+
+| Where | Change |
+|---|---|
+| Abstract, objective 8, scope, 3.1, 3.2.1, 3.4.2, 3.4.3, 3.10, 6.4 | Vest with GPS and SOS; fixed ESP32 gas monitors with an MQ-2 in each zone |
+| 4.2.2 | Renamed "Smart Vest and Gas Monitors": one board runs both on the bench, separate boards on a site; the monitor's endpoint and token; GAS names the zone; bench result: lighter gas raised a zone GAS alert within one report |
+| Figures 3.2, 3.3, 3.4, 3.6, 3.7, 3.9, 3.10, 4.5, 4.8 | Redrawn: gas comes from a gas monitor; Figure 3.6 renamed "Smart Vest and Gas Monitor Block Diagram"; the SOS flowchart has no gas branch |
+| Tables 2.1, 3.3, 3.4, 3.9, 4.2, 4.3, III.1, III.2, I.1, II.1 | Gas monitor rows: interface, FR-21, parts, components and pins by role, API endpoints, gas_monitors table, alerts.zone_id, manual and set-up steps |
+| Tables 5.1, 6.1, IV.1, IV.2; 5.3, 6.1 | 525 tests (backend 270, mobile 28, report service 25, tools 33, firmware 9), re-run 4 Nov; a gas-monitor bench row |
+
+Body text stays within the limit (three words fewer). Rebuilt and rendered in Word: 93 pages, no blank pages, contents and lists match.
+
 ## Updated on 4 Nov 2026 (Smart Vest bench test)
 
 The vest was built from the parts bought (no GPS module) and bench-tested on home Wi-Fi. The report now gives the measured results in place of "being assembled", and says the GPS module is supported but not fitted.

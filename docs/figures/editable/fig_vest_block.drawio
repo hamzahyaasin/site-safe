@@ -79,14 +79,14 @@
         <mxCell id="c19" value="DevKit V1, Wi-Fi" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
           <mxGeometry x="39.6" y="23.8" width="74.4" height="9.9" as="geometry" />
         </mxCell>
-        <mxCell id="c20" value="reads GPS and gas," style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
-          <mxGeometry x="32.0" y="51.9" width="89.6" height="9.5" as="geometry" />
+        <mxCell id="c20" value="vest role: SOS, GPS" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="31.4" y="51.7" width="90.7" height="9.9" as="geometry" />
         </mxCell>
-        <mxCell id="c21" value="watches the SOS" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
-          <mxGeometry x="38.1" y="65.9" width="77.4" height="9.4" as="geometry" />
+        <mxCell id="c21" value="gas monitor role:" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="39.3" y="65.6" width="75.1" height="9.8" as="geometry" />
         </mxCell>
-        <mxCell id="c22" value="button, reports" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
-          <mxGeometry x="44.1" y="79.5" width="65.3" height="9.9" as="geometry" />
+        <mxCell id="c22" value="MQ-2; each reports" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
+          <mxGeometry x="33.7" y="79.5" width="86.2" height="9.9" as="geometry" />
         </mxCell>
         <mxCell id="c23" value="every 5 s" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c3">
           <mxGeometry x="55.5" y="93.7" width="42.5" height="9.4" as="geometry" />
@@ -103,17 +103,17 @@
         <mxCell id="c27" value="MQ-2 gas sensor" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
           <mxGeometry x="19.6" y="5.9" width="95.2" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c28" value="LPG, methane, smoke;" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
-          <mxGeometry x="16.5" y="23.8" width="101.4" height="9.9" as="geometry" />
+        <mxCell id="c28" value="gas monitor, fixed" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="27.8" y="23.8" width="78.8" height="9.9" as="geometry" />
         </mxCell>
-        <mxCell id="c29" value="5 V heater" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
-          <mxGeometry x="43.4" y="38.0" width="47.7" height="9.4" as="geometry" />
+        <mxCell id="c29" value="in a zone; 5 V heater" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
+          <mxGeometry x="21.5" y="37.8" width="91.5" height="9.9" as="geometry" />
         </mxCell>
         <mxCell id="c30" value="SOS button" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#c2410c;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
           <mxGeometry x="34.2" y="5.9" width="65.9" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c31" value="press: raise;" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
-          <mxGeometry x="39.3" y="24.1" width="55.9" height="9.5" as="geometry" />
+        <mxCell id="c31" value="vest; press: raise," style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
+          <mxGeometry x="27.9" y="23.8" width="78.6" height="9.9" as="geometry" />
         </mxCell>
         <mxCell id="c32" value="hold 3 s: cancel" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c6">
           <mxGeometry x="32.2" y="38.0" width="70.0" height="9.4" as="geometry" />
@@ -130,32 +130,38 @@
         <mxCell id="c36" value="Wi-Fi to the API" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
           <mxGeometry x="24.1" y="5.9" width="86.2" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c37" value="/v1/vests/telemetry/" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
-          <mxGeometry x="24.1" y="23.9" width="86.2" height="9.8" as="geometry" />
+        <mxCell id="c37" value="vests/, gas-monitors/" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
+          <mxGeometry x="21.2" y="23.8" width="92.1" height="9.9" as="geometry" />
         </mxCell>
-        <mxCell id="c38" value="USB power bank" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
-          <mxGeometry x="20.3" y="5.9" width="93.8" height="13.1" as="geometry" />
+        <mxCell id="c38" value="telemetry/" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
+          <mxGeometry x="44.3" y="37.8" width="45.8" height="9.8" as="geometry" />
         </mxCell>
-        <mxCell id="c39" value="or 5 V charger" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
-          <mxGeometry x="35.0" y="24.1" width="64.4" height="9.4" as="geometry" />
+        <mxCell id="c39" value="USB power" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="35.1" y="5.9" width="64.2" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c40" value="UART, 9600 baud&#10;GPIO 16 / 17" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
+        <mxCell id="c40" value="vest: power bank;" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="27.9" y="23.8" width="78.6" height="9.9" as="geometry" />
+        </mxCell>
+        <mxCell id="c41" value="monitor: charger" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="30.4" y="37.8" width="73.5" height="9.8" as="geometry" />
+        </mxCell>
+        <mxCell id="c42" value="UART, 9600 baud&#10;GPIO 16 / 17" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="150.9" y="16.8" width="82.2" height="18.2" as="geometry" />
         </mxCell>
-        <mxCell id="c41" value="analogue, GPIO 34&#10;via 22 k + 22 k" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
+        <mxCell id="c43" value="analogue, GPIO 34&#10;via 22 k + 22 k" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="147.6" y="135.8" width="88.8" height="18.2" as="geometry" />
         </mxCell>
-        <mxCell id="c42" value="GPIO 27&#10;to GND" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
+        <mxCell id="c44" value="GPIO 27&#10;to GND" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="410.9" y="16.9" width="42.2" height="18.1" as="geometry" />
         </mxCell>
-        <mxCell id="c43" value="GPIO 2" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
+        <mxCell id="c45" value="GPIO 2" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="413.6" y="147.0" width="36.8" height="9.4" as="geometry" />
         </mxCell>
-        <mxCell id="c44" value="JSON, device token" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
-          <mxGeometry x="167.2" y="244.6" width="87.9" height="9.9" as="geometry" />
+        <mxCell id="c46" value="JSON, a key per role" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="165.1" y="244.9" width="92.3" height="9.5" as="geometry" />
         </mxCell>
-        <mxCell id="c45" value="USB 5 V; VIN to the MQ-2 heater" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
-          <mxGeometry x="340.7" y="267.7" width="144.1" height="9.9" as="geometry" />
+        <mxCell id="c47" value="USB 5 V; VIN to the MQ-2 heater" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="323.5" y="267.7" width="144.1" height="9.9" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

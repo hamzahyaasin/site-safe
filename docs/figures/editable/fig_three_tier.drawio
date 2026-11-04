@@ -170,14 +170,14 @@
         <mxCell id="c42" value="local outbox for unsent events" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c7">
           <mxGeometry x="3.8" y="79.8" width="130.3" height="9.4" as="geometry" />
         </mxCell>
-        <mxCell id="c43" value="Smart Vest" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
-          <mxGeometry x="55.3" y="5.9" width="62.2" height="13.1" as="geometry" />
+        <mxCell id="c43" value="Smart Vest, gas monitors" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
+          <mxGeometry x="16.6" y="5.9" width="139.6" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c44" value="ESP32, NEO-6M GPS," style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
-          <mxGeometry x="3.8" y="24.1" width="101.5" height="9.5" as="geometry" />
+        <mxCell id="c44" value="vest: ESP32, GPS, SOS;" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
+          <mxGeometry x="3.8" y="23.8" width="109.7" height="9.9" as="geometry" />
         </mxCell>
-        <mxCell id="c45" value="SOS button, MQ-2 gas" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
-          <mxGeometry x="3.8" y="37.8" width="100.6" height="9.9" as="geometry" />
+        <mxCell id="c45" value="zone monitor: ESP32, MQ-2" style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c8">
+          <mxGeometry x="3.8" y="37.8" width="123.4" height="9.9" as="geometry" />
         </mxCell>
         <mxCell id="c46" value="HTTPS to the API" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
           <mxGeometry x="62.3" y="5.9" width="96.3" height="13.1" as="geometry" />
@@ -254,14 +254,14 @@
         <mxCell id="c70" value="GPS, SOS, gas" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="c3">
           <mxGeometry x="470.3" y="117.2" width="73.1" height="9.5" as="geometry" />
         </mxCell>
-        <mxCell id="c71" value="vest telemetry" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="c5">
-          <mxGeometry x="475.2" y="4.7" width="63.3" height="9.8" as="geometry" />
+        <mxCell id="c71" value="device telemetry" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="c5">
+          <mxGeometry x="470.2" y="4.7" width="73.4" height="9.8" as="geometry" />
         </mxCell>
         <mxCell id="c72" value="push" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="c5">
           <mxGeometry x="516.4" y="99.0" width="25.2" height="9.4" as="geometry" />
         </mxCell>
-        <mxCell id="c73" value="The vest posts its telemetry over Wi-Fi; a gateway may instead publish it to the MQTT broker." style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#4b5563;fontStyle=2;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
-          <mxGeometry x="2.9" y="470.2" width="397.4" height="10.0" as="geometry" />
+        <mxCell id="c73" value="The vest and gas monitors post over Wi-Fi; a gateway may instead publish vest telemetry to the MQTT broker." style="text;html=0;whiteSpace=nowrap;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#4b5563;fontStyle=2;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="1">
+          <mxGeometry x="2.9" y="470.2" width="468.8" height="10.0" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
