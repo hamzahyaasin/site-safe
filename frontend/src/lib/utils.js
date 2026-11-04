@@ -31,6 +31,8 @@ export function sourceLabel(source) {
       return 'AI Camera'
     case 'SMART_VEST':
       return 'Smart Vest'
+    case 'GAS_MONITOR':
+      return 'Gas monitor'
     case 'SIMULATED':
       return 'Simulated'
     default:
@@ -129,9 +131,9 @@ export function getWorkerPresence(worker) {
   return { label: 'NOT SEEN YET', variant: 'neutral', lastSeen: null }
 }
 
-/** A vest's last gas reading ("2,400 ppm"), or null if it has not sent one (no sensor, or warming up). */
-export function formatGas(vest) {
-  return vest?.gas_ppm == null ? null : `${vest.gas_ppm.toLocaleString('en-US')} ppm`
+/** A gas monitor's last reading ("2,400 ppm"), or null if it has not sent one (still warming up). */
+export function formatGas(monitor) {
+  return monitor?.gas_ppm == null ? null : `${monitor.gas_ppm.toLocaleString('en-US')} ppm`
 }
 
 /** "In Bay 1 · CAM-02", "Last seen in Bay 1 · CAM-02", or null if never placed. */
@@ -182,4 +184,14 @@ export function exportCsv(filename, headers, rows) {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Who or where an alert is about: the worker, or for an alert from a fixed
+ * zone device (a gas monitor) its zone.
+ */
+export function alertSubject(alert) {
+  if (alert?.worker_name) return alert.worker_name
+  if (alert?.zone && alert.zone_name) return `${alert.zone_name} (zone)`
+  return 'Worker not identified'
 }

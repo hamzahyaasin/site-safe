@@ -6,7 +6,7 @@ import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import EmptyState from '../ui/EmptyState.jsx'
 import Skeleton from '../ui/Skeleton.jsx'
 import Tooltip from '../ui/Tooltip.jsx'
-import { cn, describeLocation, formatGas, formatTimestamp, getWorkerPresence, initials } from '../../lib/utils.js'
+import { cn, describeLocation, formatTimestamp, getWorkerPresence, initials } from '../../lib/utils.js'
 
 /** Worker cards. Presence and location come from vest GPS and camera badge
  * sightings, battery from the vest; ``onEdit`` (Workers page) adds an edit
@@ -109,7 +109,6 @@ export default function WorkerStatusGrid({
                         warn={vest.battery_level !== null && vest.battery_level < 20}
                       />
                     ) : null}
-                    {formatGas(vest) ? <Chip label="Gas" value={formatGas(vest)} warn={vest.gas_over_limit} /> : null}
                     {vest?.latitude !== null && vest?.latitude !== undefined ? (
                       <Chip label="GPS" value={`${vest.latitude.toFixed(5)}, ${vest.longitude.toFixed(5)}`} />
                     ) : null}

@@ -24,6 +24,7 @@ class Severity(models.TextChoices):
 class AlertSource(models.TextChoices):
     AI_CAMERA = "AI_CAMERA", "AI Camera"
     SMART_VEST = "SMART_VEST", "Smart Vest"
+    GAS_MONITOR = "GAS_MONITOR", "Gas monitor"
     SIMULATED = "SIMULATED", "Simulated"
 
 
@@ -82,6 +83,14 @@ class Alert(models.Model):
         blank=True,
         unique=True,
         help_text="Producer-assigned idempotency key; a retried event is stored once",
+    )
+    zone = models.ForeignKey(
+        "sitemap.Zone",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="alerts",
+        help_text="Zone the alert is about, for alerts from a fixed zone device (a gas monitor)",
     )
     hot_work_permit = models.ForeignKey(
         "sitemap.HotWorkPermit",

@@ -2,7 +2,7 @@ import Badge from '../ui/Badge.jsx'
 import Button from '../ui/Button.jsx'
 import Drawer from '../ui/Drawer.jsx'
 import Input, { Select } from '../ui/Input.jsx'
-import { cn, formatGas, formatTimestamp } from '../../lib/utils.js'
+import { cn, formatTimestamp } from '../../lib/utils.js'
 
 /** Slide-over for one vest's live telemetry and worker assignment, or for registering a new vest. */
 export default function VestDrawer({
@@ -90,7 +90,6 @@ export default function VestDrawer({
             {vest.is_online ? 'Online' : 'Offline'}
           </Badge>
           {vest.sos_active ? <Badge variant="critical" dot>SOS active</Badge> : null}
-          {vest.gas_over_limit ? <Badge variant="critical">Gas over limit</Badge> : null}
         </div>
 
         <section>
@@ -114,12 +113,6 @@ export default function VestDrawer({
                   />
                 </span>
                 <span className="tabular-nums text-zinc-300">{vest.battery_level == null ? 'not reported' : `${pct}%`}</span>
-              </span>
-            </Row>
-            <Row label="Gas">
-              <span className={cn('tabular-nums', vest.gas_over_limit ? 'font-semibold text-red-400' : 'text-zinc-300')}>
-                {formatGas(vest) || 'not reported'}
-                {vest.gas_over_limit ? ' — over the alert limit' : ''}
               </span>
             </Row>
             <Row label="SOS">

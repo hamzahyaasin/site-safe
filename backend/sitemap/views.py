@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from django.utils import timezone
 
 from accounts.permissions import IsSafetyOfficer, ReadOnlyOrAdmin, ReadOnlyOrSafetyOfficer
+from accounts.service_auth import IsGasMonitor
 from rest_framework.response import Response
 
 from workers.models import Worker
@@ -13,10 +14,12 @@ from workers.serializers import WorkerSerializer
 
 from . import camera_map
 from .geofence import point_in_polygon
-from .models import Camera, CameraArea, HotWorkPermit, Zone
+from .models import Camera, CameraArea, GasMonitor, HotWorkPermit, Zone
 from .serializers import (
     CameraAreaSerializer,
     CameraPlacementSerializer,
+    GasMonitorSerializer,
+    GasTelemetrySerializer,
     HotWorkPermitSerializer,
     ZoneDetailSerializer,
     ZoneSerializer,
@@ -176,3 +179,33 @@ class CameraPlacementView(APIView):
         camera.save(update_fields=["latitude", "longitude"])
         publish_camera(camera_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GasMonitorViewSet(viewsets.ModelViewSet):
+    """Registry of fixed gas monitors; Safety Officers and Admins register them and assign zones."""
+
+    queryset = GasMonitor.objects.select_related("zone").all()
+    serializer_class = GasMonitorSerializer
+    permission_classes = [ReadOnlyOrSafetyOfficer]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        zone_id = self.request.query_params.get("zone_id")
+        return qs.filter(zone_id=zone_id) if zone_id else qs
+
+
+class GasMonitorTelemetryView(APIView):
+    """Receives readings from a gas monitor: { monitor_id, gas_ppm }."""
+
+    permission_classes = [IsGasMonitor]
+
+    def post(self, request):
+        from .gas import apply_gas_telemetry
+
+        serializer = GasTelemetrySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        monitor = apply_gas_telemetry(data.pop("monitor_id"), data, simulated=request.auth.is_simulator)
+        if not monitor:
+            return Response({"error": "Unknown gas monitor"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"status": "ok"})

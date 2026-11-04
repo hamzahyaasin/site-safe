@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { apiErrorText, useFeedback } from '../context/FeedbackContext.jsx'
 import { useAlerts } from '../hooks/useAlerts.js'
 import { useDashboardStats } from '../hooks/useDashboardStats.js'
+import { useGasMonitors } from '../hooks/useGasMonitors.js'
+import { useZones } from '../hooks/useZones.js'
 import { useWorkers } from '../hooks/useWorkers.js'
 import AlertFeed from '../components/dashboard/AlertFeed.jsx'
 import DashboardCharts from '../components/dashboard/DashboardCharts.jsx'
@@ -18,6 +20,8 @@ export default function DashboardPage() {
   const { api, canOperate } = useAuth()
   const { stats, loading: statsLoading, fetchStats } = useDashboardStats()
   const { workers, loading: workersLoading, highlightIds } = useWorkers()
+  const { monitors } = useGasMonitors({ poll: false })
+  const { zones } = useZones()
   const {
     alerts,
     loading: alertsLoading,
@@ -32,8 +36,10 @@ export default function DashboardPage() {
   const { toast } = useFeedback()
 
   async function simulate(kind) {
-    if (!selectedWorkerId) {
-      toast('Select a worker first', 'error')
+    // Gas is a hazard of a zone (its fixed monitor), not of a worker.
+    const gasZone = monitors.find((m) => m.zone)?.zone ?? zones[0]?.id
+    if (kind === 'gas' ? !gasZone : !selectedWorkerId) {
+      toast(kind === 'gas' ? 'Add a zone first' : 'Select a worker first', 'error')
       return
     }
     const payloads = {
@@ -45,7 +51,7 @@ export default function DashboardPage() {
       fall: { alert_type: 'FALL', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
       fire: { alert_type: 'FIRE', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
       danger_area: { alert_type: 'DANGER_AREA', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
-      gas: { alert_type: 'GAS', severity: 'CRITICAL', source: 'SIMULATED', worker_id: Number(selectedWorkerId) },
+      gas: { alert_type: 'GAS', severity: 'CRITICAL', source: 'SIMULATED', zone_id: gasZone },
     }
     setLoadingSim(kind)
     try {

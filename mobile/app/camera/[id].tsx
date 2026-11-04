@@ -10,7 +10,7 @@ import { useSession } from '@/context/Session';
 import { useCameraMap } from '@/hooks/useCameraMap';
 import { api, asList } from '@/lib/api';
 import { cameraStatus, STATUS_COLOR, STATUS_LABEL } from '@/lib/cameras';
-import { canOperate, formatType, SEVERITY_COLOR, timeAgo } from '@/lib/format';
+import { alertSubject, canOperate, formatType, SEVERITY_COLOR, timeAgo } from '@/lib/format';
 import type { Alert, CameraArea } from '@/lib/types';
 
 const RECENT_ALERTS = 10;
@@ -138,7 +138,7 @@ export default function CameraDetail() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.text}>{formatType(a.alert_type)}</Text>
                 <Text style={styles.faint} numberOfLines={1}>
-                  {a.worker_name ?? 'Not identified'} · {timeAgo(a.timestamp)}
+                  {alertSubject(a)} · {timeAgo(a.timestamp)}
                 </Text>
               </View>
               {a.is_resolved ? <Badge label="Resolved" color={C.good} /> : null}

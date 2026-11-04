@@ -1,6 +1,6 @@
 import { type Alerting, cameraStatus, STATUS_COLOR, viewCone } from './cameras';
 import { formatGas } from './format';
-import type { MapCamera, SmartVest, Zone } from './types';
+import type { GasMonitor, MapCamera, SmartVest, Zone } from './types';
 
 // Same colours as the web site map.
 export const RISK_COLOR: Record<Zone['risk_level'], string> = {
@@ -16,27 +16,37 @@ export interface SiteMapData {
   zones: { id: number; color: string; points: LatLng[]; label: string; active: boolean }[];
   vests: { id: number; at: LatLng; color: string; label: string }[];
   cameras: { id: string; at: LatLng; cone: LatLng[]; color: string; live: boolean; label: string }[];
+  gas: { id: number; at: LatLng; color: string; over: boolean; label: string }[];
 }
 
-/** What the map page draws: zones with head counts, vests, and placed cameras with their cones. */
+const GAS_RED = '#ef4444';
+
+/**
+ * What the map page draws: zones with head counts, vests, placed cameras with
+ * their cones, and gas monitors. A zone whose gas monitor reads over the limit
+ * is drawn red.
+ */
 export function siteMapData(
   zones: Zone[],
   vests: SmartVest[],
   cameras: MapCamera[],
   alerting: Alerting,
   now = Date.now(),
+  monitors: GasMonitor[] = [],
 ): SiteMapData {
+  const gasZones = new Set(monitors.filter((m) => m.gas_over_limit && m.zone).map((m) => m.zone));
   return {
     zones: zones
       .filter((z) => (z.boundaries?.length ?? 0) >= 3)
       .map((z) => ({
         id: z.id,
-        color: RISK_COLOR[z.risk_level] ?? '#a1a1aa',
+        color: gasZones.has(z.id) ? GAS_RED : (RISK_COLOR[z.risk_level] ?? '#a1a1aa'),
         points: z.boundaries.map((p) => [p.lat, p.lng] as LatLng),
         label:
-          z.current_occupancy === undefined
+          (z.current_occupancy === undefined
             ? z.name
-            : `${z.name}: ${z.current_occupancy}${z.max_occupancy ? ` / ${z.max_occupancy}` : ''} present`,
+            : `${z.name}: ${z.current_occupancy}${z.max_occupancy ? ` / ${z.max_occupancy}` : ''} present`) +
+          (gasZones.has(z.id) ? ' · GAS' : ''),
         active: z.is_active,
       })),
     vests: vests
@@ -44,10 +54,19 @@ export function siteMapData(
       .map((v) => ({
         id: v.id,
         at: [v.latitude as number, v.longitude as number],
-        color: v.sos_active || v.gas_over_limit ? '#ef4444' : v.is_online ? '#22c55e' : '#71717a',
+        color: v.sos_active ? '#ef4444' : v.is_online ? '#22c55e' : '#71717a',
+        label: `${v.worker_name || 'Unassigned'} (${v.vest_id})${v.sos_active ? ' · SOS' : v.is_online ? '' : ' · offline'}`,
+      })),
+    gas: monitors
+      .filter((m) => m.latitude !== null && m.longitude !== null)
+      .map((m) => ({
+        id: m.id,
+        at: [m.latitude as number, m.longitude as number],
+        color: m.gas_over_limit ? GAS_RED : m.is_online ? '#f59e0b' : '#71717a',
+        over: m.gas_over_limit,
         label:
-          `${v.worker_name || 'Unassigned'} (${v.vest_id})${v.sos_active ? ' · SOS' : v.is_online ? '' : ' · offline'}` +
-          (formatGas(v) ? ` · gas ${formatGas(v)}${v.gas_over_limit ? ' (over limit)' : ''}` : ''),
+          `Gas ${m.monitor_id}${m.zone_name ? ` · ${m.zone_name}` : ''}${m.is_online ? '' : ' · offline'} · ` +
+          (formatGas(m) ? `${formatGas(m)}${m.gas_over_limit ? ' (over limit)' : ''}` : 'no reading yet'),
       })),
     cameras: cameras
       .filter((c) => c.placement)
@@ -140,6 +159,9 @@ export function siteMapHtml(center: LatLng): string {
     });
     data.vests.forEach(function (v) {
       L.circleMarker(v.at, { radius: 7, color: v.color, fillOpacity: 0.85, weight: 2 }).bindTooltip(esc(v.label)).addTo(layer);
+    });
+    (data.gas || []).forEach(function (g) {
+      L.circleMarker(g.at, { radius: g.over ? 11 : 8, color: g.color, fillOpacity: g.over ? 0.45 : 0.15, weight: 3 }).bindTooltip(esc(g.label)).addTo(layer);
     });
     data.cameras.forEach(function (c) {
       var icon = L.divIcon({ className: 'cam', html: '<span style="background:' + c.color + '">' + glyph + '</span>', iconSize: [30, 30], iconAnchor: [15, 15] });

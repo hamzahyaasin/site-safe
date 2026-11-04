@@ -10,7 +10,7 @@ from django.test import TestCase
 from accounts.models import ServiceToken, User
 from alerts.models import Alert
 from sitemap.geofence import point_in_polygon
-from sitemap.models import Camera, Zone
+from sitemap.models import Camera, GasMonitor, Zone
 
 from .models import SmartVest, Worker
 
@@ -27,7 +27,7 @@ class SetupDemoTests(TestCase):
     def test_creates_the_site_once_and_shows_secrets_once(self):
         first = run()
         self.assertEqual(first.count("password:"), 3)
-        self.assertEqual(first.count("key:"), 2)
+        self.assertEqual(first.count("key:"), 3)
         counts = (User.objects.count(), Zone.objects.count(), Worker.objects.count(), SmartVest.objects.count())
         self.assertEqual(counts, (3, 2, 3, 2))
 
@@ -44,6 +44,8 @@ class SetupDemoTests(TestCase):
         self.assertEqual(Alert.objects.count(), 0)
         self.assertTrue(ServiceToken.objects.get(name="demo-vest-gateway").is_simulator)
         self.assertEqual(ServiceToken.objects.get(name="demo-cam-01").camera_ids, ["CAM-01"])
+        gas_token = ServiceToken.objects.get(name="demo-gas-monitor")
+        self.assertEqual((gas_token.kind, gas_token.is_simulator), (ServiceToken.Kind.GAS_MONITOR, True))
         self.assertTrue(Camera.objects.get(camera_id="CAM-01").is_placed)
 
     def test_matches_the_vest_scenario(self):
@@ -57,6 +59,12 @@ class SetupDemoTests(TestCase):
         self.assertTrue(point_in_polygon(*vests["VEST-002"]["waypoints"][3], crane))
         self.assertTrue(point_in_polygon(*vests["VEST-001"]["waypoints"][1], site))
         self.assertFalse(point_in_polygon(*vests["VEST-001"]["waypoints"][1], crane))
+        # The scenario's gas monitor is the one installed in the Site zone, inside it on the map.
+        monitors = {m["monitor_id"] for m in scenario["gas_monitors"]}
+        self.assertEqual(monitors, set(GasMonitor.objects.values_list("monitor_id", flat=True)))
+        monitor = GasMonitor.objects.get()
+        self.assertEqual(monitor.zone.name, "Site")
+        self.assertTrue(point_in_polygon(monitor.latitude, monitor.longitude, site))
 
     def test_rejects_a_bad_centre(self):
         from django.core.management.base import CommandError

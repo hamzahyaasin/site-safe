@@ -39,7 +39,7 @@ Nothing is *Physical* or *Accepted* yet. The acceptance criteria are proposals u
 | FR-18 | Worker registry: create, edit, deactivate from the UI | M | All three operations work in the browser; one vest per worker | `pages/WorkersPage.jsx`, `WorkerSerializer` (vest assignment), migration workers 0004 | `workers/tests.py` (7); browser check 16 Oct (registered worker with VEST-003) | Integrated |
 | FR-19 | Zones with polygon boundaries and camera assignment | M | Invalid geometry/camera lists rejected; boundary drawn on a map | `sitemap/`, `components/map/SiteMap.jsx`, `ZonesPage.jsx` | `sitemap/tests.py` (7); browser check 16 Oct (3-click polygon saved) | Integrated |
 | FR-20 | Automatic restricted-zone breach and over-occupancy alerts | M | Entering a RESTRICTED polygon unassigned, or exceeding max occupancy, raises one ZONE_BREACH per entry; a restricted zone's camera raises one per stay for a person with no readable badge | `workers/mqtt_handlers.raise_zone_breaches`, `sitemap/geofence.py`; `ai-module/restricted_zone.py`, `CameraConfigView` `zone_restricted`, ZONE_BREACH in `CAMERA_ALERT_TYPES` | `workers/tests.py` ZoneBreachTests (9); `test_restricted_zone.py` (7), `alerts/test_unidentified_breach.py` (4); e2e 16 Oct (telemetry into Crane Pit → live breach); e2e 1 Nov (camera of a restricted zone, test video: 14 unidentified-person breaches with snapshots, badge holders none) | Integrated (GPS simulated by HTTP; camera with a test video) |
-| FR-21 | Smart vest: GPS position, SOS button and gas sensor over Wi-Fi (LoRa dropped by the owner, 1 Nov) | M | Physical SOS and a gas leak reach the dashboard; delay measured | Server: `workers/`, `run_mqtt_consumer`, GAS in `mqtt_handlers.check_gas`; `tools/vest_simulator.py`; firmware `firmware/smart_vest/` (ESP32, NEO-6M, MQ-2) | `workers/tests.py` (incl. SimulatorLabelling 3), `workers/test_gas.py` (10), `tools/test_vest_simulator.py` (10), `firmware/test/test_vest_logic.cpp` (7 groups); e2e 16 Oct: demo scenario → simulated breach + SOS, offline after silence; e2e 1 Nov: firmware-generated bodies with a vest key → SOS and one GAS alert, shown on web | Software and firmware tested; **hardware being bought** (pending C12) |
+| FR-21 | Smart vest (GPS position, SOS button) and fixed zone gas monitors (MQ-2) over Wi-Fi (LoRa dropped by the owner, 1 Nov; gas moved from the vest to zone monitors by the owner, 4 Nov) | M | Physical SOS and a gas leak reach the dashboard; delay measured; a GAS alert names the zone | Server: `workers/` (vest, SOS), `run_mqtt_consumer`, `sitemap/gas.py` (GasMonitor, zone GAS alerts, offline sweep); `tools/vest_simulator.py` (vests and gas monitors); firmware `firmware/smart_vest/` (ESP32; vest and gas-monitor roles; NEO-6M optional, MQ-2) | `workers/tests.py` (incl. SimulatorLabelling 3), `workers/test_sos.py` (9), `sitemap/test_gas.py` (15), `tools/test_vest_simulator.py` (12), `firmware/test/test_vest_logic.cpp` (9 groups); e2e 16 Oct: demo scenario → simulated breach + SOS, offline after silence; bench 4 Nov: ESP32 over Wi-Fi, SOS alerts within about 1 s, cancel and repeat presses; gas monitor GM-01 in zone North: lighter → 2,041 ppm and a zone GAS alert with no worker in the same report | Integrated on the bench; GPS module not fitted |
 | FR-22 | Vest telemetry is validated | M | Out-of-range latitude/longitude, a lone coordinate, or battery outside 0–100 returns 400 | `VestTelemetrySerializer` | `alerts/test_ingest.py` | Tested |
 | FR-23 | Vest offline detection | S | No report within `VEST_OFFLINE_AFTER_SECONDS` shows the vest offline | `workers/presence.py`, `run_presence_monitor` | `workers/tests.py` PresenceTests (4); browser check (occupancy dropped to 0 after timeout) | Integrated |
 | FR-24 | Worker activity history (check-in/out, idle, zone transitions) | M | Generated automatically and reconciled with annotated scenarios | `workers/activity.py`, `workers/timeline.py`, camera `SightingThrottle` + idle events, `WorkerTimeline.jsx`, report attendance tables | `workers/test_activity.py` (18), `test_activity_events.py` (5), report-service attendance tests; e2e 20 Oct: camera sightings + idle → 60 min on site, 20 min idle, auto check-out at last sighting; vest session open; timeline and PDF agree | Integrated (**no annotated real-camera scenario yet**) |
@@ -799,4 +799,33 @@ Found: after the GAS alert was resolved, the next two releases raised nothing, b
 Fixed: that wait now holds only while the vest's GAS alert is open; after a resolve, the next rise above
   the limit alerts at once. Test added (backend 265).
 Report impact: 4.2.2 measurements; Table 5.1 test counts.
+```
+
+```text
+Phase / task IDs: gas moves from the vest to fixed zone gas monitors (owner, 4 Nov); FR-21
+Decision: gas is a hazard of the place, not of a worker, so the gas sensor is a fixed monitor installed in a
+  zone, and its GAS alerts name the zone with no worker. SOS stays on the worn vest.
+Server: sitemap.GasMonitor (monitor_id, name, zone, optional map position, last reading, online);
+  POST /api/v1/gas-monitors/telemetry/ with a new GAS_MONITOR device token kind; CRUD at
+  /api/v1/gas-monitors/ (Safety Officers and Admins); Alert.zone (alerts from a zone device), new alert
+  source GAS_MONITOR; gas rule moved to sitemap/gas.py (one alert per exposure; the 60 s wait only while
+  the zone's GAS alert is open); presence monitor marks silent monitors offline; live gas_monitor_updated
+  and gas_monitor_deleted events; dashboard "simulate" raises GAS for a zone. Vests lose gas_ppm and the
+  gas fields (migration workers 0012). setup_demo adds GM-01 in the Site zone and a demo-gas-monitor
+  simulator token.
+Clients: web Zones page has a Gas Monitors section (register, zone, pick position on the map, edit,
+  remove, live reading); the site map draws monitors as rings and outlines a zone with gas over the limit
+  in red; the dashboard map says "Gas: <zone>"; alert rows show "<zone> (zone)"; gas removed from Vest
+  Management, the vest drawer, worker cards and vest markers. Mobile map draws monitors and gas zones;
+  alert rows show the zone. Report service no longer counts zone alerts as unidentified people.
+Firmware: one sketch, two roles from config.h (VEST_ID / GAS_MONITOR_ID, each with its own key); the
+  bench board runs both. Vest JSON drops gas_ppm; gas_monitor_json added.
+Simulator: scenarios list gas_monitors (gas_ppm, leak_at_seconds, leak_ppm, leak_seconds), sent with a
+  GAS_MONITOR key; demo.json's leak is GM-01 in the Site zone.
+Tests: backend 270 on PostgreSQL and SQLite (sitemap/test_gas.py 15); mobile 28; report-service 25;
+  simulator 12; firmware logic 9 groups; web and mobile lint and type check clean.
+Checked: in the browser, registering GM-01 in North with a map-picked position; a simulated 2,600 ppm
+  turned it red live and showed "Gas: North" and a "North (zone)" alert (cleaned up). On the bench board,
+  both roles report (HTTP 200); after warm-up (R0 1.688 kOhm, clean air 3-5 ppm) a lighter read 2,041 ppm
+  and raised GAS for North, source GAS_MONITOR, no worker, in the same report.
 ```

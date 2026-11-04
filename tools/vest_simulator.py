@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
-"""Smart vest simulator for demonstrations and integration tests.
+"""Smart vest and gas monitor simulator for demonstrations and integration tests.
 
-Sends vest telemetry (GPS, battery, SOS, gas) to the Site-Safe vest gateway API
-exactly as a physical vest gateway would, so zone history, restricted-zone
-and capacity breaches, SOS alerts, offline detection and the live map can be
-shown without hardware.
+Sends vest telemetry (GPS, battery, SOS) and fixed gas monitor readings to
+the Site-Safe API exactly as the devices would, so zone history,
+restricted-zone and capacity breaches, SOS and GAS alerts, offline detection
+and the live map can be shown without hardware.
 
-Use a token created with ``--simulator``; the backend then marks every
+Use tokens created with ``--simulator``; the backend then marks every
 resulting alert SIMULATED, so it is labelled in the dashboard and excluded
 from report figures:
 
     python manage.py create_service_token vest-sim --kind VEST_GATEWAY --simulator
-    SITESAFE_DEVICE_KEY=ss_... python tools/vest_simulator.py tools/vest_scenarios/demo.json
+    python manage.py create_service_token gas-sim --kind GAS_MONITOR --simulator
+    SITESAFE_DEVICE_KEY=ss_... SITESAFE_GAS_MONITOR_KEY=ss_... \
+        python tools/vest_simulator.py tools/vest_scenarios/demo.json
 
-A scenario lists vests (which must already be registered) with waypoints.
+A scenario lists vests and gas monitors, which must already be registered.
 Each vest walks its waypoints at the given speed and can press SOS when it
 reaches a waypoint index (``sos_at``) or go silent after one (``stop_at``)
-to show offline detection. A vest with ``gas_ppm`` reports that gas level
-throughout, and ``gas_leak_at`` raises it to ``gas_leak_ppm`` for
-``gas_leak_seconds`` from that waypoint on, to show the GAS alert.
+to show offline detection. Each gas monitor stays where it is installed and
+reports ``gas_ppm`` throughout; ``leak_at_seconds`` raises it to ``leak_ppm``
+for ``leak_seconds``, to show the zone's GAS alert.
 """
 
 from __future__ import annotations
@@ -50,10 +52,6 @@ class Vest:
     battery_drain_per_min: float = 0.5
     sos_at: int | None = None
     stop_at: int | None = None
-    gas_ppm: int | None = None
-    gas_leak_at: int | None = None
-    gas_leak_ppm: int = 3000
-    gas_leak_seconds: float = 30.0
 
     @classmethod
     def from_dict(cls, d: dict) -> "Vest":
@@ -71,18 +69,43 @@ class Vest:
             battery_drain_per_min=float(d.get("battery_drain_per_min", 0.5)),
             sos_at=d.get("sos_at"),
             stop_at=d.get("stop_at"),
-            gas_ppm=d.get("gas_ppm"),
-            gas_leak_at=d.get("gas_leak_at"),
-            gas_leak_ppm=int(d.get("gas_leak_ppm", 3000)),
-            gas_leak_seconds=float(d.get("gas_leak_seconds", 30)),
         )
+
+
+@dataclass
+class GasMonitor:
+    """A fixed gas monitor in a zone: a baseline reading with an optional leak."""
+
+    monitor_id: str
+    gas_ppm: int = 300
+    leak_at_seconds: float | None = None
+    leak_ppm: int = 3000
+    leak_seconds: float = 30.0
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "GasMonitor":
+        return cls(
+            monitor_id=str(d["monitor_id"]),
+            gas_ppm=int(d.get("gas_ppm", 300)),
+            leak_at_seconds=d.get("leak_at_seconds"),
+            leak_ppm=int(d.get("leak_ppm", 3000)),
+            leak_seconds=float(d.get("leak_seconds", 30)),
+        )
+
+    def ppm_at(self, t: float) -> int:
+        leaking = self.leak_at_seconds is not None and 0 <= t - self.leak_at_seconds < self.leak_seconds
+        return self.leak_ppm if leaking else self.gas_ppm
+
+
+VEST, GAS = "vest", "gas"
 
 
 @dataclass
 class Frame:
     t: float  # seconds from scenario start
-    vest_id: str
+    device_id: str
     payload: dict = field(default_factory=dict)
+    kind: str = VEST  # VEST or GAS: which endpoint and device key it goes to
 
 
 def position_at(vest: Vest, t: float) -> tuple[tuple[float, float], int]:
@@ -104,18 +127,21 @@ def route_seconds(vest: Vest) -> float:
     return total / vest.speed_mps if vest.speed_mps > 0 else 0.0
 
 
-def build_frames(vests: list[Vest], interval: float, hold: float = 0.0) -> list[Frame]:
+def build_frames(
+    vests: list[Vest], interval: float, hold: float = 0.0, monitors: list[GasMonitor] | tuple = ()
+) -> list[Frame]:
     """Every telemetry message the scenario will send, in time order.
 
     A vest reports every ``interval`` seconds until it finishes its route
-    (plus ``hold`` seconds standing still) or reaches ``stop_at``.
+    (plus ``hold`` seconds standing still) or reaches ``stop_at``. Gas
+    monitors report every ``interval`` seconds for the whole scenario (at
+    least ``hold`` seconds, and past the end of any leak).
     """
     frames: list[Frame] = []
     for vest in vests:
         end = route_seconds(vest) + hold
         t = 0.0
         sos_sent = False
-        leak_from = None
         while t <= end + 1e-9:
             (lat, lng), reached = position_at(vest, t)
             if vest.stop_at is not None and reached >= vest.stop_at:
@@ -123,18 +149,21 @@ def build_frames(vests: list[Vest], interval: float, hold: float = 0.0) -> list[
                 frames.append(Frame(t, vest.vest_id, {**payload, **_battery(vest, t)}))
                 break  # goes silent: the backend should mark it offline
             payload = {"latitude": round(lat, 7), "longitude": round(lng, 7), **_battery(vest, t)}
-            if vest.gas_leak_at is not None and reached >= vest.gas_leak_at and leak_from is None:
-                leak_from = t
-            if leak_from is not None and t - leak_from < vest.gas_leak_seconds:
-                payload["gas_ppm"] = vest.gas_leak_ppm
-            elif vest.gas_ppm is not None:
-                payload["gas_ppm"] = vest.gas_ppm
             if vest.sos_at is not None and reached >= vest.sos_at and not sos_sent:
                 payload["sos_active"] = True
                 sos_sent = True
             frames.append(Frame(t, vest.vest_id, payload))
             t += interval
-    frames.sort(key=lambda f: (f.t, f.vest_id))
+    end = max([f.t for f in frames] + [hold])
+    for monitor in monitors:
+        if monitor.leak_at_seconds is not None:
+            end = max(end, monitor.leak_at_seconds + monitor.leak_seconds + interval)
+    for monitor in monitors:
+        t = 0.0
+        while t <= end + 1e-9:
+            frames.append(Frame(t, monitor.monitor_id, {"gas_ppm": monitor.ppm_at(t)}, GAS))
+            t += interval
+    frames.sort(key=lambda f: (f.t, f.kind, f.device_id))
     return frames
 
 
@@ -143,19 +172,39 @@ def _battery(vest: Vest, t: float) -> dict:
     return {"battery_level": max(0, min(100, int(round(level))))}
 
 
-def load_scenario(path: str) -> tuple[list[Vest], float, float]:
+@dataclass
+class Scenario:
+    vests: list[Vest]
+    monitors: list[GasMonitor]
+    interval: float
+    hold: float
+
+    def frames(self) -> list[Frame]:
+        return build_frames(self.vests, self.interval, self.hold, self.monitors)
+
+
+def load_scenario(path: str) -> Scenario:
     with open(path) as fh:
         data = json.load(fh)
-    vests = [Vest.from_dict(v) for v in data["vests"]]
-    return vests, float(data.get("interval_seconds", 5)), float(data.get("hold_seconds", 0))
+    return Scenario(
+        vests=[Vest.from_dict(v) for v in data.get("vests", [])],
+        monitors=[GasMonitor.from_dict(m) for m in data.get("gas_monitors", [])],
+        interval=float(data.get("interval_seconds", 5)),
+        hold=float(data.get("hold_seconds", 0)),
+    )
+
+
+ENDPOINTS = {VEST: ("/v1/vests/telemetry/", "vest_id"), GAS: ("/v1/gas-monitors/telemetry/", "monitor_id")}
+KEY_VARIABLES = {VEST: "SITESAFE_DEVICE_KEY", GAS: "SITESAFE_GAS_MONITOR_KEY"}
 
 
 def send(api: str, key: str, frame: Frame) -> int:
     import requests
 
+    path, id_field = ENDPOINTS[frame.kind]
     r = requests.post(
-        api.rstrip("/") + "/v1/vests/telemetry/",
-        json={"vest_id": frame.vest_id, **frame.payload},
+        api.rstrip("/") + path,
+        json={id_field: frame.device_id, **frame.payload},
         headers={"Authorization": f"Device {key}"},
         timeout=5,
     )
@@ -170,14 +219,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true", help="Print messages instead of sending them")
     args = parser.parse_args(argv)
 
-    vests, interval, hold = load_scenario(args.scenario)
-    frames = build_frames(vests, interval, hold)
-    key = os.environ.get("SITESAFE_DEVICE_KEY", "")
-    if not args.dry_run and not key:
-        print("Set SITESAFE_DEVICE_KEY to a vest gateway simulator token.", file=sys.stderr)
+    scenario = load_scenario(args.scenario)
+    frames = scenario.frames()
+    if not frames:
+        print("The scenario has no vests or gas monitors.", file=sys.stderr)
+        return 2
+    keys = {kind: os.environ.get(var, "") for kind, var in KEY_VARIABLES.items()}
+    needed = {f.kind for f in frames}
+    missing = [KEY_VARIABLES[k] for k in sorted(needed) if not keys[k]]
+    if not args.dry_run and missing:
+        print(f"Set {' and '.join(missing)} (simulator tokens: VEST_GATEWAY for vests, GAS_MONITOR for "
+              "gas monitors).", file=sys.stderr)
         return 2
 
-    print(f"{len(frames)} messages from {len(vests)} vest(s), about {frames[-1].t / args.speedup:.0f}s")
+    print(
+        f"{len(frames)} messages from {len(scenario.vests)} vest(s) and {len(scenario.monitors)} gas monitor(s), "
+        f"about {frames[-1].t / args.speedup:.0f}s"
+    )
     start = time.monotonic()
     failures = 0
     for frame in frames:
@@ -185,16 +243,18 @@ def main(argv: list[str] | None = None) -> int:
         if wait > 0 and not args.dry_run:
             time.sleep(wait)
         if args.dry_run:
-            print(f"t={frame.t:6.1f}s {frame.vest_id} {json.dumps(frame.payload)}")
+            print(f"t={frame.t:6.1f}s {frame.device_id} {json.dumps(frame.payload)}")
             continue
         try:
-            code = send(args.api, key, frame)
+            code = send(args.api, keys[frame.kind], frame)
         except Exception as exc:  # noqa: BLE001 - report and keep the scenario running
             code, failures = str(exc), failures + 1
         else:
             failures += code != 200
         tag = " SOS" if frame.payload.get("sos_active") else ""
-        print(f"t={frame.t:6.1f}s {frame.vest_id}{tag} -> {code}")
+        if frame.kind == GAS:
+            tag = f" gas {frame.payload['gas_ppm']} ppm"
+        print(f"t={frame.t:6.1f}s {frame.device_id}{tag} -> {code}")
     return 1 if failures else 0
 
 

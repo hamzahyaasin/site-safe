@@ -68,6 +68,12 @@ class SosAlertTests(TestCase):
         self.vest.refresh_from_db()
         self.assertEqual(self.vest.sos_presses, 0)
 
+    def test_sos_without_a_position(self):
+        # A vest with no GPS module sends no position; the alert claims none.
+        self.report(True, 1)
+        alert = self.sos().get()
+        self.assertEqual((alert.description, alert.location), ("SOS activated (no position reported)", None))
+
     def test_vests_without_a_press_count_still_raise_and_cancel(self):
         apply_vest_telemetry("V-1", {"sos_active": True})
         apply_vest_telemetry("V-1", {"sos_active": False})

@@ -106,6 +106,7 @@ class ServiceToken(models.Model):
     class Kind(models.TextChoices):
         CAMERA = "CAMERA", "Camera worker"
         VEST_GATEWAY = "VEST_GATEWAY", "Vest gateway"
+        GAS_MONITOR = "GAS_MONITOR", "Gas monitor"
 
     name = models.CharField(max_length=100, unique=True)
     kind = models.CharField(max_length=32, choices=Kind.choices)

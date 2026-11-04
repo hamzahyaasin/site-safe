@@ -1,4 +1,4 @@
-// Site-Safe Smart Vest: logic with no Arduino dependencies.
+// Site-Safe vest and gas monitor: logic with no Arduino dependencies.
 //
 // Kept apart from smart_vest.ino so it can be compiled and tested on a
 // computer (firmware/test/test_vest_logic.cpp) before any hardware exists.
@@ -120,16 +120,15 @@ struct SosButton {
 
 // ---------------------------------------------------------------- telemetry
 //
-// The JSON body for POST /api/v1/vests/telemetry/. Position and gas are left
-// out when there is none (no GPS fix yet, sensor still warming up); SOS and
-// the press count are always sent, so the vest's own state is what the server
-// shows.
+// The vest's JSON body for POST /api/v1/vests/telemetry/. Position is left
+// out when there is none (no GPS fix yet); SOS and the press count are always
+// sent, so the vest's own state is what the server shows. Gas is not the
+// vest's: a gas monitor fixed in a zone reports it (gas_monitor_json).
 
 struct Reading {
   bool has_fix = false;
   double latitude = 0;
   double longitude = 0;
-  int gas_ppm = -1;  // -1: no reading
   bool sos_active = false;
   uint32_t sos_presses = 0;
 };
@@ -144,15 +143,20 @@ inline int telemetry_json(char* buf, size_t size, const char* vest_id, const Rea
     if (m < 0 || static_cast<size_t>(n + m) >= size) return -1;
     n += m;
   }
-  if (r.gas_ppm >= 0) {
-    int m = std::snprintf(buf + n, size - n, ",\"gas_ppm\":%d", r.gas_ppm);
-    if (m < 0 || static_cast<size_t>(n + m) >= size) return -1;
-    n += m;
-  }
   if (static_cast<size_t>(n + 1) >= size) return -1;
   buf[n++] = '}';
   buf[n] = '\0';
   return n;
+}
+
+// The gas monitor's JSON body for POST /api/v1/gas-monitors/telemetry/.
+// ``gas_ppm`` below 0 (sensor still warming up) sends only the ID, which
+// still tells the server the monitor is online. Returns the length, or -1 if
+// it did not fit.
+inline int gas_monitor_json(char* buf, size_t size, const char* monitor_id, int gas_ppm) {
+  int n = gas_ppm < 0 ? std::snprintf(buf, size, "{\"monitor_id\":\"%s\"}", monitor_id)
+                      : std::snprintf(buf, size, "{\"monitor_id\":\"%s\",\"gas_ppm\":%d}", monitor_id, gas_ppm);
+  return n < 0 || static_cast<size_t>(n) >= size ? -1 : n;
 }
 
 }  // namespace vest

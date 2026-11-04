@@ -1,5 +1,9 @@
 // Copy this file to config.h (same folder) and fill it in. config.h is not
-// committed: it holds your Wi-Fi password and the vest's device key.
+// committed: it holds your Wi-Fi password and the device keys.
+//
+// The board runs as a Smart Vest (VEST_ID set), a fixed gas monitor
+// (GAS_MONITOR_ID set) or, on the bench prototype, both. Leave an ID as ""
+// to switch that role off.
 
 #pragma once
 
@@ -12,12 +16,20 @@
 // listen on the network, e.g. `daphne -b 0.0.0.0 -p 8000 sitesafe.asgi:application`.
 #define API_BASE "http://192.168.1.10:8000/api"
 
+// --- Smart Vest role (SOS button, optional GPS) ---
+// The vest's ID as registered on the Vest Management page; "" if this board is not a vest.
+#define VEST_ID "VEST-001"
 // A vest gateway device key, from
 //   python manage.py create_service_token vest-001 --kind VEST_GATEWAY
 #define DEVICE_KEY "ss_..."
 
-// The vest's ID as registered on the Vest Management page.
-#define VEST_ID "VEST-001"
+// --- Gas monitor role (MQ-2 sensor, fixed in a zone) ---
+// The monitor's ID as registered under Gas Monitors on the Zones page (which
+// also says which zone it is in); "" if this board is not a gas monitor.
+#define GAS_MONITOR_ID "GM-01"
+// A gas monitor device key, from
+//   python manage.py create_service_token gm-01 --kind GAS_MONITOR
+#define GAS_MONITOR_KEY "ss_..."
 
 // The load resistor on your MQ-2 module, in kilo-ohms. Most modules use 1 k
 // (marked "102" on the small resistor next to the sensor); some use 4.7 k

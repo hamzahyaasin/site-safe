@@ -11,6 +11,7 @@ import { IconCheck, IconChevronRight, IconDownload, IconSearch } from '../ui/ico
 import IncidentDetail from './IncidentDetail.jsx'
 import { apiErrorText, useFeedback } from '../../context/FeedbackContext.jsx'
 import {
+  alertSubject,
   alertTypeTitle,
   cn,
   displayCameraId,
@@ -48,7 +49,7 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
       if (typeFilter.length && !typeFilter.includes(a.alert_type)) return false
       if (search) {
         const q = search.toLowerCase()
-        const hay = `${a.worker_name ?? ''} ${a.vest_id ?? ''} ${alertTypeTitle(a.alert_type)} ${a.camera_id ?? ''}`.toLowerCase()
+        const hay = `${a.worker_name ?? ''} ${a.zone_name ?? ''} ${a.vest_id ?? ''} ${alertTypeTitle(a.alert_type)} ${a.camera_id ?? ''}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
       if (dateFrom) {
@@ -115,11 +116,12 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
   function handleExport() {
     exportCsv(
       `sitesafe-incidents-${new Date().toISOString().slice(0, 10)}.csv`,
-      ['#', 'Timestamp', 'Worker', 'Vest ID', 'Type', 'Severity', 'Camera', 'Status', 'Source'],
+      ['#', 'Timestamp', 'Worker', 'Zone', 'Vest ID', 'Type', 'Severity', 'Camera', 'Status', 'Source'],
       filtered.map((a, i) => [
         i + 1,
         a.timestamp,
         a.worker_name,
+        a.zone_name,
         a.vest_id,
         alertTypeTitle(a.alert_type),
         a.severity,
@@ -158,10 +160,10 @@ export default function IncidentLogTable({ alerts, loading, onResolve }) {
     },
     {
       key: 'worker_name',
-      header: 'Worker',
+      header: 'Worker / zone',
       render: (row) => (
         <div className="min-w-0">
-          <div className="truncate">{row.worker_name || '—'}</div>
+          <div className="truncate">{row.worker_name || (row.zone ? alertSubject(row) : '—')}</div>
           {row.vest_id ? <div className="font-mono text-[11px] text-zinc-500">{row.vest_id}</div> : null}
         </div>
       ),

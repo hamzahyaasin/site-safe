@@ -9,9 +9,11 @@ export interface Alert {
   vest_id: string | null;
   alert_type: string;
   severity: Severity;
-  source: 'AI_CAMERA' | 'SMART_VEST' | 'SIMULATED';
+  source: 'AI_CAMERA' | 'SMART_VEST' | 'GAS_MONITOR' | 'SIMULATED';
   description: string;
   camera_id: string;
+  /** Set for an alert from a fixed zone device (a gas monitor), which has no worker. */
+  zone: number | null;
   zone_name: string | null;
   location: { lat: number; lng: number } | null;
   confidence: number | null;
@@ -32,9 +34,22 @@ export interface SmartVest {
   latitude: number | null;
   longitude: number | null;
   sos_active: boolean;
-  /** Last gas reading (ppm), null if the vest has not sent one. */
-  gas_ppm?: number | null;
-  gas_over_limit?: boolean;
+  is_online: boolean;
+  last_seen: string | null;
+}
+
+/** A fixed gas monitor installed in a zone; its GAS alerts name the zone. */
+export interface GasMonitor {
+  id: number;
+  monitor_id: string;
+  name: string;
+  zone: number | null;
+  zone_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  /** Last reading (ppm), null until the monitor has sent one. */
+  gas_ppm: number | null;
+  gas_over_limit: boolean;
   is_online: boolean;
   last_seen: string | null;
 }

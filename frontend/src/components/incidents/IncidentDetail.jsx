@@ -15,7 +15,7 @@ export default function IncidentDetail({ alert }) {
   return (
     <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
       <DetailField label="Timestamp" value={formatTimestamp(alert.timestamp)} />
-      <DetailField label="Worker" value={alert.worker_name || '—'} />
+      <DetailField label="Worker" value={alert.worker_name || (alert.zone ? 'None (zone alert)' : '—')} />
       <DetailField label="Vest ID" value={alert.vest_id || '—'} mono />
       <DetailField label="Camera" value={displayCameraId(alert)} mono />
       {alert.zone_name ? <DetailField label="Zone" value={alert.zone_name} /> : null}

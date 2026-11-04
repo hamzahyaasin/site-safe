@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from sitesafe.validation import validate_camera_ids, validate_polygon
 
-from .models import Camera, CameraArea, HotWorkPermit, Zone
+from .models import Camera, CameraArea, GasMonitor, HotWorkPermit, Zone
 
 
 class ZoneSerializer(serializers.ModelSerializer):
@@ -196,3 +196,65 @@ class CameraPlacementSerializer(serializers.ModelSerializer):
             "field_of_view": {"min_value": 10, "max_value": 180},
             "view_range_m": {"min_value": 1, "max_value": 300},
         }
+
+
+class GasMonitorSerializer(serializers.ModelSerializer):
+    """A gas monitor as the registry and clients see it; readings come only from the device."""
+
+    zone_name = serializers.SerializerMethodField()
+    # Computed from last_seen, so a monitor that silently stopped reporting is
+    # never shown as online even before the presence sweep has run.
+    is_online = serializers.SerializerMethodField()
+    # Whether the last reading is at or above GAS_ALERT_PPM, so clients can
+    # highlight it without knowing the limit.
+    gas_over_limit = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GasMonitor
+        fields = (
+            "id",
+            "monitor_id",
+            "name",
+            "zone",
+            "zone_name",
+            "latitude",
+            "longitude",
+            "gas_ppm",
+            "gas_over_limit",
+            "is_online",
+            "last_seen",
+            "created_at",
+        )
+        read_only_fields = ("id", "gas_ppm", "last_seen", "created_at")
+
+    def get_zone_name(self, obj):
+        return obj.zone.name if obj.zone_id else None
+
+    def get_is_online(self, obj):
+        from .gas import is_monitor_online
+
+        return is_monitor_online(obj)
+
+    def get_gas_over_limit(self, obj):
+        from django.conf import settings
+
+        return obj.gas_ppm is not None and obj.gas_ppm >= settings.GAS_ALERT_PPM
+
+    def validate(self, attrs):
+        from sitesafe.validation import validate_lat_lng
+
+        lat = attrs.get("latitude", getattr(self.instance, "latitude", None))
+        lng = attrs.get("longitude", getattr(self.instance, "longitude", None))
+        if (lat is None) != (lng is None):
+            raise serializers.ValidationError("latitude and longitude must be set together.")
+        if lat is not None:
+            attrs["latitude"], attrs["longitude"] = validate_lat_lng(lat, lng)
+        return attrs
+
+
+class GasTelemetrySerializer(serializers.Serializer):
+    """Validated gas monitor telemetry. ``gas_ppm`` is omitted while the sensor warms up."""
+
+    monitor_id = serializers.CharField(max_length=50)
+    # MQ-2 reads at most about 10,000 ppm.
+    gas_ppm = serializers.IntegerField(required=False, min_value=0, max_value=100_000)

@@ -1,7 +1,7 @@
 import { ALERT_FLASH_MS, areaPoints, cameraStatus, offset, reduceCameras, viewCone } from '@/lib/cameras';
-import { reduceVests, reduceZones } from '@/lib/reducers';
+import { reduceGasMonitors, reduceVests, reduceZones } from '@/lib/reducers';
 import { parseMapMessage, siteMapData, siteMapHtml } from '@/lib/siteMap';
-import type { MapCamera, SmartVest, Zone } from '@/lib/types';
+import type { GasMonitor, MapCamera, SmartVest, Zone } from '@/lib/types';
 
 const PLACE = { latitude: 33.6851, longitude: 73.0482, heading: 90, field_of_view: 60, view_range_m: 40 };
 const camera = (id: string, over: Partial<MapCamera> = {}): MapCamera => ({
@@ -99,16 +99,30 @@ test('site map data: zones with head counts, located vests, placed cameras with 
   expect(data.cameras[0].cone.length).toBeGreaterThan(3);
 });
 
-test('site map: a vest over the gas limit is red and shows its reading', () => {
-  const vests = [
-    { id: 1, vest_id: 'V1', worker_name: 'Ali', latitude: 1, longitude: 2, sos_active: false, is_online: true, gas_ppm: 2400, gas_over_limit: true },
-    { id: 2, vest_id: 'V2', worker_name: 'Sara', latitude: 1, longitude: 2, sos_active: false, is_online: true, gas_ppm: 350, gas_over_limit: false },
-  ] as SmartVest[];
-  const data = siteMapData([], vests, [], {}, 1000);
-  expect(data.vests.map((v) => [v.label, v.color])).toEqual([
-    ['Ali (V1) · gas 2,400 ppm (over limit)', '#ef4444'],
-    ['Sara (V2) · gas 350 ppm', '#22c55e'],
+test('site map: a gas monitor over the limit is red, shows its reading and turns its zone red', () => {
+  const zones = [
+    { id: 7, name: 'Basement', risk_level: 'LOW', boundaries: [{ lat: 0, lng: 0 }, { lat: 0, lng: 1 }, { lat: 1, lng: 1 }], camera_ids: [], max_occupancy: 0, is_active: true },
+    { id: 8, name: 'Yard', risk_level: 'LOW', boundaries: [{ lat: 2, lng: 2 }, { lat: 2, lng: 3 }, { lat: 3, lng: 3 }], camera_ids: [], max_occupancy: 0, is_active: true },
+  ] as Zone[];
+  const monitors = [
+    { id: 1, monitor_id: 'GM-1', name: '', zone: 7, zone_name: 'Basement', latitude: 0.5, longitude: 0.5, gas_ppm: 2400, gas_over_limit: true, is_online: true, last_seen: null },
+    { id: 2, monitor_id: 'GM-2', name: '', zone: 8, zone_name: 'Yard', latitude: 2.5, longitude: 2.5, gas_ppm: 350, gas_over_limit: false, is_online: true, last_seen: null },
+    { id: 3, monitor_id: 'GM-3', name: '', zone: 8, zone_name: 'Yard', latitude: null, longitude: null, gas_ppm: null, gas_over_limit: false, is_online: false, last_seen: null },
+  ] as GasMonitor[];
+  const data = siteMapData(zones, [], [], {}, 1000, monitors);
+  expect(data.gas.map((g) => [g.label, g.color])).toEqual([
+    ['Gas GM-1 · Basement · 2,400 ppm (over limit)', '#ef4444'],
+    ['Gas GM-2 · Yard · 350 ppm', '#f59e0b'],
   ]);
+  expect(data.zones.map((z) => [z.label, z.color])).toEqual([
+    ['Basement · GAS', '#ef4444'],
+    ['Yard', '#3b82f6'],
+  ]);
+});
+
+test('vests carry no gas reading', () => {
+  const vests = [{ id: 1, vest_id: 'V1', worker_name: 'Ali', latitude: 1, longitude: 2, sos_active: false, is_online: true }] as SmartVest[];
+  expect(siteMapData([], vests, [], {}, 1000).vests).toEqual([{ id: 1, at: [1, 2], color: '#22c55e', label: 'Ali (V1)' }]);
 });
 
 test('the map page pins Leaflet by integrity hash and escapes names it shows', () => {
@@ -125,4 +139,14 @@ test('only well-formed map messages are acted on', () => {
   expect(parseMapMessage('{"type":"navigate","url":"x"}')).toBeNull();
   expect(parseMapMessage('not json')).toBeNull();
   expect(parseMapMessage({ type: 'ready' })).toBeNull();
+});
+
+test('gas monitor events add, replace and remove monitors', () => {
+  const m = { id: 1, monitor_id: 'GM-1', name: '', zone: 7, zone_name: 'Basement', latitude: null, longitude: null, gas_ppm: 300, gas_over_limit: false, is_online: true, last_seen: null } as GasMonitor;
+  const added = reduceGasMonitors([], 'gas_monitor_updated', m);
+  expect(added).toEqual([m]);
+  const updated = reduceGasMonitors(added, 'gas_monitor_updated', { ...m, gas_ppm: 2500, gas_over_limit: true });
+  expect(updated[0].gas_ppm).toBe(2500);
+  expect(reduceGasMonitors(updated, 'gas_monitor_deleted', { id: 1 } as GasMonitor)).toEqual([]);
+  expect(reduceGasMonitors(updated, 'zone_updated', { id: 1 } as GasMonitor)).toBe(updated);
 });

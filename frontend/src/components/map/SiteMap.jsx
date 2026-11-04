@@ -82,9 +82,10 @@ function ClickToAdd({ onAddPoint }) {
 
 /**
  * Site map: zone polygons coloured by risk, vest positions as last reported,
- * and placed cameras with their view cones (CameraLayer). Offline vests are
- * grey and show the age of their last report, so a stale position is never
- * presented as live.
+ * placed cameras with their view cones (CameraLayer) and gas monitors as
+ * rings. Offline vests and monitors are grey and show the age of their last
+ * report, so a stale position or reading is never presented as live. A zone
+ * whose gas monitor reads over the limit is outlined in red.
  *
  * Pass ``draft``/``onAddPoint`` to use it as a boundary editor: each map
  * click appends a vertex to the draft polygon. ``onAddPoint`` with
@@ -94,6 +95,7 @@ export default function SiteMap({
   zones = [],
   vests = [],
   cameras = [],
+  gasMonitors = [],
   alerting = {},
   cameraDraft = null,
   draft,
@@ -103,9 +105,12 @@ export default function SiteMap({
 }) {
   const shownZones = zones.filter((z) => z.id !== excludeZoneId && z.boundaries?.length >= 3)
   const located = vests.filter((v) => v.latitude !== null && v.longitude !== null)
+  const placedMonitors = gasMonitors.filter((m) => m.latitude != null && m.longitude != null)
+  const gasZoneIds = new Set(gasMonitors.filter((m) => m.gas_over_limit && m.zone).map((m) => m.zone))
   const zonePoints = shownZones.flatMap((z) => z.boundaries.map(toLatLng))
   const otherPoints = [
     ...located.map((v) => [v.latitude, v.longitude]),
+    ...placedMonitors.map((m) => [m.latitude, m.longitude]),
     ...cameras.filter((c) => c.placement).map((c) => [c.placement.latitude, c.placement.longitude]),
   ]
   const zoneKey = shownZones.map((z) => z.id).join(',') || 'none'
@@ -139,9 +144,9 @@ export default function SiteMap({
             key={zone.id}
             positions={zone.boundaries.map(toLatLng)}
             pathOptions={{
-              color: RISK_COLOR[zone.risk_level] || '#a1a1aa',
-              weight: 2,
-              fillOpacity: draft ? 0.05 : 0.15,
+              color: gasZoneIds.has(zone.id) ? '#ef4444' : RISK_COLOR[zone.risk_level] || '#a1a1aa',
+              weight: gasZoneIds.has(zone.id) ? 4 : 2,
+              fillOpacity: draft ? 0.05 : gasZoneIds.has(zone.id) ? 0.3 : 0.15,
               dashArray: zone.is_active ? undefined : '6 6',
             }}
           >
@@ -160,6 +165,7 @@ export default function SiteMap({
                 <>
                   {zone.name}: {zone.current_occupancy}
                   {zone.max_occupancy ? ` / ${zone.max_occupancy}` : ''} present
+                  {gasZoneIds.has(zone.id) ? ' · GAS' : ''}
                 </>
               )}
             </Tooltip>
@@ -177,13 +183,35 @@ export default function SiteMap({
 
         <CameraLayer cameras={cameras} alerting={alerting} draft={cameraDraft} />
 
+        {placedMonitors.map((m) => (
+          <CircleMarker
+            key={`gas-${m.id}`}
+            center={[m.latitude, m.longitude]}
+            radius={m.gas_over_limit ? 11 : 8}
+            pathOptions={{
+              color: m.gas_over_limit ? '#ef4444' : m.is_online ? '#f59e0b' : '#71717a',
+              fillOpacity: m.gas_over_limit ? 0.45 : 0.15,
+              weight: 3,
+            }}
+          >
+            <Tooltip>
+              Gas monitor {m.monitor_id}
+              {m.zone_name ? ` · ${m.zone_name}` : ''}
+              {m.is_online ? '' : ' · offline'}
+              <br />
+              {formatGas(m) ? `${formatGas(m)}${m.gas_over_limit ? ' (over limit)' : ''}` : 'No reading yet'}
+              {m.last_seen ? ` · ${formatTimestamp(m.last_seen)}` : ''}
+            </Tooltip>
+          </CircleMarker>
+        ))}
+
         {located.map((vest) => (
           <CircleMarker
             key={vest.id}
             center={[vest.latitude, vest.longitude]}
-            radius={vest.sos_active || vest.gas_over_limit ? 9 : 7}
+            radius={vest.sos_active ? 9 : 7}
             pathOptions={{
-              color: vest.sos_active || vest.gas_over_limit ? '#ef4444' : vest.is_online ? '#22c55e' : '#71717a',
+              color: vest.sos_active ? '#ef4444' : vest.is_online ? '#22c55e' : '#71717a',
               fillOpacity: 0.85,
               weight: 2,
             }}
@@ -191,7 +219,6 @@ export default function SiteMap({
             <Tooltip>
               {vest.worker_name || 'Unassigned'} ({vest.vest_id})
               {vest.sos_active ? ' · SOS' : vest.is_online ? ' · online' : ' · offline'}
-              {formatGas(vest) ? ` · gas ${formatGas(vest)}${vest.gas_over_limit ? ' (over limit)' : ''}` : ''}
               <br />
               Last report {formatTimestamp(vest.last_seen)}
             </Tooltip>

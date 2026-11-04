@@ -74,3 +74,10 @@ class IsVestGateway(BasePermission):
 
     def has_permission(self, request, view):
         return _is_service(request, ServiceToken.Kind.VEST_GATEWAY)
+
+
+class IsGasMonitor(BasePermission):
+    message = "This endpoint requires a gas monitor device token."
+
+    def has_permission(self, request, view):
+        return _is_service(request, ServiceToken.Kind.GAS_MONITOR)

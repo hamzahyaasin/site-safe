@@ -5,7 +5,7 @@ import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { Badge, Empty, ErrorText, Screen, styles } from '@/components/ui';
 import { C } from '@/constants/theme';
 import { useLiveList } from '@/hooks/useLiveList';
-import { formatType, SEVERITY_COLOR, timeAgo } from '@/lib/format';
+import { alertSubject, formatType, SEVERITY_COLOR, timeAgo } from '@/lib/format';
 import { reduceAlerts } from '@/lib/reducers';
 import type { Alert } from '@/lib/types';
 
@@ -104,8 +104,8 @@ function AlertRow({ alert }: { alert: Alert }) {
         <Badge label={alert.severity} color={color} />
       </View>
       <Text style={styles.muted} numberOfLines={2}>
-        {alert.worker_name ?? 'Worker not identified'}
-        {alert.zone_name ? ` · ${alert.zone_name}` : ''}
+        {alertSubject(alert)}
+        {alert.zone_name && !alert.zone ? ` · ${alert.zone_name}` : ''}
         {alert.camera_id ? ` · ${alert.camera_id}` : ''}
       </Text>
       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>

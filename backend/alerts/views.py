@@ -206,7 +206,7 @@ class AlertViewSet(
     mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
-    queryset = Alert.objects.select_related("worker").all()
+    queryset = Alert.objects.select_related("worker", "zone").all()
     serializer_class = AlertSerializer
     permission_classes = [ReadOnlyOrSafetyOfficer]
 

@@ -158,3 +158,39 @@ class HotWorkPermit(models.Model):
     def is_active(self):
         now = timezone.now()
         return self.revoked_at is None and self.starts_at <= now < self.ends_at
+
+
+class GasMonitor(models.Model):
+    """A fixed gas monitor installed in a zone: an ESP32 with an MQ-2 sensor.
+
+    Gas is a hazard of the place, not of a worker, so a monitor belongs to a
+    zone and its GAS alerts name that zone. It reports its reading over
+    Wi-Fi with a GAS_MONITOR device token (sitemap/gas.py).
+    """
+
+    monitor_id = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=100, blank=True, default="", help_text="Where it is, e.g. 'Basement pump room'")
+    zone = models.ForeignKey(
+        Zone, on_delete=models.SET_NULL, null=True, blank=True, related_name="gas_monitors",
+        help_text="Zone it is installed in; its GAS alerts name this zone",
+    )
+    # Placement on the site map; a monitor without a position is listed but not drawn.
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    gas_ppm = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Gas level as last reported (MQ-2, LPG-equivalent ppm estimated by the monitor); null if none",
+    )
+    # One GAS alert per exposure: set when it is raised, cleared once the
+    # level has stayed below the limit for GAS_CLEAR_SECONDS.
+    gas_alerted_at = models.DateTimeField(null=True, blank=True)
+    gas_below_since = models.DateTimeField(null=True, blank=True)
+    is_online = models.BooleanField(default=False)
+    last_seen = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["monitor_id"]
+
+    def __str__(self):
+        return self.monitor_id

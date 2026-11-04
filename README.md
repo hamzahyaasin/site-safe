@@ -127,18 +127,19 @@ A vest counts as online only while it keeps reporting. If it is silent for longe
 
 ### Smart Vest
 
-The vest is an ESP32 with a GPS module, an SOS button and an MQ-2 gas sensor that reports over Wi-Fi to `/api/v1/vests/telemetry/`. Parts, wiring, flashing and a bench test are in [firmware/README.md](firmware/README.md). A gas reading at or above `GAS_ALERT_PPM` (default 2000) raises one GAS alert per exposure; the next needs the level below it for `GAS_CLEAR_SECONDS` (60).
+The vest is an ESP32 with an SOS button (and a GPS module, if fitted) that reports over Wi-Fi to `/api/v1/vests/telemetry/`. Gas is watched by **gas monitors** fixed in zones: an ESP32 with an MQ-2 sensor reporting to `/api/v1/gas-monitors/telemetry/` with a `GAS_MONITOR` device key, registered with its zone under Gas Monitors on the Zones page. A reading at or above `GAS_ALERT_PPM` (default 2000) raises one critical GAS alert for the monitor's zone; while it is open, the next needs the level below the limit for `GAS_CLEAR_SECONDS` (60), and once it is resolved the next rise alerts at once. One firmware covers both devices ([firmware/README.md](firmware/README.md): parts, wiring, flashing and a bench test); the bench prototype runs both roles on one board.
 
 ### Vest simulator (no hardware)
 
-To demonstrate the vest features without the device, the simulator sends the same telemetry a vest does:
+To demonstrate the vest and gas features without the devices, the simulator sends the same telemetry the vests and gas monitors do:
 
 ```bash
 python manage.py create_service_token vest-sim --kind VEST_GATEWAY --simulator
-SITESAFE_DEVICE_KEY=ss_... python tools/vest_simulator.py tools/vest_scenarios/demo.json --speedup 5
+python manage.py create_service_token gas-sim --kind GAS_MONITOR --simulator
+SITESAFE_DEVICE_KEY=ss_... SITESAFE_GAS_MONITOR_KEY=ss_... python tools/vest_simulator.py tools/vest_scenarios/demo.json --speedup 5
 ```
 
-Register the scenario's vests and assign them to workers first. Each vest walks its waypoints. A vest can press SOS on reaching a given waypoint (`sos_at`) or go silent after one (`stop_at`) to show offline detection. `gas_ppm` gives it a steady gas reading, and `gas_leak_at` raises that to `gas_leak_ppm` for `gas_leak_seconds` from a waypoint on. Everything sent with a `--simulator` token is marked SIMULATED: it is labelled in the dashboard and app and excluded from report figures. `--dry-run` prints the messages without sending them.
+Register the scenario's vests (assigned to workers) and gas monitors (in zones) first; `setup_demo` does both for the demo scenario. Each vest walks its waypoints. A vest can press SOS on reaching a given waypoint (`sos_at`) or go silent after one (`stop_at`) to show offline detection. Each gas monitor reports a steady `gas_ppm`, and `leak_at_seconds` raises it to `leak_ppm` for `leak_seconds`. Everything sent with a `--simulator` token is marked SIMULATED: it is labelled in the dashboard and app and excluded from report figures. `--dry-run` prints the messages without sending them.
 
 ### Zones and automatic breaches
 

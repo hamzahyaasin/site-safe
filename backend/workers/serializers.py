@@ -28,9 +28,6 @@ class SmartVestSerializer(serializers.ModelSerializer):
     # Computed from last_seen, so a vest that silently stopped reporting is
     # never shown as online even before the presence sweep has run.
     is_online = serializers.SerializerMethodField()
-    # Whether the last gas reading is at or above GAS_ALERT_PPM, so clients
-    # can highlight it without knowing the limit.
-    gas_over_limit = serializers.SerializerMethodField()
 
     class Meta:
         model = SmartVest
@@ -44,8 +41,6 @@ class SmartVestSerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
             "sos_active",
-            "gas_ppm",
-            "gas_over_limit",
             "is_online",
             "last_seen",
             "registered_at",
@@ -59,18 +54,12 @@ class SmartVestSerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
             "sos_active",
-            "gas_ppm",
             "last_seen",
             "registered_at",
         )
 
     def get_worker_name(self, obj):
         return obj.worker.name if obj.worker_id else None
-
-    def get_gas_over_limit(self, obj):
-        from django.conf import settings
-
-        return obj.gas_ppm is not None and obj.gas_ppm >= settings.GAS_ALERT_PPM
 
     def validate_worker(self, worker):
         if worker is None:
@@ -206,8 +195,6 @@ class VestTelemetrySerializer(serializers.Serializer):
     sos_active = serializers.BooleanField(required=False)
     # Counts every SOS press since the vest started; restarts at 0 when it reboots.
     sos_presses = serializers.IntegerField(required=False, min_value=0)
-    # Omitted while the sensor warms up; MQ-2 reads at most about 10,000 ppm.
-    gas_ppm = serializers.IntegerField(required=False, min_value=0, max_value=100_000)
 
     def validate(self, attrs):
         from sitesafe.validation import validate_lat_lng

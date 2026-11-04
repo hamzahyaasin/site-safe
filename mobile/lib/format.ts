@@ -7,9 +7,16 @@ export function formatType(type: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** A vest's last gas reading ("2,400 ppm"), or null if it has not sent one. */
-export function formatGas(vest: { gas_ppm?: number | null } | null | undefined): string | null {
-  return vest?.gas_ppm == null ? null : `${vest.gas_ppm.toLocaleString('en-US')} ppm`;
+/** A gas monitor's last reading ("2,400 ppm"), or null if it has not sent one. */
+export function formatGas(monitor: { gas_ppm?: number | null } | null | undefined): string | null {
+  return monitor?.gas_ppm == null ? null : `${monitor.gas_ppm.toLocaleString('en-US')} ppm`;
+}
+
+/** Who or where an alert is about: the worker, or for a zone device's alert (a gas monitor) its zone. */
+export function alertSubject(alert: { worker_name: string | null; zone: number | null; zone_name: string | null }): string {
+  if (alert.worker_name) return alert.worker_name;
+  if (alert.zone && alert.zone_name) return `${alert.zone_name} (zone)`;
+  return 'Worker not identified';
 }
 
 export function timeAgo(iso: string | null, now = Date.now()): string {

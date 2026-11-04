@@ -1,6 +1,5 @@
 import logging
 
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -70,9 +69,6 @@ def _apply(vest_id, payload, source):
     if presses is not None:
         vest.sos_presses = presses
     now = timezone.now()
-    gas_alert = "gas_ppm" in payload and check_gas(
-        vest, payload["gas_ppm"], now, lambda: open_gas_alerts(vest, source).exists()
-    )
 
     vest.is_online = True
     vest.last_seen = now
@@ -87,19 +83,6 @@ def _apply(vest_id, payload, source):
     where = {"lat": vest.latitude, "lng": vest.longitude} if vest.latitude is not None else None
     if vest.worker:
         update_sos_alert(vest, was_sos_active, pressed_again, restarted, where, source, now)
-
-    if gas_alert:
-        Alert.objects.create(
-            worker=vest.worker,
-            alert_type=AlertType.GAS,
-            severity=Severity.CRITICAL,
-            source=source,
-            description=(
-                f"Gas {vest.gas_ppm:,} ppm on {vest.vest_id} (limit {settings.GAS_ALERT_PPM:,})"
-                + (f" at ({vest.latitude}, {vest.longitude})" if where else "")
-            ),
-            location=where,
-        )
 
     # Only a fresh position can move a worker between zones.
     if vest.worker and "latitude" in payload:
@@ -138,42 +121,6 @@ def update_sos_alert(vest, was_active, pressed_again, restarted, where, source, 
             alert.is_resolved = True
             alert.resolved_at = now
             alert.save(update_fields=["description", "is_resolved", "resolved_at"])
-
-
-def open_gas_alerts(vest, source):
-    """The vest's unresolved GAS alerts (by its worker; by vest ID in the text if unassigned)."""
-    alerts = Alert.objects.filter(alert_type=AlertType.GAS, source=source, is_resolved=False)
-    if vest.worker:
-        return alerts.filter(worker=vest.worker)
-    return alerts.filter(worker__isnull=True, description__contains=f" on {vest.vest_id} (")
-
-
-def check_gas(vest, ppm, now, alert_open=lambda: False):
-    """Record a gas reading on ``vest``; returns True when it should raise a GAS alert.
-
-    One alert per exposure: after it, the level must stay below
-    GAS_ALERT_PPM for GAS_CLEAR_SECONDS before another can be raised, so a
-    reading that hovers around the limit does not alert every report. That
-    wait only holds while the alert is open: once a supervisor has resolved
-    it, a new rise above the limit raises another at once. ``alert_open``
-    reports whether the vest still has an unresolved GAS alert.
-    The caller saves the vest.
-    """
-    vest.gas_ppm = ppm
-    over = ppm >= settings.GAS_ALERT_PPM
-    if over:
-        rising = vest.gas_below_since is not None
-        vest.gas_below_since = None
-        if vest.gas_alerted_at is None or (rising and not alert_open()):
-            vest.gas_alerted_at = now
-            return True
-        return False
-    if vest.gas_alerted_at is not None:
-        if vest.gas_below_since is None:
-            vest.gas_below_since = now
-        elif (now - vest.gas_below_since).total_seconds() >= settings.GAS_CLEAR_SECONDS:
-            vest.gas_alerted_at = vest.gas_below_since = None
-    return False
 
 
 def place_by_gps(worker, vest, source):

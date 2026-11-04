@@ -10,7 +10,9 @@ import { IconPencil, IconPlus, IconTrash } from '../components/ui/icons.jsx'
 import { apiErrorText, useFeedback } from '../context/FeedbackContext.jsx'
 import CameraPlacementPanel from '../components/map/CameraPlacementPanel.jsx'
 import SiteMap from '../components/map/SiteMap.jsx'
+import GasMonitors from '../components/zones/GasMonitors.jsx'
 import HotWorkPermits from '../components/zones/HotWorkPermits.jsx'
+import { useGasMonitors } from '../hooks/useGasMonitors.js'
 import { useHotWorkPermits } from '../hooks/useHotWorkPermits.js'
 import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card.jsx'
 import { useCameraMap } from '../hooks/useCameraMap.js'
@@ -83,6 +85,9 @@ export default function ZonesPage() {
   const { vests } = useVests()
   const cameraMap = useCameraMap()
   const [cameraDraft, setCameraDraft] = useState(null)
+  const gas = useGasMonitors()
+  // While set, the next click on the site map is handed to this function (placing a gas monitor).
+  const [monitorPick, setMonitorPick] = useState(null)
   // Zone edits are Admin-only server-side; hide the controls for everyone else.
   const { isAdmin, canOperate } = useAuth()
   const { toast, confirm } = useFeedback()
@@ -290,7 +295,8 @@ export default function ZonesPage() {
         <CardHeader>
           <CardTitle>Site Map</CardTitle>
           <CardDescription>
-            Zone boundaries by risk level, vest positions and camera coverage. Click the map to zoom with the wheel.
+            Zone boundaries by risk level, vest positions, gas monitors and camera coverage. Click the map to zoom with
+            the wheel.
           </CardDescription>
           <MapLegend />
         </CardHeader>
@@ -300,8 +306,18 @@ export default function ZonesPage() {
             vests={vests}
             cameras={cameraMap.cameras}
             alerting={cameraMap.alerting}
+            gasMonitors={gas.monitors}
             cameraDraft={cameraDraft}
-            onAddPoint={cameraDraft ? ({ lat, lng }) => setCameraDraft((d) => ({ ...d, latitude: lat, longitude: lng })) : undefined}
+            onAddPoint={
+              cameraDraft
+                ? ({ lat, lng }) => setCameraDraft((d) => ({ ...d, latitude: lat, longitude: lng }))
+                : monitorPick
+                  ? (point) => {
+                      monitorPick(point)
+                      setMonitorPick(null)
+                    }
+                  : undefined
+            }
             height={380}
           />
           <div>
@@ -331,6 +347,19 @@ export default function ZonesPage() {
           rowKey={(row) => row.id}
         />
       </section>
+
+      <GasMonitors
+        monitors={gas.monitors}
+        zones={zones}
+        loading={gas.loading}
+        error={gas.error}
+        canManage={canOperate}
+        onCreate={gas.createMonitor}
+        onUpdate={gas.updateMonitor}
+        onDelete={gas.deleteMonitor}
+        onPick={(fn) => setMonitorPick(() => fn)}
+        picking={Boolean(monitorPick)}
+      />
 
       <HotWorkPermits
         zones={zones}
@@ -499,6 +528,9 @@ function MapLegend() {
       </span>
       <span className="flex items-center gap-1.5">
         <span className="h-2 w-2 rounded-full bg-red-500" /> SOS / alerting
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-full border-2 border-amber-500" /> Gas monitor (red: over limit)
       </span>
     </div>
   )

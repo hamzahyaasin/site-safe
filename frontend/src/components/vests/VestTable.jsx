@@ -2,7 +2,7 @@ import Badge from '../ui/Badge.jsx'
 import Button from '../ui/Button.jsx'
 import DataTable from '../ui/DataTable.jsx'
 import { IconChevronRight } from '../ui/icons.jsx'
-import { formatGas, formatTimestamp } from '../../lib/utils.js'
+import { formatTimestamp } from '../../lib/utils.js'
 
 function batteryBarClass(level) {
   if (level == null) return 'bg-zinc-600'
@@ -48,15 +48,6 @@ export default function VestTable({ vests, loading, selectedId, onSelect }) {
           </div>
         )
       },
-    },
-    {
-      key: 'gas',
-      header: 'Gas',
-      render: (row) => (
-        <span className={`text-xs tabular-nums ${row.gas_over_limit ? 'font-semibold text-red-400' : 'text-zinc-400'}`}>
-          {formatGas(row) || '—'}
-        </span>
-      ),
     },
     {
       key: 'gps',

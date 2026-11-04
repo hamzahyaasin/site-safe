@@ -18,7 +18,7 @@ from alerts.views import (
     CameraListView,
     DashboardStatsView,
 )
-from sitemap.urls import area_urlpatterns, permit_urlpatterns
+from sitemap.urls import area_urlpatterns, gas_monitor_urlpatterns, permit_urlpatterns
 from sitemap.views import CameraMapView, CameraPlacementView
 from workers.urls import activity_urlpatterns, vest_urlpatterns
 
@@ -50,6 +50,7 @@ urlpatterns = [
     path("api/v1/zones/", include("sitemap.urls")),
     path("api/v1/hot-work-permits/", include((permit_urlpatterns, "sitemap"), namespace="permits")),
     path("api/v1/camera-areas/", include((area_urlpatterns, "sitemap"), namespace="camera-areas")),
+    path("api/v1/gas-monitors/", include((gas_monitor_urlpatterns, "sitemap"), namespace="gas-monitors")),
     path("api/v1/fcm-tokens/", include("accounts.urls")),
     path("api/v1/profile/", include("accounts.profile_urls")),
     path("api/v1/reports/", include("reports.urls")),

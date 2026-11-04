@@ -1,15 +1,11 @@
 {
-  "description": "Matches the default map centre (33.6844, 73.0479). Draw a RESTRICTED zone around 33.6849, 73.0485 and a site zone around the centre to see entry, breach, SOS, a gas leak (VEST-001, 2,800 ppm for 20 s from its third waypoint) and offline detection. Register vests VEST-001 and VEST-002 and assign them to workers first.",
+  "description": "Matches the demo site from setup_demo (map centre 33.6844, 73.0479): VEST-001 walks the site; VEST-002 walks into the restricted Crane zone, presses SOS and goes silent (offline). Gas monitor GM-01, installed in the Site zone, reports a leak (2,800 ppm for 20 s from 40 s), raising a GAS alert for that zone.",
   "interval_seconds": 5,
   "hold_seconds": 20,
   "vests": [
     {
       "vest_id": "VEST-001",
       "speed_mps": 1.4,
-      "gas_ppm": 320,
-      "gas_leak_at": 2,
-      "gas_leak_ppm": 2800,
-      "gas_leak_seconds": 20,
       "waypoints": [[33.6838, 73.0472], [33.6842, 73.0479], [33.6846, 73.0476], [33.6840, 73.0470]]
     },
     {
@@ -18,6 +14,15 @@
       "sos_at": 3,
       "stop_at": 4,
       "waypoints": [[33.6840, 73.0482], [33.6844, 73.0484], [33.6849, 73.0485], [33.6850, 73.0487], [33.6850, 73.0488]]
+    }
+  ],
+  "gas_monitors": [
+    {
+      "monitor_id": "GM-01",
+      "gas_ppm": 320,
+      "leak_at_seconds": 40,
+      "leak_ppm": 2800,
+      "leak_seconds": 20
     }
   ]
 }

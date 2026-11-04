@@ -58,7 +58,7 @@ def publish_alert(alert, created):
     def build():
         from .models import Alert
 
-        fresh = Alert.objects.select_related("worker").filter(pk=pk).first()
+        fresh = Alert.objects.select_related("worker", "zone").filter(pk=pk).first()
         return AlertSerializer(fresh or alert).data
 
     publish(event_type, build)
@@ -76,6 +76,24 @@ def publish_vest(vest):
         return SmartVestSerializer(fresh or vest).data
 
     publish("vest_updated", build)
+
+
+def publish_gas_monitor(monitor):
+    from sitemap.serializers import GasMonitorSerializer
+
+    pk = monitor.pk
+
+    def build():
+        from sitemap.models import GasMonitor
+
+        fresh = GasMonitor.objects.select_related("zone").filter(pk=pk).first()
+        return GasMonitorSerializer(fresh or monitor).data
+
+    publish("gas_monitor_updated", build)
+
+
+def publish_gas_monitor_deleted(monitor_id):
+    publish("gas_monitor_deleted", lambda: {"id": monitor_id})
 
 
 def publish_worker(worker):

@@ -49,7 +49,8 @@ On the site map:
 
 - A **camera** is green while its live view is current, grey with a dashed cone when offline, and red and pulsing for a minute after it raises an alert. Hover to see how many people it sees; click for its picture, alerts and a link to its live view.
 - A **zone** is coloured by risk (blue low, yellow medium, orange high, red restricted) and labelled with its head count, for example "Site: 2 / 4 present".
-- A **vest** is a dot: green online, grey offline, red during an SOS or while its gas reading is over the limit.
+- A **vest** is a dot: green online, grey offline, red during an SOS.
+- A **gas monitor** is a ring: amber online, grey offline, red while its reading is over the limit, when its zone is also outlined in red.
 
 The **Event Simulator** at the bottom (Safety Officers and Admins) raises test alerts marked SIMULATED, for training. They are kept out of every report figure.
 
@@ -67,7 +68,7 @@ The **Event Simulator** at the bottom (Safety Officers and Admins) raises test a
 | Fire / smoke | seen for 2 s (lower severity inside a zone with a hot-work permit) | the scene has been clear for 30 s |
 | Zone breach | a worker enters a restricted zone they are not assigned to; a restricted zone's camera sees someone without a readable badge for 10 s; or a zone goes over its capacity for 10 s | they leave (for someone unidentified, 10 s out of the camera's view), or the zone is back within capacity for 60 s |
 | SOS | a vest's SOS button is pressed | the wearer cancels it (which resolves the alert) or a supervisor resolves it; then the next press |
-| Gas | a vest's gas sensor reads 2,000 ppm or more (flammable gas such as LPG or methane) | the level has been below that for 1 min; or, once the alert is resolved, the next rise above it |
+| Gas | a zone's gas monitor reads 2,000 ppm or more (flammable gas such as LPG or methane); the alert names the zone, not a worker | the level has been below that for 1 min; or, once the alert is resolved, the next rise above it |
 
 A camera that reads a worker's QR badge names them on the alert; otherwise it says "Worker not identified". Camera alerts carry the **evidence frame** (the picture at that moment) and the **model version** that detected it.
 
@@ -116,6 +117,8 @@ Next to each area, **On/Off** switches it off while the hazard is absent (for ex
 
 **Placing a camera on the map (Admins):** in the **Cameras** list next to the map, choose **Place** (or **Move**) and click where the camera is mounted. Turn it with **Facing**, and set its **View angle** and **Range**; the cone follows on the map. **Save position**. **Remove** takes a camera off the map without affecting its alerts or live view. The cone is what you enter, not measured from the picture.
 
+**Gas monitors (Safety Officers and Admins register them):** each gas monitor is fixed in a zone. Under **Gas Monitors**, enter its ID (for example GM-01), a location name and its zone, and optionally **Pick position on map**, then **Register monitor**. The list shows each monitor's last reading, in red over the limit, and whether it is online. A reading of 2,000 ppm or more raises a critical GAS alert for the zone; the zone and the monitor turn red on the site map. A monitor needs a minute to warm up after it is switched on, and must be switched on in clean air; until then no reading is shown. Its reading is an estimate for spotting a leak, not a certified measurement. **Edit** changes its zone or position; **Remove** stops its readings being accepted.
+
 **Hot-work permits (Safety Officers and Admins):** under **Hot-Work Permits**, choose a zone, describe the work (for example "Welding level 3 beams") and set **From** and **Until** (at most 12 h). Fire and smoke seen in that zone while the permit is active are still recorded and shown, at lower severity and linked to the permit. **Revoke** ends a permit early. A permit never hides fire.
 
 ## 6. Workers, badges and vests
@@ -128,7 +131,7 @@ Next to each area, **On/Off** switches it off while the hazard is absent (for ex
 
 **Timeline** shows a worker's day: when they were first and last seen, time on site, idle time and the zones they visited, from badge sightings and vest reports.
 
-**Vest Management** lists vests with battery, gas level, last report and position. A gas level over the alert limit is shown in red. The gas sensor needs a minute to warm up after the vest is switched on, and must be switched on in clean air; until then no gas level is shown. Its reading is an estimate for spotting a leak, not a certified measurement. On the vest, one press of the button raises an SOS (its light stays on); pressing again and holding for 3 s cancels it and resolves the SOS alert, noted "cancelled by the wearer". If a supervisor resolves the alert while the vest is still in SOS, the wearer's next press raises a new one. A vest that restarts (for example when its power bank runs out) loses its SOS state, but its alert stays open until a supervisor resolves it. Setting up and flashing a vest is in [firmware/README.md](../firmware/README.md). **Register vest** adds one by its ID. Click a vest for its details panel, where it is assigned to a worker; it can also be assigned on the worker's form. A vest that stops reporting shows as offline.
+**Vest Management** lists vests with battery, last report and position. On the vest, one press of the button raises an SOS (its light stays on); pressing again and holding for 3 s cancels it and resolves the SOS alert, noted "cancelled by the wearer". If a supervisor resolves the alert while the vest is still in SOS, the wearer's next press raises a new one. A vest that restarts (for example when its power bank runs out) loses its SOS state, but its alert stays open until a supervisor resolves it. Setting up and flashing a vest or gas monitor is in [firmware/README.md](../firmware/README.md). **Register vest** adds one by its ID. Click a vest for its details panel, where it is assigned to a worker; it can also be assigned on the worker's form. A vest that stops reporting shows as offline.
 
 ## 7. Reports
 

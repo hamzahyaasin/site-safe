@@ -63,3 +63,10 @@ test('empty period gives zeros, not optimistic percentages', () => {
   assert.ok(m.byZone.every((z) => z.incidents === 0 && z.daysWithoutPpeViolation === 3))
   assert.ok(!JSON.stringify(m).includes('%'))
 })
+
+test('a gas monitor alert names its zone and is not an unidentified person', () => {
+  const gas = { id: 7, alert_type: 'GAS', severity: 'CRITICAL', source: 'GAS_MONITOR', camera_id: '', zone: 1, zone_name: 'Main Site', worker: null, worker_name: null, is_resolved: false, timestamp: '2026-10-16T06:00:00.000Z', resolved_at: null }
+  const m = computeComplianceMetrics({ ...f, alerts: [...f.alerts, gas], ...period })
+  assert.equal(m.unidentified, 1)
+  assert.equal(Object.fromEntries(m.byZone.map((z) => [z.zone, z]))['Main Site'].incidents, 3)
+})

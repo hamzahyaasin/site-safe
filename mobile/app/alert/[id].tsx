@@ -14,6 +14,7 @@ import type { Alert } from '@/lib/types';
 const SOURCE: Record<Alert['source'], string> = {
   AI_CAMERA: 'AI camera',
   SMART_VEST: 'Smart vest',
+  GAS_MONITOR: 'Gas monitor',
   SIMULATED: 'Simulated test',
 };
 
@@ -72,7 +73,7 @@ export default function AlertDetail() {
   const color = SEVERITY_COLOR[alert.severity];
   const rows: [string, string][] = [
     ['Raised', formatDateTime(alert.timestamp)],
-    ['Worker', alert.worker_name ?? 'Not identified'],
+    ['Worker', alert.worker_name ?? (alert.zone ? 'None (zone alert)' : 'Not identified')],
     ['Vest', alert.vest_id ?? '—'],
     ['Zone', alert.zone_name ?? '—'],
     ['Source', SOURCE[alert.source] ?? alert.source],

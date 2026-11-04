@@ -36,6 +36,7 @@ class AlertSerializer(serializers.ModelSerializer):
             "source",
             "description",
             "camera_id",
+            "zone",
             "zone_name",
             "location",
             "snapshot",
@@ -76,8 +77,11 @@ class AlertSerializer(serializers.ModelSerializer):
         return reverse("alert-snapshot", args=[obj.pk]) if obj.snapshot else None
 
     def get_zone_name(self, obj):
-        """Where the alert happened: the camera's zone, else the zone that
-        contains its GPS location. Never the worker's assigned zone."""
+        """Where the alert happened: its own zone (a zone device's alert), else
+        the camera's zone, else the zone that contains its GPS location. Never
+        the worker's assigned zone."""
+        if obj.zone_id:
+            return obj.zone.name
         if obj.camera_id:
             zone = Zone.objects.for_camera(obj.camera_id).first()
             if zone:
@@ -237,7 +241,11 @@ class AlertIngestSerializer(serializers.Serializer):
 
 
 class AlertSimulateSerializer(serializers.Serializer):
-    worker_id = serializers.IntegerField()
+    """A labelled test alert from the dashboard. A GAS alert is about a zone
+    (gas monitors are fixed in zones), every other type about a worker."""
+
+    worker_id = serializers.IntegerField(required=False)
+    zone_id = serializers.IntegerField(required=False)
     # Mirrors the AlertType enum directly rather than restating it, so newly
     # added alert types are simulatable without having to update this list.
     alert_type = serializers.ChoiceField(choices=AlertType.choices)
@@ -254,16 +262,33 @@ class AlertSimulateSerializer(serializers.Serializer):
     def validate_location(self, value):
         return validate_location(value)
 
+    def validate(self, attrs):
+        if attrs["alert_type"] == AlertType.GAS:
+            if "zone_id" not in attrs:
+                raise serializers.ValidationError({"zone_id": "A gas alert is for a zone: give zone_id."})
+            attrs.pop("worker_id", None)
+        elif "worker_id" not in attrs:
+            raise serializers.ValidationError({"worker_id": "This field is required."})
+        return attrs
+
     def create(self, validated_data):
-        wid = validated_data.pop("worker_id")
+        wid = validated_data.pop("worker_id", None)
+        zid = validated_data.pop("zone_id", None)
         description = validated_data.pop("description", "")
         location = validated_data.pop("location", None)
-        try:
-            worker = Worker.objects.get(pk=wid, is_active=True)
-        except Worker.DoesNotExist as exc:
-            raise serializers.ValidationError({"worker_id": "Worker not found or inactive."}) from exc
+        worker = zone = None
+        if wid is not None:
+            try:
+                worker = Worker.objects.get(pk=wid, is_active=True)
+            except Worker.DoesNotExist as exc:
+                raise serializers.ValidationError({"worker_id": "Worker not found or inactive."}) from exc
+        elif zid is not None:
+            zone = Zone.objects.filter(pk=zid).first()
+            if zone is None:
+                raise serializers.ValidationError({"zone_id": "Zone not found."})
         return Alert.objects.create(
             worker=worker,
+            zone=zone,
             alert_type=validated_data["alert_type"],
             severity=validated_data["severity"],
             source=validated_data.get("source", AlertSource.SIMULATED),

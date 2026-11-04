@@ -15,6 +15,9 @@ const FORWARDED_EVENTS = new Set([
   'vest_updated',
   'worker_status_update',
   'zone_updated',
+  'camera_updated',
+  'gas_monitor_updated',
+  'gas_monitor_deleted',
 ])
 
 function socketUrl() {

@@ -1,5 +1,5 @@
 import type { LiveEvent } from '@/context/Live';
-import type { Alert, SmartVest, Worker, Zone } from './types';
+import type { Alert, GasMonitor, SmartVest, Worker, Zone } from './types';
 
 /** Apply one live event to an alert list. ``onlyOpen`` lists drop resolved alerts. */
 export function reduceAlerts(onlyOpen: boolean) {
@@ -32,4 +32,12 @@ export function reduceZones(list: Zone[], event: LiveEvent, zone: Zone): Zone[] 
 export function reduceVests(list: SmartVest[], event: LiveEvent, vest: SmartVest): SmartVest[] {
   if (event !== 'vest_updated' || !vest?.id) return list;
   return list.some((v) => v.id === vest.id) ? list.map((v) => (v.id === vest.id ? vest : v)) : [vest, ...list];
+}
+
+/** Apply gas_monitor_updated / gas_monitor_deleted to a gas monitor list. */
+export function reduceGasMonitors(list: GasMonitor[], event: LiveEvent, monitor: GasMonitor): GasMonitor[] {
+  if (!monitor?.id) return list;
+  if (event === 'gas_monitor_deleted') return list.filter((m) => m.id !== monitor.id);
+  if (event !== 'gas_monitor_updated') return list;
+  return list.some((m) => m.id === monitor.id) ? list.map((m) => (m.id === monitor.id ? monitor : m)) : [...list, monitor];
 }

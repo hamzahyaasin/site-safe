@@ -2,6 +2,7 @@ import Badge from './Badge.jsx'
 import Button from './Button.jsx'
 import { IconAlertTriangle, IconCheck } from './icons.jsx'
 import {
+  alertSubject,
   alertTypeTitle,
   cn,
   formatTimestamp,
@@ -17,7 +18,7 @@ const SEVERITY_ICON = {
 }
 
 export default function AlertItem({ alert, onResolve, resolving, isNew, compact = false }) {
-  const who = alert.worker_name || 'Worker not identified'
+  const who = alertSubject(alert)
   const where = [alert.vest_id, !compact && alert.camera_id].filter(Boolean).join(' · ')
 
   return (

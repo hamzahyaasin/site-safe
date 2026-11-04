@@ -127,16 +127,26 @@ static void test_telemetry_json() {
   r.has_fix = true;
   r.latitude = 33.6844;
   r.longitude = 73.0479;
-  r.gas_ppm = 2400;
   r.sos_active = true;
   r.sos_presses = 3;
   vest::telemetry_json(buf, sizeof buf, "VEST-001", r);
   CHECK(std::strcmp(buf,
                     "{\"vest_id\":\"VEST-001\",\"sos_active\":true,\"sos_presses\":3,\"latitude\":33.6844000,"
-                    "\"longitude\":73.0479000,\"gas_ppm\":2400}") == 0);
+                    "\"longitude\":73.0479000}") == 0);
 
   char small[30];
   CHECK(vest::telemetry_json(small, sizeof small, "VEST-001", r) == -1);  // never a truncated body
+}
+
+static void test_gas_monitor_json() {
+  char buf[80];
+  CHECK(vest::gas_monitor_json(buf, sizeof buf, "GM-01", 2400) > 0);
+  CHECK(std::strcmp(buf, "{\"monitor_id\":\"GM-01\",\"gas_ppm\":2400}") == 0);
+  // Warming up: no reading, but the report still says the monitor is alive.
+  vest::gas_monitor_json(buf, sizeof buf, "GM-01", -1);
+  CHECK(std::strcmp(buf, "{\"monitor_id\":\"GM-01\"}") == 0);
+  char small[20];
+  CHECK(vest::gas_monitor_json(small, sizeof small, "GM-01", 2400) == -1);
 }
 
 int main() {
@@ -148,6 +158,7 @@ int main() {
   test_cancel_hold_is_not_counted_as_a_press();
   test_bounces_shorter_than_debounce_are_ignored();
   test_telemetry_json();
+  test_gas_monitor_json();
   if (failures) {
     std::printf("%d check(s) failed\n", failures);
     return 1;

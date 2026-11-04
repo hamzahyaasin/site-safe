@@ -1,4 +1,4 @@
-"""Set up a demo site: users, zones, workers with badges and vests, device tokens, a placed camera.
+"""Set up a demo site: users, zones, workers with badges and vests, a gas monitor, device tokens, a placed camera.
 
 Configuration only. It creates no alerts, readings or other observations:
 everything a demo shows comes from the running camera pipeline and the vest
@@ -16,7 +16,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from accounts.models import Role, ServiceToken, User
-from sitemap.models import Camera, Zone
+from sitemap.models import Camera, GasMonitor, Zone
 from workers.models import SmartVest, Worker
 
 DEFAULT_CENTER = (33.6844, 73.0479)
@@ -38,6 +38,10 @@ WORKERS = [
 CAMERA_ID = "CAM-01"
 CAMERA_TOKEN = "demo-cam-01"
 GATEWAY_TOKEN = "demo-vest-gateway"
+GAS_MONITOR_ID = "GM-01"
+GAS_TOKEN = "demo-gas-monitor"
+# The gas monitor sits in the Site zone, north-west of its centre.
+GAS_OFFSET = (0.0002, -0.0002)
 
 
 def square(lat, lng, half):
@@ -117,6 +121,16 @@ class Command(BaseCommand):
                 SmartVest.objects.create(vest_id=vest_id, worker=worker)
                 created.append(f"vest      {vest_id} worn by {name}")
 
+        if not GasMonitor.objects.filter(monitor_id=GAS_MONITOR_ID).exists():
+            GasMonitor.objects.create(
+                monitor_id=GAS_MONITOR_ID,
+                name="Site store (demo)",
+                zone=site,
+                latitude=round(lat + GAS_OFFSET[0], 6),
+                longitude=round(lng + GAS_OFFSET[1], 6),
+            )
+            created.append(f"monitor   {GAS_MONITOR_ID} (gas) in zone Site")
+
         camera, _ = Camera.objects.get_or_create(camera_id=CAMERA_ID)
         if not camera.is_placed:
             # South-west corner of the site, looking across it.
@@ -131,6 +145,9 @@ class Command(BaseCommand):
         if not ServiceToken.objects.filter(name=GATEWAY_TOKEN).exists():
             _, key = ServiceToken.issue(GATEWAY_TOKEN, ServiceToken.Kind.VEST_GATEWAY, is_simulator=True)
             created.append(f"token     {GATEWAY_TOKEN} (vest simulator; its data is marked simulated)  key: {key}")
+        if not ServiceToken.objects.filter(name=GAS_TOKEN).exists():
+            _, key = ServiceToken.issue(GAS_TOKEN, ServiceToken.Kind.GAS_MONITOR, is_simulator=True)
+            created.append(f"token     {GAS_TOKEN} (gas monitor in the simulator; its data is marked simulated)  key: {key}")
 
         if created:
             self.stdout.write(self.style.SUCCESS("Created (passwords and keys are shown only now; store them):"))
@@ -140,5 +157,6 @@ class Command(BaseCommand):
             self.stdout.write("The demo site already exists; nothing created.")
         self.stdout.write(
             "Next: docs/DEMO_SCRIPT.md (print badges from the Workers page; start the camera with the "
-            f"{CAMERA_TOKEN} key as {CAMERA_ID}; run the vest simulator with the {GATEWAY_TOKEN} key)."
+            f"{CAMERA_TOKEN} key as {CAMERA_ID}; run the vest simulator with the {GATEWAY_TOKEN} and "
+            f"{GAS_TOKEN} keys)."
         )
