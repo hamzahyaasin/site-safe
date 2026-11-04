@@ -39,13 +39,13 @@ export default function DataTable({
     <div className="overflow-hidden rounded-lg border border-zinc-800 bg-[#151821]">
       <div className="overflow-x-auto scrollbar-thin">
         <table className={cn('w-full border-collapse text-left text-sm', minWidthClass)}>
-          <thead className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur-sm">
+          <thead className="sticky top-0 z-10 bg-[#12141c]">
             <tr className="border-b border-zinc-800">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   className={cn(
-                    'px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-zinc-500',
+                    'whitespace-nowrap px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500',
                     col.className,
                   )}
                   style={col.width ? { width: col.width } : undefined}
@@ -63,21 +63,37 @@ export default function DataTable({
                 <Fragment key={key}>
                   <tr
                     className={cn(
-                      'border-b border-zinc-800/60 transition-colors hover:bg-zinc-800/30',
-                      onRowClick && 'cursor-pointer',
+                      'border-b border-zinc-800/60 transition-colors last:border-b-0 hover:bg-zinc-800/30',
+                      onRowClick &&
+                        'cursor-pointer focus-visible:bg-zinc-800/40 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-amber-500',
+                      expanded && 'bg-zinc-800/30',
                       typeof rowClassName === 'function' ? rowClassName(row) : rowClassName,
                     )}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    // Clickable rows are reachable and operable from the keyboard too.
+                    tabIndex={onRowClick ? 0 : undefined}
+                    aria-expanded={renderExpanded ? expanded : undefined}
+                    onKeyDown={
+                      onRowClick
+                        ? (e) => {
+                            if (e.target !== e.currentTarget) return
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              onRowClick(row)
+                            }
+                          }
+                        : undefined
+                    }
                   >
                     {columns.map((col) => (
-                      <td key={col.key} className={cn('px-4 py-2.5 text-zinc-300', col.cellClassName)}>
+                      <td key={col.key} className={cn('px-4 py-3 align-middle text-zinc-300', col.cellClassName)}>
                         {col.render ? col.render(row, idx) : row[col.key]}
                       </td>
                     ))}
                   </tr>
                   {expanded && renderExpanded ? (
-                    <tr key={`${key}-expanded`} className="bg-zinc-900/50">
-                      <td colSpan={columns.length} className="px-4 py-4">
+                    <tr key={`${key}-expanded`} className="border-b border-zinc-800/60 bg-[#12141c]">
+                      <td colSpan={columns.length} className="px-4 py-4 sm:px-6">
                         {renderExpanded(row)}
                       </td>
                     </tr>

@@ -2,7 +2,7 @@ import Badge from '../ui/Badge.jsx'
 import AlertSnapshot from './AlertSnapshot.jsx'
 import {
   displayCameraId,
-  formatAlertType,
+  alertTypeTitle,
   formatDateTime,
   formatTimestamp,
   severityBadgeVariant,
@@ -13,13 +13,13 @@ export default function IncidentDetail({ alert }) {
   if (!alert) return null
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
       <DetailField label="Timestamp" value={formatTimestamp(alert.timestamp)} />
       <DetailField label="Worker" value={alert.worker_name || '—'} />
       <DetailField label="Vest ID" value={alert.vest_id || '—'} mono />
       <DetailField label="Camera" value={displayCameraId(alert)} mono />
       {alert.zone_name ? <DetailField label="Zone" value={alert.zone_name} /> : null}
-      <DetailField label="Type" value={formatAlertType(alert.alert_type)} />
+      <DetailField label="Type" value={alertTypeTitle(alert.alert_type)} />
       <DetailField
         label="Severity"
         value={<Badge variant={severityBadgeVariant(alert.severity)}>{alert.severity}</Badge>}
@@ -42,11 +42,11 @@ export default function IncidentDetail({ alert }) {
       {alert.resolved_at ? (
         <DetailField label="Resolved at" value={formatDateTime(alert.resolved_at)} />
       ) : null}
-      <div className="sm:col-span-2">
+      <div className="sm:col-span-2 lg:col-span-4">
         <DetailField label="Description" value={alert.description || 'No description provided.'} />
       </div>
       {alert.snapshot ? (
-        <div className="sm:col-span-2">
+        <div className="sm:col-span-2 lg:col-span-4">
           <DetailField label="Evidence frame" value={<AlertSnapshot key={alert.id} alertId={alert.id} />} />
         </div>
       ) : null}
@@ -57,8 +57,8 @@ export default function IncidentDetail({ alert }) {
 function DetailField({ label, value, mono }) {
   return (
     <div>
-      <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-600">{label}</p>
-      <div className={`mt-1 text-sm text-zinc-300 ${mono ? 'font-mono' : ''}`}>{value}</div>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</p>
+      <div className={`mt-1 text-sm text-zinc-200 ${mono ? 'font-mono' : ''}`}>{value}</div>
     </div>
   )
 }

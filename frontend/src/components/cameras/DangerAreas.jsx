@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import Badge from '../ui/Badge.jsx'
 import { cn } from '../../lib/utils.js'
+import { useFeedback } from '../../context/FeedbackContext.jsx'
 
 const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM']
 const SEVERITY_VARIANT = { CRITICAL: 'critical', HIGH: 'high', MEDIUM: 'medium' }
@@ -25,6 +26,7 @@ function apiError(err, fallback) {
  * areas but cannot change them (the API enforces the same).
  */
 export default function CameraWithAreas({ cameraId, frameUrl, live }) {
+  const { confirm } = useFeedback()
   const { api, isAdmin } = useAuth()
   const [areas, setAreas] = useState([])
   const [error, setError] = useState(null)
@@ -83,7 +85,12 @@ export default function CameraWithAreas({ cameraId, frameUrl, live }) {
   }
 
   async function remove(area) {
-    if (!window.confirm(`Delete the danger area "${area.name}" on ${cameraId}?`)) return
+    const ok = await confirm({
+      title: `Delete the danger area "${area.name}"?`,
+      message: `People entering it on ${cameraId} will no longer raise an alert. Past alerts are kept.`,
+      confirmLabel: 'Delete area',
+    })
+    if (!ok) return
     setError(null)
     try {
       await api.delete(`v1/camera-areas/${area.id}/`)

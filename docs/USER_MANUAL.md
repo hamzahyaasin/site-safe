@@ -32,7 +32,7 @@ Open the dashboard address you were given and sign in with your email and passwo
 | Generate and download reports | | ✓ | ✓ |
 | Draw zones and danger areas, place cameras on the map, change alert rules | | | ✓ |
 
-Accounts are created by an Admin in the administration site (`/admin/`), where the role is set. Sessions renew themselves; if you are signed out, sign in again.
+Accounts are created by an Admin in the administration site (`/admin/`), where the role is set. Sessions renew themselves; if you are signed out, sign in again. The account menu at the top right holds your profile, password, notification settings and **Sign out**. On a phone or narrow window, the menu button at the top left opens the navigation.
 
 ## 2. Dashboard
 
@@ -75,7 +75,7 @@ A camera that reads a worker's QR badge names them on the alert; otherwise it sa
 
 ![Incident log](manual/web_incidents.jpg)
 
-**Incidents** lists every alert. Filter by worker, date range, severity and type, and use **Export CSV** for the filtered list. Click a row for its details and evidence frame, and **Resolve** it once it has been dealt with. Resolving updates every open dashboard and phone at once.
+**Incidents** lists every alert. Filter by status (all, open or resolved), worker, date range, severity and type, and use **Export CSV** for the filtered list. The bell at the top and the Open Alerts figure on the dashboard open this page filtered to open alerts. Click a row for its details and evidence frame, and **Resolve** it once it has been dealt with. Resolving updates every open dashboard and phone at once.
 
 ## 4. Cameras and danger areas
 
@@ -105,7 +105,7 @@ Next to each area, **On/Off** switches it off while the hazard is absent (for ex
 
 **Zones** shows the site map and the zone list.
 
-**Adding or editing a zone (Admins):** choose **Add Zone** or **Edit** and set:
+**Adding or editing a zone (Admins):** choose **Add zone** or **Edit** and set:
 
 - **Name** and **Description**.
 - **Risk Level:** low, medium, high or restricted. A restricted zone raises a breach when a worker not assigned to it enters, and its cameras raise one, with the picture, for anyone they see for 10 s without being able to read a badge. Ask everyone allowed in to wear their badge where the camera can see it.
@@ -128,7 +128,7 @@ Next to each area, **On/Off** switches it off while the hazard is absent (for ex
 
 **Timeline** shows a worker's day: when they were first and last seen, time on site, idle time and the zones they visited, from badge sightings and vest reports.
 
-**Vest Management** lists vests with battery, gas level, last report and position. A gas level over the alert limit is shown in red. The gas sensor needs a minute to warm up after the vest is switched on, and must be switched on in clean air; until then no gas level is shown. Its reading is an estimate for spotting a leak, not a certified measurement. On the vest, one press of the button raises an SOS (its light stays on); pressing again and holding for 3 s cancels it. Setting up and flashing a vest is in [firmware/README.md](../firmware/README.md). **Register vest** adds one by its ID, and a vest is assigned to a worker there or on the worker's form. A vest that stops reporting shows as offline.
+**Vest Management** lists vests with battery, gas level, last report and position. A gas level over the alert limit is shown in red. The gas sensor needs a minute to warm up after the vest is switched on, and must be switched on in clean air; until then no gas level is shown. Its reading is an estimate for spotting a leak, not a certified measurement. On the vest, one press of the button raises an SOS (its light stays on); pressing again and holding for 3 s cancels it. Setting up and flashing a vest is in [firmware/README.md](../firmware/README.md). **Register vest** adds one by its ID. Click a vest for its details panel, where it is assigned to a worker; it can also be assigned on the worker's form. A vest that stops reporting shows as offline.
 
 ## 7. Reports
 
@@ -147,7 +147,7 @@ Next to each area, **On/Off** switches it off while the hazard is absent (for ex
 
 ![Settings](manual/web_settings.jpg)
 
-- **Alert Configuration** (Admins change, others read): switch an alert type on or off, and set its threshold in seconds, such as the inactivity time. SOS and fire cannot be switched off. A camera picks up changes within 15 s.
+- **Alert Configuration** (Admins change, others read): switch an alert type on or off, and set its threshold in seconds, such as the inactivity time. SOS, fire and gas cannot be switched off and show as **Always on**. A camera picks up changes within 15 s.
 - **Notifications:** push notifications to your phone and email notifications, for you.
 - **Profile:** your name and email, and changing your password.
 

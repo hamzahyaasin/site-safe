@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { apiErrorText, useFeedback } from '../context/FeedbackContext.jsx'
 import { useAlerts } from '../hooks/useAlerts.js'
 import { useDashboardStats } from '../hooks/useDashboardStats.js'
 import { useWorkers } from '../hooks/useWorkers.js'
@@ -8,7 +9,9 @@ import DashboardCharts from '../components/dashboard/DashboardCharts.jsx'
 import KpiStrip from '../components/dashboard/KpiStrip.jsx'
 import SiteMapCard from '../components/dashboard/SiteMapCard.jsx'
 import WorkerStatusGrid from '../components/dashboard/WorkerStatusGrid.jsx'
+import Badge from '../components/ui/Badge.jsx'
 import Button from '../components/ui/Button.jsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
 import { Select } from '../components/ui/Input.jsx'
 
 export default function DashboardPage() {
@@ -26,16 +29,11 @@ export default function DashboardPage() {
   const [workerId, setWorkerId] = useState('')
   const selectedWorkerId = workerId || (workers[0] ? String(workers[0].id) : '')
   const [loadingSim, setLoadingSim] = useState(null)
-  const [toast, setToast] = useState(null)
-
-  const showToast = useCallback((msg, type = 'success') => {
-    setToast({ msg, type })
-    window.setTimeout(() => setToast(null), 3500)
-  }, [])
+  const { toast } = useFeedback()
 
   async function simulate(kind) {
     if (!selectedWorkerId) {
-      showToast('Select a worker first', 'error')
+      toast('Select a worker first', 'error')
       return
     }
     const payloads = {
@@ -52,10 +50,10 @@ export default function DashboardPage() {
     setLoadingSim(kind)
     try {
       await api.post('alerts/simulate/', payloads[kind])
-      showToast('Alert simulated successfully')
-      await Promise.all([fetchStats(), fetchAlerts()])
+      toast('Simulated alert sent. It appears in the feed and is labelled SIMULATED.')
+      await Promise.all([fetchStats(), fetchAlerts({ quiet: true })])
     } catch (e) {
-      showToast(e.response?.data?.detail || 'Failed to send alert', 'error')
+      toast(apiErrorText(e, 'Failed to send alert'), 'error')
     } finally {
       setLoadingSim(null)
     }
@@ -63,14 +61,16 @@ export default function DashboardPage() {
 
   return (
     <div className="grid grid-cols-12 gap-4">
-      <header className="col-span-12 mb-2">
-        <h1 className="text-2xl font-semibold text-zinc-100">Safety Dashboard</h1>
-        <p className="mt-1 text-sm text-zinc-500">Live site status — worker presence and open incidents</p>
-      </header>
+      <PageHeader
+        className="col-span-12 mb-2"
+        title="Safety Dashboard"
+        description="Live site status — worker presence and open incidents"
+      />
 
       <KpiStrip stats={stats} loading={statsLoading} />
 
       <WorkerStatusGrid
+        className="col-span-12 xl:col-span-8"
         workers={workers}
         loading={workersLoading}
         highlightIds={highlightIds}
@@ -89,74 +89,68 @@ export default function DashboardPage() {
       <DashboardCharts stats={stats} loading={statsLoading} />
 
       {canOperate ? (
-      <section className="col-span-12 rounded-lg border border-zinc-800 bg-[#151821] p-4">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-100">Event Simulator</h2>
-            <p className="text-xs text-zinc-500">
-              Creates test alerts marked SIMULATED; they are counted separately from real observations
-            </p>
+        <section className="col-span-12 rounded-xl border border-dashed border-zinc-700/80 bg-[#151821]/60 p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-100">Event Simulator</h2>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Creates test alerts marked SIMULATED; they are counted separately from real observations
+              </p>
+            </div>
+            <Badge variant="neutral">Test data</Badge>
           </div>
-          <span className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-500">
-            Test data
-          </span>
-        </div>
-        <Select
-          label="Target worker"
-          value={selectedWorkerId}
-          onChange={(e) => setWorkerId(e.target.value)}
-          className="mb-4 max-w-xs"
-          disabled={workers.length === 0}
-        >
-          {workers.length === 0 ? (
-            <option>No workers</option>
-          ) : (
-            workers.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name} — {w.vest_id}
-              </option>
-            ))
-          )}
-        </Select>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: 'ppe', label: 'PPE Violation', sev: 'HIGH' },
-            { id: 'zone_breach', label: 'Zone Breach', sev: 'HIGH' },
-            { id: 'inactivity', label: 'Inactivity', sev: 'MEDIUM' },
-            { id: 'sos', label: 'SOS Pressed', sev: 'CRITICAL' },
-            { id: 'vehicle_proximity', label: 'Vehicle Proximity', sev: 'CRITICAL' },
-            { id: 'fall', label: 'Fall', sev: 'CRITICAL' },
-            { id: 'fire', label: 'Fire', sev: 'CRITICAL' },
-            { id: 'danger_area', label: 'Danger area', sev: 'CRITICAL' },
-            { id: 'gas', label: 'Gas', sev: 'CRITICAL' },
-          ].map((sim) => (
-            <Button
-              key={sim.id}
-              variant="secondary"
-              size="sm"
-              disabled={!!loadingSim || workers.length === 0}
-              onClick={() => simulate(sim.id)}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+            <Select
+              label="Target worker"
+              value={selectedWorkerId}
+              onChange={(e) => setWorkerId(e.target.value)}
+              className="w-full lg:w-64"
+              disabled={workers.length === 0}
             >
-              {loadingSim === sim.id ? 'Sending…' : sim.label}
-              <span className="ml-1 text-[10px] text-zinc-500">{sim.sev}</span>
-            </Button>
-          ))}
-        </div>
-      </section>
-      ) : null}
-
-      {toast ? (
-        <div
-          className={`fixed bottom-6 right-6 z-50 rounded-lg border px-4 py-3 text-sm shadow-lg ${
-            toast.type === 'error'
-              ? 'border-red-500/40 bg-red-500/10 text-red-300'
-              : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-          }`}
-          role="status"
-        >
-          {toast.msg}
-        </div>
+              {workers.length === 0 ? (
+                <option>No workers</option>
+              ) : (
+                workers.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                    {w.vest_id ? ` — ${w.vest_id}` : ''}
+                  </option>
+                ))
+              )}
+            </Select>
+            <div className="flex flex-1 flex-wrap gap-2">
+              {SIMULATIONS.map((sim) => (
+                <Button
+                  key={sim.id}
+                  variant="secondary"
+                  size="sm"
+                  loading={loadingSim === sim.id}
+                  disabled={!!loadingSim || workers.length === 0}
+                  onClick={() => simulate(sim.id)}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${SEVERITY_DOT[sim.sev]}`} aria-hidden />
+                  {sim.label}
+                  <span className="sr-only">({sim.sev.toLowerCase()} severity)</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        </section>
       ) : null}
     </div>
   )
 }
+
+const SEVERITY_DOT = { CRITICAL: 'bg-red-400', HIGH: 'bg-orange-400', MEDIUM: 'bg-yellow-400' }
+
+const SIMULATIONS = [
+  { id: 'ppe', label: 'PPE Violation', sev: 'HIGH' },
+  { id: 'zone_breach', label: 'Zone Breach', sev: 'HIGH' },
+  { id: 'inactivity', label: 'Inactivity', sev: 'MEDIUM' },
+  { id: 'sos', label: 'SOS Pressed', sev: 'CRITICAL' },
+  { id: 'vehicle_proximity', label: 'Vehicle Proximity', sev: 'CRITICAL' },
+  { id: 'fall', label: 'Fall', sev: 'CRITICAL' },
+  { id: 'fire', label: 'Fire', sev: 'CRITICAL' },
+  { id: 'danger_area', label: 'Danger area', sev: 'CRITICAL' },
+  { id: 'gas', label: 'Gas', sev: 'CRITICAL' },
+]

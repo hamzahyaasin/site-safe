@@ -5,27 +5,24 @@ import { useWorkers } from '../hooks/useWorkers.js'
 import { useVests } from '../hooks/useVests.js'
 import { useZones } from '../hooks/useZones.js'
 import WorkerStatusGrid from '../components/dashboard/WorkerStatusGrid.jsx'
+import Alert from '../components/ui/Alert.jsx'
 import Button from '../components/ui/Button.jsx'
 import Drawer from '../components/ui/Drawer.jsx'
-import Input, { Select } from '../components/ui/Input.jsx'
+import Input, { Checkbox, Select } from '../components/ui/Input.jsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
+import { IconPlus } from '../components/ui/icons.jsx'
+import { apiErrorText, useFeedback } from '../context/FeedbackContext.jsx'
 import { printBadge } from '../lib/badge.js'
 import { getWorkerPresence } from '../lib/utils.js'
 import WorkerTimeline from '../components/workers/WorkerTimeline.jsx'
 
 const EMPTY = { name: '', role: '', phone: '', zone: '', vest: '', is_active: true }
 
-function errorText(err) {
-  const data = err?.response?.data
-  if (!data) return err?.message || 'Request failed'
-  if (typeof data === 'string') return data
-  if (data.detail) return data.detail
-  return Object.entries(data)
-    .map(([field, msgs]) => `${field}: ${[].concat(msgs).join(' ')}`)
-    .join(' · ')
-}
+const errorText = (err) => apiErrorText(err, 'Request failed')
 
 export default function WorkersPage() {
   const { canOperate, api } = useAuth()
+  const { toast, confirm } = useFeedback()
   const { workers, loading, highlightIds, createWorker, updateWorker } = useWorkers()
   const { vests } = useVests({ poll: false })
   const { zones } = useZones()
@@ -90,6 +87,15 @@ export default function WorkersPage() {
     try {
       if (editing?.id) await updateWorker(editing.id, body)
       else await createWorker(body)
+      toast(
+        extra.is_active === false
+          ? `${body.name} deactivated`
+          : extra.is_active === true
+            ? `${body.name} reactivated`
+            : editing?.id
+              ? 'Worker updated'
+              : `${body.name} registered`,
+      )
       setEditing(null)
     } catch (e) {
       setError(errorText(e))
@@ -101,7 +107,11 @@ export default function WorkersPage() {
   async function badgeAction(reissue) {
     if (
       reissue &&
-      !window.confirm(`Issue a new badge for ${editing.name}? Every badge printed earlier stops working.`)
+      !(await confirm({
+        title: `Reissue ${editing.name}'s badge?`,
+        message: 'A new QR code is issued and every badge printed earlier stops working. Print and hand out the new one.',
+        confirmLabel: 'Reissue badge',
+      }))
     ) {
       return
     }
@@ -111,6 +121,7 @@ export default function WorkersPage() {
         ? await api.post(`workers/${editing.id}/badge/`)
         : await api.get(`workers/${editing.id}/badge/`)
       await printBadge(data)
+      if (reissue) toast('New badge issued — the print dialog has opened')
     } catch (e) {
       setError(errorText(e))
     }
@@ -122,32 +133,32 @@ export default function WorkersPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-100">Workers</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            {activeCount} active · {workers.length - activeCount} deactivated ·{' '}
-            {workers.filter((w) => w.is_active && getWorkerPresence(w).label === 'ON SITE').length} on site
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-xs text-zinc-400">
-            <input
-              type="checkbox"
+      <PageHeader
+        title="Workers"
+        description={`${activeCount} active · ${workers.length - activeCount} deactivated · ${
+          workers.filter((w) => w.is_active && getWorkerPresence(w).label === 'ON SITE').length
+        } on site`}
+        actions={
+          <>
+            <Checkbox
+              label="Show deactivated"
               checked={showInactive}
               onChange={(e) => setShowInactive(e.target.checked)}
+              className="mr-2 text-xs text-zinc-300"
             />
-            Show deactivated
-          </label>
-          {canOperate ? (
-            <Button variant="primary" size="sm" onClick={openNew}>
-              Register worker
-            </Button>
-          ) : null}
-        </div>
-      </header>
+            {canOperate ? (
+              <Button variant="primary" size="sm" onClick={openNew}>
+                <IconPlus className="h-3.5 w-3.5" />
+                Register worker
+              </Button>
+            ) : null}
+          </>
+        }
+      />
 
       <WorkerStatusGrid
+        title="All workers"
+        description="Presence from camera badge sightings and vest GPS. Open a timeline for a worker's movements."
         workers={visible}
         loading={loading}
         highlightIds={highlightIds}
@@ -168,7 +179,7 @@ export default function WorkersPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             {isEdit ? (
               <Button
-                variant="ghost"
+                variant={editing.is_active ? 'danger' : 'secondary'}
                 size="sm"
                 disabled={saving}
                 onClick={() => save({ is_active: !editing.is_active })}
@@ -179,11 +190,11 @@ export default function WorkersPage() {
               <span />
             )}
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setEditing(null)}>
+              <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
                 Cancel
               </Button>
-              <Button variant="primary" size="sm" disabled={saving || !form.name.trim()} onClick={() => save()}>
-                {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Register'}
+              <Button variant="primary" size="sm" loading={saving} disabled={!form.name.trim()} onClick={() => save()}>
+                {isEdit ? 'Save changes' : 'Register worker'}
               </Button>
             </div>
           </div>
@@ -239,8 +250,8 @@ export default function WorkersPage() {
             ))}
           </Select>
           {isEdit && editing.is_active ? (
-            <div className="rounded-md border border-zinc-800 p-3">
-              <p className="text-xs font-medium text-zinc-300">QR identity badge</p>
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3.5">
+              <p className="text-sm font-medium text-zinc-200">QR identity badge</p>
               <p className="mt-1 text-[11px] text-zinc-500">
                 Cameras attribute alerts to this worker when the badge is readable on them.
               </p>
@@ -258,11 +269,7 @@ export default function WorkersPage() {
             Only unassigned vests are listed. Register new vests on the Vest Management page.
             Deactivating a worker releases their vest and keeps their incident history.
           </p>
-          {error ? (
-            <p className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300" role="alert">
-              {error}
-            </p>
-          ) : null}
+          {error ? <Alert>{error}</Alert> : null}
           <button type="submit" hidden />
         </form>
       </Drawer>

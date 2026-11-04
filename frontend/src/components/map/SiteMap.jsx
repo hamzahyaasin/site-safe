@@ -11,6 +11,10 @@ const RISK_COLOR = {
   RESTRICTED: '#ef4444',
 }
 
+// OpenStreetMap tiles, darkened in CSS (.site-map-tiles) to match the dashboard.
+const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+
 // Fallback view before any zone or vest position exists; override per site.
 const DEFAULT_CENTER = (import.meta.env.VITE_MAP_CENTER || '33.6844,73.0479').split(',').map(Number)
 const DEFAULT_ZOOM = 16
@@ -33,6 +37,37 @@ function FitToSite({ zonePoints, otherPoints, zoneKey }) {
     if (points.length === 1) map.setView(points[0], 18)
     else map.fitBounds(points, { padding: [24, 24], maxZoom: 19 })
   }, [map, zonePoints, otherPoints, zoneKey])
+  return null
+}
+
+/** Leaflet measures its container once; re-measure when the card around it
+ * changes size (layout settling, sidebar collapse, drawer opening), or the
+ * tiles render as a broken patchwork. */
+function KeepSized() {
+  const map = useMap()
+  useEffect(() => {
+    const el = map.getContainer()
+    const ro = new ResizeObserver(() => map.invalidateSize({ pan: false }))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [map])
+  return null
+}
+
+/** The wheel scrolls the page until the map is clicked, so scrolling past a
+ * map never zooms it by accident; leaving the map hands the wheel back. */
+function WheelZoomOnClick() {
+  const map = useMap()
+  useEffect(() => {
+    const enable = () => map.scrollWheelZoom.enable()
+    const disable = () => map.scrollWheelZoom.disable()
+    map.on('click', enable)
+    map.on('mouseout', disable)
+    return () => {
+      map.off('click', enable)
+      map.off('mouseout', disable)
+    }
+  }, [map])
   return null
 }
 
@@ -78,21 +113,24 @@ export default function SiteMap({
   const draftLatLngs = (draft ?? []).map(toLatLng)
 
   return (
-    <div className="relative isolate z-0 overflow-hidden rounded-lg border border-zinc-800" style={{ height }}>
+    <div className="relative isolate z-0 overflow-hidden rounded-lg border border-zinc-800 bg-[#0f1117]" style={{ height }}>
       <MapContainer
         center={DEFAULT_CENTER}
         zoom={DEFAULT_ZOOM}
         maxZoom={20}
-        scrollWheelZoom
+        scrollWheelZoom={false}
         className="h-full w-full"
         style={{ background: '#0f1117', cursor: onAddPoint ? 'crosshair' : undefined }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution={TILE_ATTRIBUTION}
+          url={TILE_URL}
           maxNativeZoom={19}
           maxZoom={20}
+          className="site-map-tiles"
         />
+        <KeepSized />
+        <WheelZoomOnClick />
         <FitToSite zonePoints={zonePoints} otherPoints={otherPoints} zoneKey={zoneKey} />
         {onAddPoint ? <ClickToAdd onAddPoint={onAddPoint} /> : null}
 

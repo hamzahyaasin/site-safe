@@ -14,6 +14,17 @@ export function formatAlertType(type) {
   return type ? String(type).replace(/_/g, ' ') : '—'
 }
 
+const ACRONYMS = new Set(['PPE', 'SOS'])
+
+/** Alert type for headings: "PPE_VIOLATION" → "PPE Violation", "DANGER_AREA" → "Danger Area". */
+export function alertTypeTitle(type) {
+  if (!type) return '—'
+  return String(type)
+    .split('_')
+    .map((w) => (ACRONYMS.has(w) ? w : w.charAt(0) + w.slice(1).toLowerCase()))
+    .join(' ')
+}
+
 export function sourceLabel(source) {
   switch (source) {
     case 'AI_CAMERA':
@@ -32,7 +43,7 @@ export function displayCameraId(alert) {
   return alert?.camera_id || '—'
 }
 
-/** e.g. "2 min ago · 14:32 PKT" */
+/** e.g. "2 min ago · 14:32 PKT"; older than a day shows the date, "3 d ago · 28 Oct, 14:32". */
 export function formatTimestamp(iso) {
   if (!iso) return '—'
   const date = new Date(iso)
@@ -46,9 +57,9 @@ export function formatTimestamp(iso) {
   else if (mins >= 1440) relative = `${Math.floor(mins / 1440)} d ago`
 
   const absolute = date.toLocaleString(undefined, {
+    ...(mins >= 1440 ? { day: 'numeric', month: 'short' } : { timeZoneName: 'short' }),
     hour: '2-digit',
     minute: '2-digit',
-    timeZoneName: 'short',
   })
 
   return `${relative} · ${absolute}`
@@ -103,9 +114,6 @@ export function normalizeList(data) {
   return Array.isArray(data) ? data : data?.results || []
 }
 
-/** Presence from the worker's vest telemetry; there is no presence signal
- * for a worker without a vest, so that is reported as untracked rather
- * than guessed. */
 /** Presence from the worker's vest and camera badge sightings (the API's ``location``). */
 export function getWorkerPresence(worker) {
   if (!worker.is_active) return { label: 'INACTIVE', variant: 'offline', lastSeen: null }

@@ -1,84 +1,67 @@
 import Badge from './Badge.jsx'
 import Button from './Button.jsx'
+import { IconAlertTriangle, IconCheck } from './icons.jsx'
 import {
+  alertTypeTitle,
   cn,
-  displayCameraId,
-  formatAlertType,
   formatTimestamp,
   severityBadgeVariant,
   severityStripeClass,
 } from '../../lib/utils.js'
 
-function SeverityIcon({ severity }) {
-  const colors = {
-    CRITICAL: 'text-red-400',
-    HIGH: 'text-orange-400',
-    MEDIUM: 'text-yellow-400',
-    LOW: 'text-blue-400',
-  }
-  return (
-    <svg
-      className={cn('h-4 w-4 shrink-0', colors[severity] || 'text-zinc-500')}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <path d="M10.29 3.86L1.82 18h20.36L13.71 3.86 10.29 3.86z" />
-      <line x1="12" y1="9" x2="12" y2="13" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
-    </svg>
-  )
+const SEVERITY_ICON = {
+  CRITICAL: 'bg-red-500/10 text-red-400',
+  HIGH: 'bg-orange-500/10 text-orange-400',
+  MEDIUM: 'bg-yellow-500/10 text-yellow-400',
+  LOW: 'bg-sky-500/10 text-sky-400',
 }
 
-export default function AlertItem({
-  alert,
-  onResolve,
-  resolving,
-  isNew,
-  compact = false,
-}) {
+export default function AlertItem({ alert, onResolve, resolving, isNew, compact = false }) {
+  const who = alert.worker_name || 'Worker not identified'
+  const where = [alert.vest_id, !compact && alert.camera_id].filter(Boolean).join(' · ')
+
   return (
     <div
       className={cn(
-        'flex items-start gap-3 border-b border-zinc-800/80 border-l-[3px] px-3 py-3 last:border-b-0',
+        'flex items-start gap-3 border-b border-l-2 border-b-zinc-800/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-zinc-800/20',
         severityStripeClass(alert.severity),
         isNew && 'animate-slide-in bg-amber-500/5',
       )}
     >
-      <SeverityIcon severity={alert.severity} />
+      <span
+        className={cn(
+          'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
+          SEVERITY_ICON[alert.severity] || 'bg-zinc-800 text-zinc-400',
+        )}
+      >
+        <IconAlertTriangle className="h-3.5 w-3.5" />
+      </span>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-zinc-200">
-            {formatAlertType(alert.alert_type)}
-          </span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-sm font-medium text-zinc-100">{alertTypeTitle(alert.alert_type)}</span>
           <Badge variant={severityBadgeVariant(alert.severity)}>{alert.severity}</Badge>
+          {alert.source === 'SIMULATED' ? <Badge variant="neutral">Simulated</Badge> : null}
         </div>
-        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500">
-          <span>{alert.worker_name || 'Worker not identified'}</span>
-          <span className="font-mono">{alert.vest_id || '—'}</span>
-          {!compact ? (
-            <span className="font-mono">{displayCameraId(alert)}</span>
-          ) : null}
-        </div>
-        {alert.description && !compact ? (
-          <p className="mt-1 line-clamp-2 text-xs text-zinc-400">{alert.description}</p>
-        ) : null}
-        <p className="mt-1 text-[11px] text-zinc-600">
-          {formatTimestamp(alert.timestamp)}
-          {alert.source === 'SIMULATED' ? ' · simulated' : ''}
+        <p className="mt-1 break-words text-xs text-zinc-400">
+          {who}
+          {where ? <span className="font-mono text-zinc-500"> · {where}</span> : null}
         </p>
+        {alert.description && !compact ? (
+          <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{alert.description}</p>
+        ) : null}
+        <p className="mt-1 text-[11px] text-zinc-500">{formatTimestamp(alert.timestamp)}</p>
       </div>
       {!alert.is_resolved && onResolve ? (
         <Button
-          variant="ghost"
-          size="sm"
-          className="shrink-0 text-xs"
-          disabled={resolving}
+          variant="secondary"
+          size="xs"
+          className="mt-0.5"
+          loading={resolving}
           onClick={() => onResolve(alert.id)}
+          aria-label={`Resolve ${alertTypeTitle(alert.alert_type)} alert`}
         >
-          {resolving ? '…' : 'Resolve'}
+          {resolving ? null : <IconCheck className="h-3 w-3" />}
+          Resolve
         </Button>
       ) : null}
     </div>

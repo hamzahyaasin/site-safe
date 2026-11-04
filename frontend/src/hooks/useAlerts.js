@@ -12,9 +12,11 @@ export function useAlerts(initialParams = {}) {
   const [error, setError] = useState(null)
   const [newAlertIds, setNewAlertIds] = useState(() => new Set())
 
-  const fetchAlerts = useCallback(async () => {
+  // ``quiet`` refreshes in place (after a resolve, on resync) without
+  // swapping the list for a loading skeleton.
+  const fetchAlerts = useCallback(async ({ quiet = false } = {}) => {
     const params = JSON.parse(paramsKey)
-    setLoading(true)
+    if (!quiet) setLoading(true)
     try {
       const { data } = await api.get('alerts/', { params })
       setAlerts(normalizeList(data))
@@ -37,7 +39,7 @@ export function useAlerts(initialParams = {}) {
     const onlyOpen = String(resolvedFilter) === 'false'
     return subscribe((event, payload) => {
       if (event === 'resync') {
-        void fetchAlerts()
+        void fetchAlerts({ quiet: true })
       } else if (event === 'alert_updated' || event === 'alert_resolved') {
         setAlerts((prev) => {
           if (onlyOpen && payload.is_resolved) return prev.filter((a) => a.id !== payload.id)
@@ -63,7 +65,7 @@ export function useAlerts(initialParams = {}) {
   const resolveAlert = useCallback(
     async (id) => {
       await api.post(`alerts/${id}/resolve/`)
-      await fetchAlerts()
+      await fetchAlerts({ quiet: true })
     },
     [api, fetchAlerts],
   )

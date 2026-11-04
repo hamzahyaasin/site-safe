@@ -1,5 +1,6 @@
 import StatCard from '../ui/StatCard.jsx'
 import { formatMinutes } from '../../lib/utils.js'
+import { IconActivity, IconAlertTriangle, IconClock, IconUsers } from '../ui/icons.jsx'
 
 /** Every figure here comes from /dashboard/stats/; nothing is estimated. */
 export default function KpiStrip({ stats, loading }) {
@@ -22,13 +23,17 @@ export default function KpiStrip({ stats, loading }) {
       hint: stats
         ? `of ${stats.active_workers} active · ${stats.workers_on_site_by_camera} seen by camera, ${stats.workers_on_site_by_vest} by vest`
         : null,
-      borderColor: 'border-l-emerald-500',
+      tone: 'emerald',
+      icon: IconUsers,
+      to: '/workers',
     },
     {
       label: 'Open Alerts',
       value: stats?.unresolved_alerts,
       hint: stats ? `${stats.critical_alerts} critical` : null,
-      borderColor: 'border-l-red-500',
+      tone: 'red',
+      icon: IconAlertTriangle,
+      to: '/incidents?status=open',
     },
     {
       label: 'Alerts Today',
@@ -36,9 +41,10 @@ export default function KpiStrip({ stats, loading }) {
       deltaText: todayDelta?.text,
       deltaTone: todayDelta?.tone,
       hint: stats?.simulated_alerts_today ? `incl. ${stats.simulated_alerts_today} simulated` : null,
-      borderColor: 'border-l-amber-500',
+      tone: 'amber',
+      icon: IconActivity,
+      to: '/incidents',
       sparkline: daily.map((d) => ({ v: d.total })),
-      sparklineTrend: 'negative',
     },
     {
       label: 'Mean Time To Resolve',
@@ -48,7 +54,8 @@ export default function KpiStrip({ stats, loading }) {
           ? `${stats.resolved_7d} alerts resolved in the last 7 days`
           : 'No alerts resolved in the last 7 days'
         : null,
-      borderColor: 'border-l-blue-500',
+      tone: 'sky',
+      icon: IconClock,
     },
   ]
 
@@ -62,9 +69,10 @@ export default function KpiStrip({ stats, loading }) {
           hint={card.hint}
           deltaText={card.deltaText}
           deltaTone={card.deltaTone}
-          borderColor={card.borderColor}
+          tone={card.tone}
+          icon={card.icon}
+          to={card.to}
           sparklineData={card.sparkline}
-          sparklineTrend={card.sparklineTrend}
           loading={loading}
         />
       ))}

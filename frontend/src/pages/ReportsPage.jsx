@@ -2,7 +2,13 @@ import { useState } from 'react'
 import Button from '../components/ui/Button.jsx'
 import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card.jsx'
 import DataTable from '../components/ui/DataTable.jsx'
-import Input from '../components/ui/Input.jsx'
+import Alert from '../components/ui/Alert.jsx'
+import EmptyState from '../components/ui/EmptyState.jsx'
+import Input, { Checkbox } from '../components/ui/Input.jsx'
+import { SegmentedControl } from '../components/ui/FilterChip.jsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
+import { IconDownload, IconReport } from '../components/ui/icons.jsx'
+import { apiErrorText, useFeedback } from '../context/FeedbackContext.jsx'
 import { browserTimeZone, cn } from '../lib/utils.js'
 import { useReports } from '../hooks/useReports.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -36,6 +42,19 @@ function defaultDateRange() {
   }
 }
 
+const PRESETS = [
+  { label: 'Last 7 days', days: 7 },
+  { label: 'Last 30 days', days: 30 },
+  { label: 'Last 90 days', days: 90 },
+]
+
+function rangeForDays(days) {
+  const to = new Date()
+  const from = new Date()
+  from.setDate(from.getDate() - days)
+  return { date_from: localIsoDate(from), date_to: localIsoDate(to) }
+}
+
 function formatDate(iso) {
   if (!iso) return '—'
   try {
@@ -50,12 +69,12 @@ export default function ReportsPage() {
   if (role && !canOperate) {
     return (
       <div className="space-y-6">
-        <header>
-          <h1 className="text-2xl font-semibold text-zinc-100">Reports</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Generating and downloading reports requires the Safety Officer or Admin role.
-          </p>
-        </header>
+        <PageHeader title="Reports" description="Generate and download incident and compliance reports" />
+        <EmptyState
+          icon={IconReport}
+          title="Reports need the Safety Officer or Admin role"
+          description="Ask an Admin to change your role if you need to generate or download reports."
+        />
       </div>
     )
   }
@@ -64,17 +83,28 @@ export default function ReportsPage() {
 
 function ReportsWorkspace() {
   const { reports, loading, generating, error, generateReport, downloadReport } = useReports()
+  const { toast } = useFeedback()
+  const [downloadingId, setDownloadingId] = useState(null)
+
+  async function handleDownload(report) {
+    setDownloadingId(report.id)
+    try {
+      await downloadReport(report)
+    } catch (err) {
+      toast(apiErrorText(err, 'Could not download the report. The file may have been removed from the server.'), 'error')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
   const [reportType, setReportType] = useState('INCIDENT')
   const [{ date_from, date_to }, setDateRange] = useState(defaultDateRange)
   const [fileFormat, setFileFormat] = useState('PDF')
   const [includeEvidence, setIncludeEvidence] = useState(true)
   const [formError, setFormError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
 
   async function handleGenerate(e) {
     e.preventDefault()
     setFormError('')
-    setSuccessMsg('')
 
     if (date_from > date_to) {
       setFormError('End date must be on or after start date.')
@@ -90,7 +120,7 @@ function ReportsWorkspace() {
         tz: browserTimeZone(),
         include_evidence: includeEvidence,
       })
-      setSuccessMsg(`Report generated: ${filename}`)
+      toast(`Report generated: ${filename}. Download it from the list below.`)
     } catch (err) {
       setFormError(err.message || 'Failed to generate report')
     }
@@ -119,13 +149,17 @@ function ReportsWorkspace() {
     {
       key: 'filename',
       header: 'File',
-      render: (row) => <code className="text-xs text-zinc-400">{row.filename}</code>,
+      className: 'hidden lg:table-cell',
+      cellClassName: 'hidden lg:table-cell',
+      render: (row) => <code className="break-all text-xs text-zinc-400">{row.filename}</code>,
     },
     {
       key: 'actions',
-      header: 'Action',
+      header: <span className="sr-only">Actions</span>,
+      cellClassName: 'text-right',
       render: (row) => (
-        <Button variant="ghost" size="sm" onClick={() => downloadReport(row)}>
+        <Button variant="secondary" size="xs" loading={downloadingId === row.id} onClick={() => handleDownload(row)}>
+          {downloadingId === row.id ? null : <IconDownload className="h-3.5 w-3.5" />}
           Download
         </Button>
       ),
@@ -134,10 +168,7 @@ function ReportsWorkspace() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-zinc-100">Reports</h1>
-        <p className="mt-1 text-sm text-zinc-500">Generate and download incident and compliance reports</p>
-      </header>
+      <PageHeader title="Reports" description="Generate and download incident and compliance reports" />
 
       <Card>
         <CardHeader>
@@ -145,18 +176,18 @@ function ReportsWorkspace() {
           <CardDescription>Choose a report type and date range</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" onSubmit={handleGenerate}>
+          <form className="space-y-5" onSubmit={handleGenerate}>
             <fieldset>
-              <legend className="mb-2 text-xs font-medium text-zinc-400">Report type</legend>
+              <legend className="mb-2 text-xs font-medium text-zinc-300">Report type</legend>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {REPORT_TYPES.map((type) => (
                   <label
                     key={type.id}
                     className={cn(
-                      'flex cursor-pointer flex-col gap-1 rounded-md border px-3 py-2.5 transition-colors',
+                      'flex cursor-pointer flex-col gap-1 rounded-lg border px-3.5 py-3 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-amber-500',
                       reportType === type.id
-                        ? 'border-amber-500/50 bg-amber-500/5'
-                        : 'border-zinc-700 hover:border-zinc-600',
+                        ? 'border-amber-500/60 bg-amber-500/[0.06] shadow-[inset_0_0_0_1px_rgba(245,158,11,0.25)]'
+                        : 'border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800/30',
                     )}
                   >
                     <span className="flex items-center gap-2">
@@ -167,100 +198,96 @@ function ReportsWorkspace() {
                         checked={reportType === type.id}
                         onChange={() => setReportType(type.id)}
                       />
-                      <span className="text-sm font-medium text-zinc-200">{type.label}</span>
+                      <span className="text-sm font-medium text-zinc-100">{type.label}</span>
                     </span>
-                    <span className="text-xs text-zinc-500">{type.description}</span>
+                    <span className="pl-6 text-xs text-zinc-400">{type.description}</span>
                   </label>
                 ))}
               </div>
             </fieldset>
 
-            <div className="grid grid-cols-2 gap-3 max-w-md">
-              <Input
-                label="From"
-                type="date"
-                value={date_from}
-                onChange={(e) => setDateRange((d) => ({ ...d, date_from: e.target.value }))}
-                required
-              />
-              <Input
-                label="To"
-                type="date"
-                value={date_to}
-                onChange={(e) => setDateRange((d) => ({ ...d, date_to: e.target.value }))}
-                required
-              />
+            <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex flex-wrap items-end gap-3">
+                  <Input
+                    label="From"
+                    type="date"
+                    value={date_from}
+                    max={date_to}
+                    onChange={(e) => setDateRange((d) => ({ ...d, date_from: e.target.value }))}
+                    className="w-[160px]"
+                    required
+                  />
+                  <Input
+                    label="To"
+                    type="date"
+                    value={date_to}
+                    min={date_from}
+                    onChange={(e) => setDateRange((d) => ({ ...d, date_to: e.target.value }))}
+                    className="w-[160px]"
+                    required
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESETS.map((p) => (
+                    <button
+                      key={p.days}
+                      type="button"
+                      onClick={() => setDateRange(rangeForDays(p.days))}
+                      className="rounded px-1.5 py-0.5 text-[11px] font-medium text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-zinc-300">Format</span>
+                <SegmentedControl
+                  label="Format"
+                  value={fileFormat}
+                  onChange={setFileFormat}
+                  options={FORMATS.map((f) => ({ value: f.id, label: f.label }))}
+                />
+              </div>
             </div>
+            <p className="-mt-2 text-[11px] text-zinc-500">
+              Days run midnight to midnight in your time zone ({browserTimeZone() || 'UTC'}).
+            </p>
 
-            <fieldset>
-              <legend className="mb-2 text-xs font-medium text-zinc-400">Format</legend>
-              <div className="flex gap-4">
-                {FORMATS.map((f) => (
-                  <label key={f.id} className="flex items-center gap-2 text-sm text-zinc-300">
-                    <input
-                      type="radio"
-                      name="file_format"
-                      value={f.id}
-                      checked={fileFormat === f.id}
-                      onChange={() => setFileFormat(f.id)}
-                    />
-                    {f.label}
-                  </label>
-                ))}
-              </div>
-              <p className="mt-1 text-[11px] text-zinc-500">
-                Days run midnight to midnight in your time zone ({browserTimeZone() || 'UTC'}).
-              </p>
-            </fieldset>
+            <Checkbox
+              label="Include evidence snapshots"
+              hint={`${
+                reportType === 'INCIDENT'
+                  ? 'The camera frames of the most severe incidents (up to 24), each captioned and referenced from the incident log.'
+                  : 'Up to two camera frames per zone, its most severe incidents first.'
+              } Frames can show people; leave them out for a report shared widely.`}
+              checked={includeEvidence}
+              onChange={(e) => setIncludeEvidence(e.target.checked)}
+            />
 
-            <label className="flex items-start gap-2 text-sm text-zinc-300">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={includeEvidence}
-                onChange={(e) => setIncludeEvidence(e.target.checked)}
-              />
-              <span>
-                Include evidence snapshots
-                <span className="block text-[11px] text-zinc-500">
-                  {reportType === 'INCIDENT'
-                    ? 'The camera frames of the most severe incidents (up to 24), each captioned and referenced from the incident log.'
-                    : 'Up to two camera frames per zone, its most severe incidents first.'}{' '}
-                  Frames can show people; leave them out for a report shared widely.
-                </span>
-              </span>
-            </label>
+            {formError ? <Alert>{formError}</Alert> : null}
+            {error ? <Alert>{error}</Alert> : null}
 
-            {formError ? (
-              <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
-                {formError}
-              </p>
-            ) : null}
-            {successMsg ? (
-              <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300" role="status">
-                {successMsg}
-              </p>
-            ) : null}
-            {error ? (
-              <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
-                {error}
-              </p>
-            ) : null}
-
-            <Button type="submit" variant="primary" disabled={generating}>
-              {generating ? 'Generating…' : 'Generate Report'}
-            </Button>
+            <div className="flex items-center gap-3 border-t border-zinc-800 pt-4">
+              <Button type="submit" variant="primary" loading={generating}>
+                {generating ? 'Generating…' : 'Generate report'}
+              </Button>
+              {generating ? <span className="text-xs text-zinc-500">This can take a few seconds with snapshots.</span> : null}
+            </div>
           </form>
         </CardContent>
       </Card>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-zinc-100">Generated Reports</h2>
+        <h2 className="mb-3 text-sm font-semibold text-zinc-100">Generated reports</h2>
         <DataTable
           columns={columns}
           data={reports}
           loading={loading}
+          minWidthClass="min-w-[560px]"
           emptyTitle="No reports generated yet"
+          emptyDescription="Generate one above; it will be listed here to download again later."
           rowKey={(row) => row.id}
         />
       </div>

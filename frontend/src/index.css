@@ -17,6 +17,9 @@
 
   html {
     font-family: var(--font-sans);
+    /* Native date pickers, selects, checkboxes and scrollbars render dark. */
+    color-scheme: dark;
+    font-feature-settings: 'cv11', 'ss01';
   }
 
   body {
@@ -29,6 +32,20 @@
   :focus-visible {
     outline: 2px solid #f59e0b;
     outline-offset: 2px;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: #f59e0b;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
@@ -88,6 +105,34 @@
     }
   }
 
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.15s ease-out;
+  }
+
+  .animate-pop-in {
+    animation: pop-in 0.18s ease-out;
+  }
+
   .animate-slide-in {
     animation: slide-in-right 0.35s ease-out;
   }
@@ -111,6 +156,12 @@
       linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
     background-size: 32px 32px;
   }
+}
+
+/* Dark basemap: only the tile images are filtered, so zones, vests and
+   cameras keep their real colours. */
+.site-map-tiles {
+  filter: invert(1) hue-rotate(185deg) brightness(0.92) contrast(0.88) saturate(0.35);
 }
 
 /* Live head counts on the site map (SiteMap.jsx). */
@@ -168,5 +219,28 @@
   border: 1px solid #3f3f46;
 }
 .leaflet-container .leaflet-popup-close-button {
+  color: #a1a1aa;
+}
+.leaflet-container {
+  font-family: var(--font-sans);
+}
+.leaflet-container .leaflet-bar {
+  border: 1px solid #3f3f46;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.leaflet-container .leaflet-bar a {
+  background: #151821;
+  color: #d4d4d8;
+  border-bottom-color: #2a2f3d;
+}
+.leaflet-container .leaflet-bar a:hover {
+  background: #1f2330;
+  color: #fbbf24;
+}
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(15, 17, 23, 0.75);
+  color: #71717a;
+}
+.leaflet-container .leaflet-control-attribution a {
   color: #a1a1aa;
 }

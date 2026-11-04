@@ -4,6 +4,7 @@ import Button from '../ui/Button.jsx'
 import Card, { CardContent, CardDescription, CardHeader, CardTitle } from '../ui/Card.jsx'
 import Input, { Select } from '../ui/Input.jsx'
 import { formatDateTime } from '../../lib/utils.js'
+import { useFeedback } from '../../context/FeedbackContext.jsx'
 
 function localInputValue(date) {
   const pad = (n) => String(n).padStart(2, '0')
@@ -24,6 +25,7 @@ function errorText(err) {
  * window is still alerted, at reduced severity and linked to the permit.
  */
 export default function HotWorkPermits({ zones, permits, loading, error, canIssue, onIssue, onRevoke }) {
+  const { toast, confirm } = useFeedback()
   const now = new Date()
   const [form, setForm] = useState(() => ({
     zone: '',
@@ -54,11 +56,17 @@ export default function HotWorkPermits({ zones, permits, loading, error, canIssu
   }
 
   async function revoke(permit) {
-    if (!window.confirm(`Revoke the hot-work permit for ${permit.zone_name}? Fire there becomes critical again.`)) return
+    const ok = await confirm({
+      title: `Revoke the hot-work permit for ${permit.zone_name}?`,
+      message: 'Fire or smoke seen in this zone becomes a critical alert again.',
+      confirmLabel: 'Revoke permit',
+    })
+    if (!ok) return
     try {
       await onRevoke(permit.id)
+      toast('Permit revoked')
     } catch (err) {
-      window.alert(errorText(err))
+      toast(errorText(err), 'error')
     }
   }
 

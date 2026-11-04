@@ -1,19 +1,23 @@
 import { useAuth } from '../context/AuthContext.jsx'
 import { useAlerts } from '../hooks/useAlerts.js'
 import IncidentLogTable from '../components/incidents/IncidentLogTable.jsx'
+import Alert from '../components/ui/Alert.jsx'
 
 export default function IncidentsPage() {
   const { canOperate } = useAuth()
-  const { alerts, loading, resolveAlert } = useAlerts({ ordering: '-timestamp' })
+  const { alerts, loading, error, resolveAlert, fetchAlerts } = useAlerts({ ordering: '-timestamp' })
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-zinc-100">Incident Log</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Full audit trail of safety incidents from cameras, vests, and simulations
-        </p>
-      </header>
+      {error ? (
+        <Alert>
+          Could not load incidents. Check that the server is running, then{' '}
+          <button type="button" className="font-semibold underline" onClick={() => fetchAlerts()}>
+            try again
+          </button>
+          .
+        </Alert>
+      ) : null}
       <IncidentLogTable alerts={alerts} loading={loading} onResolve={canOperate ? resolveAlert : undefined} />
     </div>
   )

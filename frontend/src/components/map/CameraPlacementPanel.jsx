@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { cameraStatus } from '../../hooks/useCameraMap.js'
 import { cn } from '../../lib/utils.js'
+import { useFeedback } from '../../context/FeedbackContext.jsx'
 
 const DOT = { alerting: 'bg-red-500', live: 'bg-emerald-500', offline: 'bg-zinc-500' }
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
@@ -50,6 +51,7 @@ function Slider({ label, value, min, max, step, unit, onChange, hint }) {
  * how wide and how far it sees; the view cone follows on the map.
  */
 export default function CameraPlacementPanel({ cameras, alerting, draft, setDraft, place, unplace, isAdmin }) {
+  const { confirm } = useFeedback()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -80,7 +82,12 @@ export default function CameraPlacementPanel({ cameras, alerting, draft, setDraf
   }
 
   async function remove(camera) {
-    if (!window.confirm(`Take ${camera.camera_id} off the map? Its alerts and live view are not affected.`)) return
+    const ok = await confirm({
+      title: `Take ${camera.camera_id} off the map?`,
+      message: 'Its alerts and live view are not affected; only its position and view cone are removed.',
+      confirmLabel: 'Remove from map',
+    })
+    if (!ok) return
     setError(null)
     try {
       await unplace(camera.camera_id)

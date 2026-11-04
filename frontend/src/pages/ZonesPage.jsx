@@ -3,7 +3,11 @@ import Badge from '../components/ui/Badge.jsx'
 import Button from '../components/ui/Button.jsx'
 import DataTable from '../components/ui/DataTable.jsx'
 import Drawer from '../components/ui/Drawer.jsx'
-import Input, { Select } from '../components/ui/Input.jsx'
+import Alert from '../components/ui/Alert.jsx'
+import Input, { Checkbox, Select, Textarea } from '../components/ui/Input.jsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
+import { IconPencil, IconPlus, IconTrash } from '../components/ui/icons.jsx'
+import { apiErrorText, useFeedback } from '../context/FeedbackContext.jsx'
 import CameraPlacementPanel from '../components/map/CameraPlacementPanel.jsx'
 import SiteMap from '../components/map/SiteMap.jsx'
 import HotWorkPermits from '../components/zones/HotWorkPermits.jsx'
@@ -74,9 +78,6 @@ function zoneToForm(zone) {
   }
 }
 
-const textareaClass =
-  'rounded-md border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/30'
-
 export default function ZonesPage() {
   const { zones, loading, error, createZone, updateZone, deleteZone } = useZones()
   const { vests } = useVests()
@@ -84,6 +85,7 @@ export default function ZonesPage() {
   const [cameraDraft, setCameraDraft] = useState(null)
   // Zone edits are Admin-only server-side; hide the controls for everyone else.
   const { isAdmin, canOperate } = useAuth()
+  const { toast, confirm } = useFeedback()
   const permitState = useHotWorkPermits()
   const activePermitZones = new Set(permitState.permits.filter((p) => p.is_active).map((p) => p.zone))
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -134,8 +136,10 @@ export default function ZonesPage() {
       }
       if (editingZone) {
         await updateZone(editingZone.id, payload)
+        toast(`Zone "${payload.name}" saved`)
       } else {
         await createZone(payload)
+        toast(`Zone "${payload.name}" created`)
       }
       closeDrawer()
     } catch (err) {
@@ -154,12 +158,18 @@ export default function ZonesPage() {
   }
 
   async function handleDelete(zone) {
-    const ok = window.confirm(`Delete zone "${zone.name}"? Workers assigned to this zone will be unlinked.`)
+    const ok = await confirm({
+      title: `Delete zone "${zone.name}"?`,
+      message:
+        'Workers assigned to it are unlinked, and its boundary, zone-specific alert rules and hot-work permits are removed. Past incidents are kept.',
+      confirmLabel: 'Delete zone',
+    })
     if (!ok) return
     try {
       await deleteZone(zone.id)
+      toast(`Zone "${zone.name}" deleted`)
     } catch (err) {
-      window.alert(err.response?.data?.detail || 'Failed to delete zone')
+      toast(apiErrorText(err, 'Failed to delete zone'), 'error')
     }
   }
 
@@ -169,7 +179,7 @@ export default function ZonesPage() {
       header: 'Name',
       render: (row) => (
         <div>
-          <p className="font-medium text-zinc-100">{row.name}</p>
+          <p className="whitespace-nowrap font-medium text-zinc-100">{row.name}</p>
           {row.description ? <p className="mt-0.5 text-xs text-zinc-500">{row.description}</p> : null}
         </div>
       ),
@@ -227,20 +237,27 @@ export default function ZonesPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <Badge variant={row.is_active ? 'active' : 'offline'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>,
+      render: (row) => (
+        <Badge variant={row.is_active ? 'active' : 'offline'} dot>
+          {row.is_active ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
     },
   ]
 
   if (isAdmin) {
     columns.push({
       key: 'actions',
-      header: 'Actions',
+      header: <span className="sr-only">Actions</span>,
+      cellClassName: 'text-right',
       render: (row) => (
-        <div className="flex gap-1">
-          <Button variant="ghost" size="sm" onClick={() => openEdit(row)}>
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="xs" onClick={() => openEdit(row)}>
+            <IconPencil className="h-3.5 w-3.5" />
             Edit
           </Button>
-          <Button variant="destructive" size="sm" onClick={() => handleDelete(row)}>
+          <Button variant="danger" size="xs" onClick={() => handleDelete(row)} aria-label={`Delete zone ${row.name}`}>
+            <IconTrash className="h-3.5 w-3.5" />
             Delete
           </Button>
         </div>
@@ -250,35 +267,32 @@ export default function ZonesPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-100">Zones</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            {isAdmin
-              ? 'Manage site zones, risk levels, and geofence boundaries'
-              : 'Site zones, risk levels, and geofence boundaries (read-only)'}
-          </p>
-        </div>
-        {isAdmin ? (
-          <Button variant="primary" size="sm" onClick={openCreate}>
-            Add Zone
-          </Button>
-        ) : null}
-      </header>
+      <PageHeader
+        title="Zones"
+        description={
+          isAdmin
+            ? 'Manage site zones, risk levels, geofence boundaries and camera placement'
+            : 'Site zones, risk levels, and geofence boundaries (read-only)'
+        }
+        actions={
+          isAdmin ? (
+            <Button variant="primary" size="sm" onClick={openCreate}>
+              <IconPlus className="h-3.5 w-3.5" />
+              Add zone
+            </Button>
+          ) : null
+        }
+      />
 
-      {error ? (
-        <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <Alert>{error}</Alert> : null}
 
       <Card>
         <CardHeader>
           <CardTitle>Site Map</CardTitle>
           <CardDescription>
-            Zone boundaries by risk level, each vest&apos;s last reported position (green online, grey offline, red
-            SOS), and cameras with what they cover (green live, grey offline, red for a minute after an alert)
+            Zone boundaries by risk level, vest positions and camera coverage. Click the map to zoom with the wheel.
           </CardDescription>
+          <MapLegend />
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <SiteMap
@@ -291,7 +305,7 @@ export default function ZonesPage() {
             height={380}
           />
           <div>
-            <p className="mb-2 text-sm font-medium text-zinc-200">Cameras</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">Cameras</p>
             {cameraMap.error ? <p className="mb-2 text-xs text-red-400">{cameraMap.error}</p> : null}
             <CameraPlacementPanel
               cameras={cameraMap.cameras}
@@ -306,14 +320,17 @@ export default function ZonesPage() {
         </CardContent>
       </Card>
 
-      <DataTable
-        columns={columns}
-        data={zones}
-        loading={loading}
-        emptyTitle="No zones yet"
-        emptyDescription="Add one with the button above."
-        rowKey={(row) => row.id}
-      />
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-zinc-100">All zones</h2>
+        <DataTable
+          columns={columns}
+          data={zones}
+          loading={loading}
+          emptyTitle="No zones yet"
+          emptyDescription={isAdmin ? 'Add one with the Add zone button above.' : 'An admin has not defined any zones yet.'}
+          rowKey={(row) => row.id}
+        />
+      </section>
 
       <HotWorkPermits
         zones={zones}
@@ -328,25 +345,22 @@ export default function ZonesPage() {
       <Drawer
         open={drawerOpen}
         onClose={closeDrawer}
-        title={editingZone ? 'Edit Zone' : 'Add Zone'}
+        size="lg"
+        title={editingZone ? `Edit ${editingZone.name}` : 'Add zone'}
         description={editingZone ? 'Update zone details and geofence boundaries' : 'Define a new site zone'}
         footer={
-          <div className="flex gap-2">
-            <Button type="submit" form="zone-form" variant="primary" disabled={saving}>
-              {saving ? 'Saving…' : editingZone ? 'Save changes' : 'Create zone'}
-            </Button>
+          <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={closeDrawer} disabled={saving}>
               Cancel
+            </Button>
+            <Button type="submit" form="zone-form" variant="primary" loading={saving}>
+              {editingZone ? 'Save changes' : 'Create zone'}
             </Button>
           </div>
         }
       >
         <form id="zone-form" className="space-y-4" onSubmit={handleSubmit}>
-          {formError ? (
-            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
-              {formError}
-            </p>
-          ) : null}
+          {formError ? <Alert>{formError}</Alert> : null}
 
           <Input
             label="Name"
@@ -355,19 +369,16 @@ export default function ZonesPage() {
             required
           />
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-zinc-400">Description</span>
-            <textarea
-              className={textareaClass}
-              rows={2}
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            />
-          </label>
+          <Textarea
+            label="Description"
+            rows={2}
+            value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <Select
-              label="Risk Level"
+              label="Risk level"
               value={form.risk_level}
               onChange={(e) => setForm((f) => ({ ...f, risk_level: e.target.value }))}
             >
@@ -379,56 +390,46 @@ export default function ZonesPage() {
             </Select>
 
             <Input
-              label="Max Occupancy"
+              label="Max occupancy"
               type="number"
               min={0}
               value={form.max_occupancy}
               onChange={(e) => setForm((f) => ({ ...f, max_occupancy: e.target.value }))}
+              hint="0 = unlimited"
             />
           </div>
-          <p className="-mt-2 text-xs text-zinc-600">0 = unlimited</p>
 
           <Input
             label="Camera IDs"
             value={form.camera_ids}
             onChange={(e) => setForm((f) => ({ ...f, camera_ids: e.target.value }))}
             placeholder="CAM-ENTRANCE, CAM-BAY-2"
+            hint={
+              <>
+                Comma-separated, matching the <code className="font-mono">--camera-id</code> each vision pipeline is
+                started with. A camera belongs to one zone: a badge it reads places that worker here.
+              </>
+            }
           />
-          <p className="-mt-2 text-[11px] text-zinc-600">
-            Comma-separated camera identifiers assigned to watch this zone — match the{' '}
-            <code className="font-mono">--camera-id</code> each vision pipeline instance is started with. A camera
-            belongs to one zone: a badge it reads places that worker here.
-          </p>
 
-          <label className="flex items-start gap-2 text-sm text-zinc-300">
-            <input
-              type="checkbox"
-              className="mt-1"
-              checked={form.camera_views_overlap}
-              onChange={(e) => setForm((f) => ({ ...f, camera_views_overlap: e.target.checked }))}
-            />
-            <span>
-              These cameras can see the same people
-              <span className="block text-[11px] text-zinc-600">
-                On: the head count is the largest single camera count, so nobody is counted twice. Off: the cameras
-                watch separate areas and their counts are added.
-              </span>
-            </span>
-          </label>
+          <Checkbox
+            label="These cameras can see the same people"
+            hint="On: the head count is the largest single camera count, so nobody is counted twice. Off: the cameras watch separate areas and their counts are added."
+            checked={form.camera_views_overlap}
+            onChange={(e) => setForm((f) => ({ ...f, camera_views_overlap: e.target.checked }))}
+          />
 
           {editingZone ? (
-            <label className="flex items-center gap-2 text-sm text-zinc-300">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-              />
-              Active
-            </label>
+            <Checkbox
+              label="Active"
+              hint="Inactive zones keep their history but raise no alerts."
+              checked={form.is_active}
+              onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
+            />
           ) : null}
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-zinc-400">Boundary</span>
+            <span className="text-xs font-medium text-zinc-300">Boundary</span>
             <SiteMap
               zones={zones}
               vests={vests}
@@ -464,12 +465,41 @@ export default function ZonesPage() {
                 </Button>
               </div>
             </div>
-            <span className="text-[11px] text-zinc-600">
+            <span className="text-[11px] text-zinc-500">
               Leave empty for a camera-only zone. GPS presence, restricted-entry and capacity alerts need a boundary.
             </span>
           </div>
         </form>
       </Drawer>
+    </div>
+  )
+}
+
+const LEGEND = [
+  { label: 'Low', color: '#3b82f6' },
+  { label: 'Medium', color: '#eab308' },
+  { label: 'High', color: '#f97316' },
+  { label: 'Restricted', color: '#ef4444' },
+]
+
+function MapLegend() {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-400">
+      {LEGEND.map((l) => (
+        <span key={l.label} className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm border" style={{ borderColor: l.color, background: `${l.color}33` }} />
+          {l.label} risk
+        </span>
+      ))}
+      <span className="flex items-center gap-1.5">
+        <span className="h-2 w-2 rounded-full bg-emerald-500" /> Vest online / camera live
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="h-2 w-2 rounded-full bg-zinc-500" /> Offline
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="h-2 w-2 rounded-full bg-red-500" /> SOS / alerting
+      </span>
     </div>
   )
 }
