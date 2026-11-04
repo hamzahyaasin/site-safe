@@ -66,8 +66,8 @@ The **Event Simulator** at the bottom (Safety Officers and Admins) raises test a
 | Inactivity | a person has not moved for the inactivity time (5 min by default) | they move again |
 | Fire / smoke | seen for 2 s (lower severity inside a zone with a hot-work permit) | the scene has been clear for 30 s |
 | Zone breach | a worker enters a restricted zone they are not assigned to; a restricted zone's camera sees someone without a readable badge for 10 s; or a zone goes over its capacity for 10 s | they leave (for someone unidentified, 10 s out of the camera's view), or the zone is back within capacity for 60 s |
-| SOS | a vest's SOS button is pressed | the SOS is cleared |
-| Gas | a vest's gas sensor reads 2,000 ppm or more (flammable gas such as LPG or methane) | the level has been below that for 1 min |
+| SOS | a vest's SOS button is pressed | the wearer cancels it (which resolves the alert) or a supervisor resolves it; then the next press |
+| Gas | a vest's gas sensor reads 2,000 ppm or more (flammable gas such as LPG or methane) | the level has been below that for 1 min; or, once the alert is resolved, the next rise above it |
 
 A camera that reads a worker's QR badge names them on the alert; otherwise it says "Worker not identified". Camera alerts carry the **evidence frame** (the picture at that moment) and the **model version** that detected it.
 
@@ -128,7 +128,7 @@ Next to each area, **On/Off** switches it off while the hazard is absent (for ex
 
 **Timeline** shows a worker's day: when they were first and last seen, time on site, idle time and the zones they visited, from badge sightings and vest reports.
 
-**Vest Management** lists vests with battery, gas level, last report and position. A gas level over the alert limit is shown in red. The gas sensor needs a minute to warm up after the vest is switched on, and must be switched on in clean air; until then no gas level is shown. Its reading is an estimate for spotting a leak, not a certified measurement. On the vest, one press of the button raises an SOS (its light stays on); pressing again and holding for 3 s cancels it. Setting up and flashing a vest is in [firmware/README.md](../firmware/README.md). **Register vest** adds one by its ID. Click a vest for its details panel, where it is assigned to a worker; it can also be assigned on the worker's form. A vest that stops reporting shows as offline.
+**Vest Management** lists vests with battery, gas level, last report and position. A gas level over the alert limit is shown in red. The gas sensor needs a minute to warm up after the vest is switched on, and must be switched on in clean air; until then no gas level is shown. Its reading is an estimate for spotting a leak, not a certified measurement. On the vest, one press of the button raises an SOS (its light stays on); pressing again and holding for 3 s cancels it and resolves the SOS alert, noted "cancelled by the wearer". If a supervisor resolves the alert while the vest is still in SOS, the wearer's next press raises a new one. A vest that restarts (for example when its power bank runs out) loses its SOS state, but its alert stays open until a supervisor resolves it. Setting up and flashing a vest is in [firmware/README.md](../firmware/README.md). **Register vest** adds one by its ID. Click a vest for its details panel, where it is assigned to a worker; it can also be assigned on the worker's form. A vest that stops reporting shows as offline.
 
 ## 7. Reports
 

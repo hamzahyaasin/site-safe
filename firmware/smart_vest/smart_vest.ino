@@ -19,7 +19,7 @@
 constexpr int GPS_RX_PIN = 16;  // ESP32 RX2 <- GPS TX
 constexpr int GPS_TX_PIN = 17;  // ESP32 TX2 -> GPS RX
 constexpr int SOS_PIN = 27;     // button to GND; internal pull-up
-constexpr int GAS_PIN = 34;     // MQ-2 AO through the 10 k / 20 k divider (ADC1: works with Wi-Fi on)
+constexpr int GAS_PIN = 34;     // MQ-2 AO through the divider in config.h (ADC1: works with Wi-Fi on)
 constexpr int LED_PIN = 2;      // on-board LED
 
 constexpr uint32_t REPORT_MS = 5000;
@@ -31,6 +31,9 @@ constexpr int GAS_SAMPLES = 16;            // averaged per reading
 constexpr int R0_SAMPLES = 50;             // clean-air calibration readings, one per R0_SAMPLE_MS
 constexpr uint32_t R0_SAMPLE_MS = 100;
 
+const vest::Divider GAS_DIVIDER{MQ2_DIVIDER_TOP_KOHM, MQ2_DIVIDER_BOTTOM_KOHM};
+constexpr double PIN_MAX_MV = 3300.0;
+
 TinyGPSPlus gps;
 vest::SosButton sos;
 double r0_kohm = MQ2_R0_KOHM;  // 0: not calibrated yet; -1: calibration failed
@@ -40,7 +43,7 @@ uint32_t last_r0_sample = 0;
 uint32_t last_report = 0;
 uint32_t last_wifi_try = 0;
 bool delivered = false;    // whether the last report reached the server (for the LED)
-bool sos_pending = false;  // an SOS press or cancel the server has not confirmed yet
+bool sos_pending = false;  // an SOS press, repeat or cancel the server has not confirmed yet
 
 double read_pin_mv() {
   uint32_t total = 0;
@@ -54,7 +57,7 @@ void calibrate_gas_step(uint32_t now) {
   if (r0_kohm != 0 || now < GAS_WARMUP_MS || now - last_r0_sample < R0_SAMPLE_MS) return;
   if (r0_taken == 0) Serial.println("[gas] warmed up; calibrating in clean air");
   last_r0_sample = now;
-  double rs = vest::sensor_kohm(read_pin_mv(), MQ2_LOAD_KOHM);
+  double rs = vest::sensor_kohm(read_pin_mv(), MQ2_LOAD_KOHM, GAS_DIVIDER);
   if (rs > 0) {
     r0_sum += rs;
     ++r0_good;
@@ -72,7 +75,7 @@ void calibrate_gas_step(uint32_t now) {
 // -1 until the sensor is warmed up and calibrated.
 int read_gas_ppm() {
   if (r0_kohm <= 0 || millis() < GAS_WARMUP_MS) return -1;
-  return vest::gas_ppm(vest::sensor_kohm(read_pin_mv(), MQ2_LOAD_KOHM), r0_kohm);
+  return vest::gas_ppm(vest::sensor_kohm(read_pin_mv(), MQ2_LOAD_KOHM, GAS_DIVIDER), r0_kohm);
 }
 
 void keep_wifi() {
@@ -88,11 +91,16 @@ void keep_wifi() {
 bool send_report() {
   vest::Reading r;
   r.sos_active = sos.active;
+  r.sos_presses = sos.presses;
   r.gas_ppm = read_gas_ppm();
   if (gps.location.isValid() && gps.location.age() < GPS_MAX_AGE_MS) {
     r.has_fix = true;
     r.latitude = gps.location.lat();
     r.longitude = gps.location.lng();
+  } else if (VEST_FIXED_LATITUDE != 0.0 || VEST_FIXED_LONGITUDE != 0.0) {
+    r.has_fix = true;  // configured in config.h, not measured
+    r.latitude = VEST_FIXED_LATITUDE;
+    r.longitude = VEST_FIXED_LONGITUDE;
   }
   char body[200];
   if (vest::telemetry_json(body, sizeof body, VEST_ID, r) < 0) return false;
@@ -120,6 +128,15 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   analogSetPinAttenuation(GAS_PIN, ADC_11db);  // full 0-3.3 V range
   WiFi.mode(WIFI_STA);
+  if (vest::max_pin_mv(GAS_DIVIDER) > PIN_MAX_MV) {
+    // A wrong divider could push GPIO34 over 3.3 V: never read it.
+    r0_kohm = -1;
+    Serial.printf("[gas] divider %.0f k / %.0f k would put %.0f mV on GPIO34 (max 3300); gas disabled\n",
+                  MQ2_DIVIDER_TOP_KOHM, MQ2_DIVIDER_BOTTOM_KOHM, vest::max_pin_mv(GAS_DIVIDER));
+  }
+  if (VEST_FIXED_LATITUDE != 0.0 || VEST_FIXED_LONGITUDE != 0.0) {
+    Serial.printf("[gps] no fix: reporting the configured position %.6f, %.6f\n", VEST_FIXED_LATITUDE, VEST_FIXED_LONGITUDE);
+  }
   Serial.printf("\nSite-Safe vest %s; gas readings start after %u s of warm-up\n", VEST_ID,
                 static_cast<unsigned>(GAS_WARMUP_MS / 1000));
   keep_wifi();
@@ -133,6 +150,7 @@ void loop() {
   calibrate_gas_step(now);
   vest::SosEvent event = sos.update(digitalRead(SOS_PIN) == LOW, now);
   if (event == vest::SosEvent::Raised) Serial.println("[sos] RAISED");
+  if (event == vest::SosEvent::Repeated) Serial.printf("[sos] pressed again (press %lu)\n", static_cast<unsigned long>(sos.presses));
   if (event == vest::SosEvent::Cancelled) Serial.println("[sos] cancelled");
   if (event != vest::SosEvent::None) sos_pending = true;
 

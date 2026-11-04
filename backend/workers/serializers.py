@@ -204,6 +204,8 @@ class VestTelemetrySerializer(serializers.Serializer):
     longitude = serializers.FloatField(required=False, allow_null=True)
     battery_level = serializers.IntegerField(required=False, min_value=0, max_value=100)
     sos_active = serializers.BooleanField(required=False)
+    # Counts every SOS press since the vest started; restarts at 0 when it reboots.
+    sos_presses = serializers.IntegerField(required=False, min_value=0)
     # Omitted while the sensor warms up; MQ-2 reads at most about 10,000 ppm.
     gas_ppm = serializers.IntegerField(required=False, min_value=0, max_value=100_000)
 

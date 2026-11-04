@@ -54,6 +54,10 @@ def _apply(vest_id, payload, source):
         return None
 
     was_sos_active = vest.sos_active
+    presses = payload.get("sos_presses")
+    # The vest counts presses from start-up, so a lower count means it restarted.
+    restarted = presses is not None and presses < vest.sos_presses
+    pressed_again = presses is not None and presses > vest.sos_presses
 
     if "latitude" in payload:
         vest.latitude = payload["latitude"]
@@ -63,8 +67,12 @@ def _apply(vest_id, payload, source):
         vest.battery_level = payload["battery_level"]
     if "sos_active" in payload:
         vest.sos_active = payload["sos_active"]
+    if presses is not None:
+        vest.sos_presses = presses
     now = timezone.now()
-    gas_alert = "gas_ppm" in payload and check_gas(vest, payload["gas_ppm"], now)
+    gas_alert = "gas_ppm" in payload and check_gas(
+        vest, payload["gas_ppm"], now, lambda: open_gas_alerts(vest, source).exists()
+    )
 
     vest.is_online = True
     vest.last_seen = now
@@ -75,18 +83,12 @@ def _apply(vest_id, payload, source):
 
         record_seen(vest.worker, vest.last_seen, f"vest {vest.vest_id}")
 
-    if vest.sos_active and not was_sos_active and vest.worker:
-        Alert.objects.create(
-            worker=vest.worker,
-            alert_type=AlertType.SOS,
-            severity=Severity.CRITICAL,
-            source=source,
-            description=f"SOS activated at ({vest.latitude}, {vest.longitude})",
-            location={"lat": vest.latitude, "lng": vest.longitude},
-        )
+    # A vest without a GPS fix (or without a GPS module) has no position yet.
+    where = {"lat": vest.latitude, "lng": vest.longitude} if vest.latitude is not None else None
+    if vest.worker:
+        update_sos_alert(vest, was_sos_active, pressed_again, restarted, where, source, now)
 
     if gas_alert:
-        where = {"lat": vest.latitude, "lng": vest.longitude} if vest.latitude is not None else None
         Alert.objects.create(
             worker=vest.worker,
             alert_type=AlertType.GAS,
@@ -106,19 +108,63 @@ def _apply(vest_id, payload, source):
     return vest
 
 
-def check_gas(vest, ppm, now):
-    """Record a gas reading on ``vest``; returns True when it starts a new exposure (raise GAS).
+def update_sos_alert(vest, was_active, pressed_again, restarted, where, source, now):
+    """Keep the worker's SOS alert in step with the vest's SOS state.
+
+    A press raises an SOS alert unless one is still open; a repeated press on
+    a vest already in SOS raises a new one once a supervisor has resolved the
+    first. The wearer cancelling (holding the button) resolves the open alert
+    with a note. A vest that restarts loses its SOS state without the wearer
+    cancelling, so its open alert stays open for a supervisor to resolve.
+    """
+    open_sos = Alert.objects.filter(
+        worker=vest.worker, alert_type=AlertType.SOS, source=source, is_resolved=False
+    )
+    if vest.sos_active and (not was_active or pressed_again):
+        if not open_sos.exists():
+            Alert.objects.create(
+                worker=vest.worker,
+                alert_type=AlertType.SOS,
+                severity=Severity.CRITICAL,
+                source=source,
+                description=(
+                    f"SOS activated at ({vest.latitude}, {vest.longitude})" if where else "SOS activated (no position reported)"
+                ),
+                location=where,
+            )
+    elif was_active and not vest.sos_active and not restarted:
+        for alert in open_sos:
+            alert.description += "; cancelled by the wearer"
+            alert.is_resolved = True
+            alert.resolved_at = now
+            alert.save(update_fields=["description", "is_resolved", "resolved_at"])
+
+
+def open_gas_alerts(vest, source):
+    """The vest's unresolved GAS alerts (by its worker; by vest ID in the text if unassigned)."""
+    alerts = Alert.objects.filter(alert_type=AlertType.GAS, source=source, is_resolved=False)
+    if vest.worker:
+        return alerts.filter(worker=vest.worker)
+    return alerts.filter(worker__isnull=True, description__contains=f" on {vest.vest_id} (")
+
+
+def check_gas(vest, ppm, now, alert_open=lambda: False):
+    """Record a gas reading on ``vest``; returns True when it should raise a GAS alert.
 
     One alert per exposure: after it, the level must stay below
     GAS_ALERT_PPM for GAS_CLEAR_SECONDS before another can be raised, so a
-    reading that hovers around the limit does not alert every report.
+    reading that hovers around the limit does not alert every report. That
+    wait only holds while the alert is open: once a supervisor has resolved
+    it, a new rise above the limit raises another at once. ``alert_open``
+    reports whether the vest still has an unresolved GAS alert.
     The caller saves the vest.
     """
     vest.gas_ppm = ppm
     over = ppm >= settings.GAS_ALERT_PPM
     if over:
+        rising = vest.gas_below_since is not None
         vest.gas_below_since = None
-        if vest.gas_alerted_at is None:
+        if vest.gas_alerted_at is None or (rising and not alert_open()):
             vest.gas_alerted_at = now
             return True
         return False

@@ -24,7 +24,20 @@
 // ("472") or 10 k ("103").
 #define MQ2_LOAD_KOHM 1.0
 
+// The two resistors between the MQ-2's AO pin and GPIO34: top from AO to the
+// pin, bottom from the pin to GND. Two 22 k resistors halve the sensor's 5 V to
+// at most 2.5 V. The firmware refuses gas readings if the pin could exceed 3.3 V.
+#define MQ2_DIVIDER_TOP_KOHM 22.0
+#define MQ2_DIVIDER_BOTTOM_KOHM 22.0
+
 // Clean-air reference of your sensor (R0, kilo-ohms). Leave 0 to measure it at
 // every start-up, which needs the vest switched on in clean air. The serial
 // monitor prints the measured value; copy it here to skip the measurement.
 #define MQ2_R0_KOHM 0.0
+
+// Without a GPS module (or before it has a fix) the vest sends no position.
+// To place it on the site map anyway, set where it is being used, e.g. a
+// bench inside a zone. This position is configured, not measured: say so
+// wherever it is shown. Leave both 0 to send no position.
+#define VEST_FIXED_LATITUDE 0.0
+#define VEST_FIXED_LONGITUDE 0.0

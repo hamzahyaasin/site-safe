@@ -755,3 +755,48 @@ E2E (1 Nov, throwaway database, demo site, a non-simulator VEST_GATEWAY key): 7 
 Limits: no hardware yet; the MQ-2 is uncalibrated against a reference gas (indicative, not certified) and
   responds to several gases; no battery level (a power bank does not report one); Wi-Fi range only
 ```
+
+```text
+Phase / task IDs: Smart Vest parts bought (owner, 4 Nov); FR-21
+Bought: ESP32 30-pin DevKit, 12x12 push buttons, MQ-2 module, 10 k and 22 k resistors, breadboard, jumpers.
+  No GPS module.
+Firmware: the MQ-2 divider is now set in config.h (MQ2_DIVIDER_TOP_KOHM / BOTTOM, default two 22 k: at most
+  2.5 V on GPIO34); the firmware disables gas if the divider could exceed 3.3 V (10 k over 22 k would reach
+  3.4 V). Without a GPS fix it sends no position, or a position configured in config.h
+  (VEST_FIXED_LATITUDE / LONGITUDE), which is not a measurement. Recompiled for ESP32 Dev Module: no warnings.
+Server: an SOS from a vest without a position now reads "SOS activated (no position reported)" with no
+  location (was "at (None, None)"); test added. Backend 256 tests pass.
+Report impact (with the bench results): Table 4.3 and Figure 3.6 to the 22 k divider; 4.2.2 must say the GPS
+  module is not fitted unless one is bought.
+```
+
+```text
+Phase / task IDs: Smart Vest bench test, part 1, and SOS follow-up (4 Nov); FR-20, FR-21
+Hardware: ESP32 30-pin (ESP32-D0WD-V3, 4 MB flash, CH9102 USB serial, macOS built-in driver), MQ-2 module,
+  two 22 k divider on GPIO34, button on GPIO27, no GPS; powered from the laptop's USB.
+Wiring test (separate sketch): GPIO34 read 1.1-1.5 V (sensor 2.2-3.0 V, falling as the heater warmed);
+  3 of 3 button presses read.
+On the network: home Wi-Fi (2.4 GHz, channel 13); reports every 5 s, all HTTP 200; vest shown Online.
+  The laptop's .local name did not resolve from the ESP32 on this router (lwIP and ESPmDNS both timed out),
+  so API_BASE uses the laptop's IP, which changed after a power cut; README now recommends a DHCP reservation.
+Gas: 60 s warm-up, clean-air R0 1.405 kOhm; clean air read 3-5 ppm. Gas leak test not yet run.
+SOS delay (press logged on the vest's serial port at 1 s resolution, alert created_at on the server):
+  3 presses, each alert created within the same second as the press (19:27:47, 19:28:00, 19:28:48).
+Found: a wearer's cancel (3 s hold) left the SOS alert open; and after a supervisor resolved the alert while
+  the vest was still in SOS, further presses raised nothing (the vest ignored short presses while in SOS,
+  and the server alerted only when SOS turned on).
+Fixed: the firmware counts every press (a short press while in SOS is a repeat) and sends sos_presses; the
+  server raises an SOS alert on a press unless one is open, resolves the open alert with "cancelled by the
+  wearer" on a cancel, and leaves it open when the count drops (the vest restarted, so its SOS state was
+  lost rather than cancelled). Migration workers 0011.
+Tests: firmware logic 8 groups (repeat press, cancel hold not counted, JSON with sos_presses); backend 264
+  (8 new in workers/test_sos.py).
+Gas (lighter, unlit, 1-2 cm from the mesh, three short releases 20 s apart, 19:55-19:56): each read
+  10,000 ppm (the firmware's ceiling) in the first report after the release; the GAS alert was created in
+  that same report (19:55:22); the level fell to 2,181 ppm 5 s later and under 40 ppm within 10 s.
+Found: after the GAS alert was resolved, the next two releases raised nothing, because a new GAS alert
+  waited for 60 s below the limit even when no alert was open.
+Fixed: that wait now holds only while the vest's GAS alert is open; after a resolve, the next rise above
+  the limit alerts at once. Test added (backend 265).
+Report impact: 4.2.2 measurements; Table 5.1 test counts.
+```

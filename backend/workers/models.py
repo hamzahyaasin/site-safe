@@ -106,6 +106,10 @@ class SmartVest(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     sos_active = models.BooleanField(default=False)
+    sos_presses = models.PositiveIntegerField(
+        default=0,
+        help_text="SOS presses the vest has counted since it started; a change while SOS is active is a new press",
+    )
     gas_ppm = models.PositiveIntegerField(
         null=True,
         blank=True,

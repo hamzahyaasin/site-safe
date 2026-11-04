@@ -58,6 +58,18 @@ class GasAlertTests(TestCase):
         self.at(115, gas_ppm=2200)
         self.assertEqual(self.gas_alerts().count(), 2)
 
+    def test_new_rise_after_the_alert_is_resolved_alerts_at_once(self):
+        self.at(0, gas_ppm=10000)
+        self.gas_alerts().update(is_resolved=True)
+        self.at(5, gas_ppm=2400)  # still the same rise: no new alert
+        self.assertEqual(self.gas_alerts().count(), 1)
+        self.at(10, gas_ppm=40)
+        self.at(20, gas_ppm=10000)  # a new rise 10 s later, after the supervisor resolved
+        self.assertEqual(self.gas_alerts().count(), 2)
+        self.at(25, gas_ppm=30)
+        self.at(30, gas_ppm=9000)  # and while that one is open, the wait applies again
+        self.assertEqual(self.gas_alerts().count(), 2)
+
     def test_report_without_a_reading_keeps_the_last_one(self):
         self.at(0, gas_ppm=400)
         self.at(5, battery_level=80)
@@ -69,6 +81,15 @@ class GasAlertTests(TestCase):
         self.vest.save()
         self.at(0, gas_ppm=5000)
         self.assertIsNone(self.gas_alerts().get().worker)
+
+    def test_sos_and_gas_without_a_position(self):
+        # A vest with no GPS module sends no position; neither alert claims one.
+        self.at(0, sos_active=True, gas_ppm=2600)
+        sos = Alert.objects.get(alert_type=AlertType.SOS)
+        self.assertEqual((sos.description, sos.location), ("SOS activated (no position reported)", None))
+        gas = self.gas_alerts().get()
+        self.assertIsNone(gas.location)
+        self.assertNotIn(" at (", gas.description)
 
     def test_gas_alerts_cannot_be_disabled(self):
         AlertConfig.objects.filter(alert_type=AlertType.GAS, zone=None).update(is_enabled=False)

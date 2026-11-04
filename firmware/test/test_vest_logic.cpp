@@ -20,12 +20,18 @@ static int failures = 0;
 
 static bool near(double a, double b, double tolerance) { return std::fabs(a - b) <= tolerance; }
 
+static const vest::Divider HALF{22.0, 22.0};  // two 22 k resistors
+
 static void test_divider_and_resistance() {
-  // 2.0 V at the pin is 3.0 V from the sensor; with RL 1 k, Rs = 1 * (5 - 3) / 3.
-  CHECK(near(vest::sensor_mv(2000), 3000, 1e-9));
-  CHECK(near(vest::sensor_kohm(2000, 1.0), 2.0 / 3.0, 1e-9));
-  CHECK(vest::sensor_kohm(0, 1.0) < 0);  // no signal: unusable, not infinite resistance
-  CHECK(vest::sensor_kohm(3400, 1.0) < 0);  // 5.1 V: above the supply, unusable
+  // 1.5 V at the pin is 3.0 V from the sensor; with RL 1 k, Rs = 1 * (5 - 3) / 3.
+  CHECK(near(vest::sensor_mv(1500, HALF), 3000, 1e-9));
+  CHECK(near(vest::sensor_kohm(1500, 1.0, HALF), 2.0 / 3.0, 1e-9));
+  CHECK(vest::sensor_kohm(0, 1.0, HALF) < 0);  // no signal: unusable, not infinite resistance
+  CHECK(vest::sensor_kohm(2600, 1.0, HALF) < 0);  // 5.2 V: above the supply, unusable
+  // Two 22 k keep the pin at 2.5 V at most; 10 k over 22 k would reach 3.4 V, too much for the ESP32.
+  CHECK(near(vest::max_pin_mv(HALF), 2500, 1e-9));
+  CHECK(vest::max_pin_mv({10.0, 22.0}) > 3300);
+  CHECK(near(vest::sensor_mv(2000, {10.0, 20.0}), 3000, 1e-9));  // the original 10 k / 20 k design
 }
 
 static void test_ppm_follows_the_datasheet_curve() {
@@ -39,10 +45,10 @@ static void test_ppm_follows_the_datasheet_curve() {
 }
 
 static void test_more_gas_reads_higher() {
-  const double r0 = vest::r0_from_clean_air(vest::sensor_kohm(800, 1.0));  // clean air: 1.2 V from the sensor
-  int clean = vest::gas_ppm(vest::sensor_kohm(800, 1.0), r0);
-  int some = vest::gas_ppm(vest::sensor_kohm(1600, 1.0), r0);
-  int lots = vest::gas_ppm(vest::sensor_kohm(2600, 1.0), r0);
+  const double r0 = vest::r0_from_clean_air(vest::sensor_kohm(600, 1.0, HALF));  // clean air: 1.2 V from the sensor
+  int clean = vest::gas_ppm(vest::sensor_kohm(600, 1.0, HALF), r0);
+  int some = vest::gas_ppm(vest::sensor_kohm(1200, 1.0, HALF), r0);
+  int lots = vest::gas_ppm(vest::sensor_kohm(1950, 1.0, HALF), r0);
   CHECK(clean < some && some < lots);
   CHECK(clean < 10);
 }
@@ -71,7 +77,22 @@ static void test_sos_press_raises_and_hold_cancels() {
   CHECK(!b.active);
 }
 
-static void test_short_press_while_active_does_not_cancel() {
+static void test_short_press_while_active_repeats_and_does_not_cancel() {
+  vest::SosButton b;
+  b.update(true, 0);
+  CHECK(b.update(true, 60) == vest::SosEvent::Raised);
+  CHECK(b.presses == 1);
+  b.update(false, 200);
+  CHECK(b.update(false, 260) == vest::SosEvent::None);  // releasing the raising press is not a repeat
+  b.update(true, 300);
+  CHECK(b.update(true, 360) == vest::SosEvent::None);  // could still become a cancel hold
+  b.update(false, 1000);
+  CHECK(b.update(false, 1060) == vest::SosEvent::Repeated);
+  CHECK(b.active);
+  CHECK(b.presses == 2);
+}
+
+static void test_cancel_hold_is_not_counted_as_a_press() {
   vest::SosButton b;
   b.update(true, 0);
   b.update(true, 60);
@@ -79,9 +100,14 @@ static void test_short_press_while_active_does_not_cancel() {
   b.update(false, 260);
   b.update(true, 300);
   b.update(true, 360);
-  b.update(false, 1000);
-  CHECK(b.update(false, 1060) == vest::SosEvent::None);
-  CHECK(b.active);
+  CHECK(b.update(true, 3400) == vest::SosEvent::Cancelled);
+  b.update(false, 3500);
+  CHECK(b.update(false, 3560) == vest::SosEvent::None);  // releasing after the cancel
+  CHECK(b.presses == 1);
+  // The next press raises SOS again and is counted.
+  b.update(true, 4000);
+  CHECK(b.update(true, 4060) == vest::SosEvent::Raised);
+  CHECK(b.presses == 2);
 }
 
 static void test_bounces_shorter_than_debounce_are_ignored() {
@@ -96,16 +122,17 @@ static void test_telemetry_json() {
   char buf[200];
   vest::Reading r;
   CHECK(vest::telemetry_json(buf, sizeof buf, "VEST-001", r) > 0);
-  CHECK(std::strcmp(buf, "{\"vest_id\":\"VEST-001\",\"sos_active\":false}") == 0);
+  CHECK(std::strcmp(buf, "{\"vest_id\":\"VEST-001\",\"sos_active\":false,\"sos_presses\":0}") == 0);
 
   r.has_fix = true;
   r.latitude = 33.6844;
   r.longitude = 73.0479;
   r.gas_ppm = 2400;
   r.sos_active = true;
+  r.sos_presses = 3;
   vest::telemetry_json(buf, sizeof buf, "VEST-001", r);
   CHECK(std::strcmp(buf,
-                    "{\"vest_id\":\"VEST-001\",\"sos_active\":true,\"latitude\":33.6844000,"
+                    "{\"vest_id\":\"VEST-001\",\"sos_active\":true,\"sos_presses\":3,\"latitude\":33.6844000,"
                     "\"longitude\":73.0479000,\"gas_ppm\":2400}") == 0);
 
   char small[30];
@@ -117,7 +144,8 @@ int main() {
   test_ppm_follows_the_datasheet_curve();
   test_more_gas_reads_higher();
   test_sos_press_raises_and_hold_cancels();
-  test_short_press_while_active_does_not_cancel();
+  test_short_press_while_active_repeats_and_does_not_cancel();
+  test_cancel_hold_is_not_counted_as_a_press();
   test_bounces_shorter_than_debounce_are_ignored();
   test_telemetry_json();
   if (failures) {

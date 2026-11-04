@@ -155,7 +155,7 @@ class ActivityLogViewSet(viewsets.ModelViewSet):
 class VestTelemetryView(APIView):
     """Receives periodic telemetry from Smart Vest via LoRa gateway.
 
-    Payload: { vest_id, latitude, longitude, battery_level, sos_active, gas_ppm }
+    Payload: { vest_id, latitude, longitude, battery_level, sos_active, sos_presses, gas_ppm }
     """
 
     permission_classes = [IsVestGateway]
