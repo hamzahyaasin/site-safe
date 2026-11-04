@@ -895,19 +895,19 @@ def activity_pipeline():
 
 
 def vest_block():
-    """Figure 3.6: the vest as built (firmware/smart_vest), with the pins of Table 4.3."""
+    """Figure 3.6: the vest as built (firmware/smart_vest), with the pins of Table 4.3; GPS not yet fitted."""
     d = Diagram(6.4, 3.1)
     esp = d.box(2.5, 0.1, 1.6, 1.9, "ESP32", ["DevKit V1, Wi-Fi", "", "reads GPS and gas,", "watches the SOS",
                                                "button, reports", "every 5 s"], kind="server", align="center", title_size=7.5)
-    gps = d.box(0.1, 0.1, 1.4, 0.66, "NEO-6M GPS", ["latitude, longitude", "1 Hz, 2.5 m CEP"], kind="edge", align="center")
+    gps = d.box(0.1, 0.1, 1.4, 0.66, "NEO-6M GPS", ["supported, not yet", "fitted; 2.5 m CEP"], kind="edge", align="center", dashed=True)
     gas = d.box(0.1, 1.34, 1.4, 0.66, "MQ-2 gas sensor", ["LPG, methane, smoke;", "5 V heater"], kind="edge", align="center")
     sos = d.box(4.9, 0.1, 1.4, 0.66, "SOS button", ["press: raise;", "hold 3 s: cancel"], kind="client", align="center")
     led = d.box(4.9, 1.34, 1.4, 0.66, "On-board LED", ["on during SOS,", "flash per report"], kind="external", align="center")
     wifi = d.box(0.1, 2.4, 1.4, 0.6, "Wi-Fi to the API", ["/v1/vests/telemetry/"], kind="external", align="center")
-    bank = d.box(4.9, 2.4, 1.4, 0.6, "USB power bank", ["5 V"], kind="external", align="center")
+    bank = d.box(4.9, 2.4, 1.4, 0.6, "USB power bank", ["or 5 V charger"], kind="external", align="center")
 
     d.arrow(mid(gps, "r"), mid(esp, "l", 0.174), "UART, 9600 baud\nGPIO 16 / 17", both=True, offset=(0, -0.16))
-    d.arrow(mid(gas, "r"), mid(esp, "l", 0.826), "analogue, GPIO 34\nvia 10 k / 20 k divider", offset=(0, -0.16))
+    d.arrow(mid(gas, "r"), mid(esp, "l", 0.826), "analogue, GPIO 34\nvia 22 k + 22 k", offset=(0, -0.16))
     d.arrow(mid(sos, "l"), mid(esp, "r", 0.174), "GPIO 27\nto GND", offset=(0, -0.16))
     d.arrow(mid(esp, "r", 0.826), mid(led, "l"), "GPIO 2", offset=(0, -0.09))
     elbow(d, [mid(esp, "b", 0.25), (2.9, 2.7), mid(wifi, "r")], "JSON, device token", (2.2, 2.6))

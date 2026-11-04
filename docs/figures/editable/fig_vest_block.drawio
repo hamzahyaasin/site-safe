@@ -7,7 +7,7 @@
         <mxCell id="c3" value="" style="html=1;whiteSpace=wrap;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
           <mxGeometry x="240.0" y="9.6" width="153.6" height="182.4" as="geometry" />
         </mxCell>
-        <mxCell id="c4" value="" style="html=1;whiteSpace=wrap;fillColor=#e0f2fe;strokeColor=#0369a1;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
+        <mxCell id="c4" value="" style="html=1;whiteSpace=wrap;fillColor=#e0f2fe;strokeColor=#0369a1;strokeWidth=1.20;dashed=1;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
           <mxGeometry x="9.6" y="9.6" width="134.4" height="63.4" as="geometry" />
         </mxCell>
         <mxCell id="c5" value="" style="html=1;whiteSpace=wrap;fillColor=#e0f2fe;strokeColor=#0369a1;strokeWidth=1.20;dashed=0;rounded=1;arcSize=12;absoluteArcSize=0;" vertex="1" parent="1">
@@ -94,11 +94,11 @@
         <mxCell id="c24" value="NEO-6M GPS" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
           <mxGeometry x="29.8" y="5.9" width="74.8" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c25" value="latitude, longitude" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
-          <mxGeometry x="28.0" y="23.8" width="78.5" height="9.9" as="geometry" />
+        <mxCell id="c25" value="supported, not yet" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
+          <mxGeometry x="27.3" y="23.8" width="79.9" height="9.9" as="geometry" />
         </mxCell>
-        <mxCell id="c26" value="1 Hz, 2.5 m CEP" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
-          <mxGeometry x="29.7" y="38.0" width="75.1" height="9.5" as="geometry" />
+        <mxCell id="c26" value="fitted; 2.5 m CEP" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c4">
+          <mxGeometry x="29.3" y="37.8" width="75.8" height="9.9" as="geometry" />
         </mxCell>
         <mxCell id="c27" value="MQ-2 gas sensor" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#0369a1;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c5">
           <mxGeometry x="19.6" y="5.9" width="95.2" height="13.1" as="geometry" />
@@ -136,14 +136,14 @@
         <mxCell id="c38" value="USB power bank" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=8.8;fontColor=#6b7280;fontStyle=1;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
           <mxGeometry x="20.3" y="5.9" width="93.8" height="13.1" as="geometry" />
         </mxCell>
-        <mxCell id="c39" value="5 V" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
-          <mxGeometry x="58.2" y="24.1" width="18.1" height="9.4" as="geometry" />
+        <mxCell id="c39" value="or 5 V charger" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.5;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;" vertex="1" parent="c9">
+          <mxGeometry x="35.0" y="24.1" width="64.4" height="9.4" as="geometry" />
         </mxCell>
         <mxCell id="c40" value="UART, 9600 baud&#10;GPIO 16 / 17" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="150.9" y="16.8" width="82.2" height="18.2" as="geometry" />
         </mxCell>
-        <mxCell id="c41" value="analogue, GPIO 34&#10;via 10 k / 20 k divider" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
-          <mxGeometry x="143.6" y="135.8" width="96.9" height="18.2" as="geometry" />
+        <mxCell id="c41" value="analogue, GPIO 34&#10;via 22 k + 22 k" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="147.6" y="135.8" width="88.8" height="18.2" as="geometry" />
         </mxCell>
         <mxCell id="c42" value="GPIO 27&#10;to GND" style="text;html=0;whiteSpace=nowrap;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=7.7;fontColor=#1f2937;fontStyle=0;strokeColor=none;fillColor=none;spacing=0;labelBackgroundColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="410.9" y="16.9" width="42.2" height="18.1" as="geometry" />

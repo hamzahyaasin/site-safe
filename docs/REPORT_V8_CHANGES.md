@@ -50,6 +50,20 @@ The text now covers everything built in Phases 0–2, and the body stays within 
 
 Rebuilt and rendered in Word on 27 Oct 2026: 95 pages; every one of the 147 contents and list entries matches the page it lands on in the final render.
 
+## Updated on 4 Nov 2026 (Smart Vest bench test)
+
+The vest was built from the parts bought (no GPS module) and bench-tested on home Wi-Fi. The report now gives the measured results in place of "being assembled", and says the GPS module is supported but not fitted.
+
+| Where | Change |
+|---|---|
+| Abstract, objective 8, 6.2 | Vest bench-tested without its GPS module |
+| 4.2.2 | Parts as built; SOS cancel and repeated presses; bench results: each SOS alert stored within about a second of the press, lighter gas read 2,500–10,000 ppm and raised a GAS alert within one five-second report; GAS re-armed once resolved |
+| Figure 3.6, Tables 4.2 and 4.3 | GPS shown as not yet fitted; the MQ-2 divider is two 22 kΩ resistors (at most 2.5 V on GPIO 34); power bank or USB charger |
+| Tables 3.3, 3.7, 3.9, 3.10, 5.1, 6.1, IV.1, IV.2, IV.3 | SOS use case (press count, wearer cancel, re-raise after a resolve); parts bought; 514 tests (backend 265, firmware 8), re-run 4 Nov; FR-21 integrated on the bench; a bench-test row; two defects the bench test found |
+| 5.3, 5.9, 6.1 | 514 tests; the vest was only bench-tested |
+
+Body text stays within the limit (one word fewer than before). Rebuilt and rendered in Word: 93 pages, no blank pages, and the contents and lists match the final render.
+
 ## Updated on 1 Nov 2026 (the Smart Vest is built, not future work)
 
 The owner decided to build the vest, with a gas sensor and Wi-Fi instead of LoRa. Every passage that called the vest future work or a scope-change request now describes the vest as designed and implemented, with its hardware being assembled; nothing claims a field test.
